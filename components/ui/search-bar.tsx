@@ -1,0 +1,124 @@
+import React, { useState } from 'react';
+import { Platform, StyleSheet, TextInput, View } from 'react-native';
+
+import { Icon } from '@/components/Icon';
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { ThemedText } from '@/components/themed-text';
+import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+
+type SearchBarProps = {
+  placeholder?: string;
+  value?: string;
+  onChangeText?: (text: string) => void;
+  recentSearches?: string[];
+  onRecentPress?: (term: string) => void;
+};
+
+export function SearchBar({
+  placeholder = 'Search',
+  value,
+  onChangeText,
+  recentSearches,
+  onRecentPress,
+}: SearchBarProps) {
+  const [internalValue, setInternalValue] = useState('');
+  const query = value ?? internalValue;
+  const showRecent = recentSearches?.length && !query;
+
+  const handleChange = (text: string) => {
+    setInternalValue(text);
+    onChangeText?.(text);
+  };
+
+  return (
+    <View>
+      <View style={styles.container}>
+        <View style={styles.innerShadow} pointerEvents="none" />
+        <Icon name="search" size={18} color={Palette.muted} />
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor={Palette.muted}
+          value={query}
+          onChangeText={handleChange}
+          returnKeyType="search"
+          accessibilityLabel={placeholder}
+        />
+        {query.length > 0 ? (
+          <OrthodoxPressable onPress={() => handleChange('')} accessibilityLabel="Clear search">
+            <Icon name="close" size={16} color={Palette.muted} />
+          </OrthodoxPressable>
+        ) : null}
+      </View>
+
+      {showRecent ? (
+        <View style={styles.recentRow}>
+          {recentSearches!.map((term) => (
+            <OrthodoxPressable
+              key={term}
+              style={styles.recentChip}
+              onPress={() => {
+                handleChange(term);
+                onRecentPress?.(term);
+              }}>
+              <ThemedText type="muted" style={styles.recentText}>
+                {term}
+              </ThemedText>
+            </OrthodoxPressable>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm + 2,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 4,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: Palette.card,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: { boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.35)' },
+    }),
+  },
+  innerShadow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+    borderTopLeftRadius: BorderRadius.lg,
+    borderTopRightRadius: BorderRadius.lg,
+  },
+  input: {
+    flex: 1,
+    fontSize: 14,
+    color: Palette.text,
+    paddingVertical: 0,
+  },
+  recentRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  recentChip: {
+    paddingHorizontal: Spacing.sm + 4,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Layout.cardBorder,
+    backgroundColor: 'rgba(30, 26, 20, 0.6)',
+  },
+  recentText: {
+    fontSize: 12,
+  },
+});

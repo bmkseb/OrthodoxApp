@@ -5,7 +5,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
+  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link' | 'muted' | 'seeAll';
 };
 
 export function ThemedText({
@@ -15,7 +15,16 @@ export function ThemedText({
   type = 'default',
   ...rest
 }: ThemedTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const colorKey =
+    type === 'muted'
+      ? 'muted'
+      : type === 'seeAll'
+        ? 'seeAll'
+        : type === 'link'
+          ? 'tint'
+          : 'text';
+
+  const color = useThemeColor({ light: lightColor, dark: darkColor }, colorKey);
 
   return (
     <Text
@@ -26,6 +35,8 @@ export function ThemedText({
         type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
         type === 'subtitle' ? styles.subtitle : undefined,
         type === 'link' ? styles.link : undefined,
+        type === 'muted' ? styles.muted : undefined,
+        type === 'seeAll' ? styles.seeAll : undefined,
         style,
       ]}
       {...rest}
@@ -46,7 +57,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    lineHeight: 32,
+    lineHeight: 40,
   },
   subtitle: {
     fontSize: 20,
@@ -55,6 +66,13 @@ const styles = StyleSheet.create({
   link: {
     lineHeight: 30,
     fontSize: 16,
-    color: '#0a7ea4',
+  },
+  muted: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  seeAll: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
