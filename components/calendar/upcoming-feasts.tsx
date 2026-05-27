@@ -1,113 +1,116 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { SacredImage } from '@/components/sacred/sacred-image';
-import { OrthodoxPressable } from '@/components/ui/orthodox-pressable';
-import { Layout, Palette } from '@/constants/theme';
-import {
-  CalendarEvent,
-  getStableFeastId,
-  getUpcomingMajorFeasts,
-} from '@/data/orthodoxCalendar';
+import { Icon } from '@/components/Icon';
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { ThemedText } from '@/components/themed-text';
+import { BilingualHeader } from '@/components/ui/bilingual-header';
+import { SacredImage } from '@/components/ui/sacred-image';
 import { useTranslation } from '@/hooks/use-translation';
+import { UpcomingFeast } from '@/data/orthodoxCalendar';
+import { Layout, Opacity, Palette } from '@/constants/theme';
 
 type UpcomingFeastsProps = {
-  onPressFeast: (event: CalendarEvent) => void;
+  feasts: UpcomingFeast[];
+  onPressFeast: (feast: UpcomingFeast) => void;
 };
 
-function formatFeastDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function daysUntil(from: Date, to: Date): number {
-  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
-  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function UpcomingFeastsComponent({ onPressFeast }: UpcomingFeastsProps) {
+export const UpcomingFeasts = memo(function UpcomingFeasts({ feasts, onPressFeast }: UpcomingFeastsProps) {
   const { t } = useTranslation();
-  const today = useMemo(() => new Date(), []);
-  const feasts = useMemo(() => getUpcomingMajorFeasts(today, 5), [today]);
-
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}>
-      {feasts.map((feast) => {
-        const remaining = daysUntil(today, feast.date);
-        const stableId = getStableFeastId(feast);
-
-        return (
-          <OrthodoxPressable key={stableId} onPress={() => onPressFeast(feast)}>
-            <View style={styles.card}>
-              <SacredImage source={feast.image ?? ''} style={styles.cardImage} />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.85)']}
-                style={styles.cardGradient}
-              />
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle} numberOfLines={2}>
-                  {feast.nameEn}
-                </Text>
-                <Text style={styles.cardDate}>{formatFeastDate(feast.date)}</Text>
-                <Text style={styles.cardRemaining}>
-                  {t('calendar.daysRemaining', { count: remaining })}
-                </Text>
+    <View style={styles.wrap}>
+      <View style={styles.headerRow}>
+        <BilingualHeader headerKey="upcomingFeasts" variant="section" />
+        <Icon name="sparkle" size={18} />
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}>
+        {feasts.map((feast) => {
+          const dateStr = feast.date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          });
+          const feastKey = `${feast.date.getFullYear()}-${feast.month}-${feast.day}-${feast.nameEn}`;
+          return (
+            <OrthodoxPressable
+              key={feastKey}
+              onPress={() => onPressFeast(feast)}>
+              <View style={styles.card}>
+                <SacredImage
+                  uri={`https://picsum.photos/280/360?random=${feast.day + feast.month * 7}`}
+                  style={styles.image}
+                />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.88)']}
+                  style={styles.gradient}
+                />
+                <View style={styles.textBlock}>
+                  <Text style={styles.name} numberOfLines={2}>
+                    {feast.nameEn}
+                  </Text>
+                  <Text style={styles.date}>{dateStr}</Text>
+                  <ThemedText type="muted" style={styles.remaining}>
+                    {t('calendar.daysRemaining', { count: feast.daysRemaining })}
+                  </ThemedText>
+                </View>
               </View>
-            </View>
-          </OrthodoxPressable>
-        );
-      })}
-    </ScrollView>
+            </OrthodoxPressable>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
-}
-
-export const UpcomingFeasts = memo(UpcomingFeastsComponent);
+});
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    gap: 12,
+  wrap: {
+    marginBottom: Layout.sectionGap,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginBottom: Layout.headerContentGap,
+  },
+  scroll: {
+    gap: Layout.cardGap,
     paddingRight: Layout.pagePadding,
   },
   card: {
     width: 140,
     height: 180,
-    borderRadius: 16,
+    borderRadius: Layout.cardRadius,
     overflow: 'hidden',
-    backgroundColor: Palette.card,
+    borderWidth: 1,
+    borderColor: `rgba(201, 147, 58, ${Opacity.goldBorder})`,
   },
-  cardImage: {
+  image: {
     width: '100%',
     height: '100%',
   },
-  cardGradient: {
+  gradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  cardText: {
+  textBlock: {
     position: 'absolute',
     left: 12,
     right: 12,
     bottom: 12,
+    gap: 2,
   },
-  cardTitle: {
-    color: Palette.text,
+  name: {
     fontSize: 16,
     fontWeight: '600',
-    lineHeight: 20,
-    marginBottom: 4,
+    color: Palette.text,
   },
-  cardDate: {
-    color: Palette.gold,
+  date: {
     fontSize: 13,
-    fontWeight: '500',
-    marginBottom: 2,
+    color: Palette.gold,
   },
-  cardRemaining: {
-    color: 'rgba(201, 147, 58, 0.7)',
+  remaining: {
     fontSize: 11,
-    fontWeight: '400',
   },
 });

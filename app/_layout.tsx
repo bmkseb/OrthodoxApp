@@ -1,13 +1,14 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { LanguageProvider } from '@/contexts/language-context';
+import { AudioPlayerProvider } from '@/contexts/audio-player-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { LanguageGate } from '@/components/navigation/language-gate';
-import { VignetteOverlay } from '@/components/ui/vignette-overlay';
 import { Animation, Palette } from '@/constants/theme';
 
 export const unstable_settings = {
@@ -30,25 +31,32 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <LanguageProvider>
-        <LanguageGate>
-          <ThemeProvider value={OrthodoxNavigationTheme}>
-            <View style={styles.root}>
-              <Stack
-                screenOptions={{
-                  contentStyle: { backgroundColor: Palette.background },
-                  animation: 'slide_from_bottom',
-                  animationDuration: Animation.detailSlideMs,
-                }}>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
-                <Stack.Screen name="catalog" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-                <Stack.Screen name="settings" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-              </Stack>
-              <VignetteOverlay />
-            </View>
-            <StatusBar style="light" />
-          </ThemeProvider>
-        </LanguageGate>
+        <AudioPlayerProvider>
+          <LanguageGate>
+            <ThemeProvider value={OrthodoxNavigationTheme}>
+              <GestureHandlerRootView style={styles.root}>
+                <Stack
+                  screenOptions={{
+                    contentStyle: { backgroundColor: Palette.background },
+                    animation: 'slide_from_bottom',
+                    animationDuration: Animation.detailSlideMs,
+                  }}>
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
+                  <Stack.Screen
+                    name="catalog"
+                    options={{ headerShown: false, animation: 'slide_from_bottom' }}
+                  />
+                  <Stack.Screen
+                    name="settings"
+                    options={{ headerShown: false, animation: 'slide_from_bottom' }}
+                  />
+                  <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+                </Stack>
+              </GestureHandlerRootView>
+              <StatusBar style="light" />
+            </ThemeProvider>
+          </LanguageGate>
+        </AudioPlayerProvider>
       </LanguageProvider>
     </SafeAreaProvider>
   );

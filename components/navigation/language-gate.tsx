@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { useLanguage } from '@/hooks/use-language';
+import { useLanguage } from '@/contexts/language-context';
 import { Palette } from '@/constants/theme';
 
 export function LanguageGate({ children }: { children: React.ReactNode }) {

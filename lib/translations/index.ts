@@ -16,7 +16,8 @@ export const LANGUAGE_MODES: { mode: LanguageMode; labelKey: TranslationKey }[] 
 
 type Params = Record<string, string | number>;
 
-function getNested(obj: Record<string, unknown>, path: string): string | undefined {
+function getNested(obj: Record<string, unknown>, path: string | undefined): string | undefined {
+  if (!path || typeof path !== 'string') return undefined;
   const parts = path.split('.');
   let cur: unknown = obj;
   for (const p of parts) {
@@ -35,6 +36,7 @@ export function interpolate(template: string, params?: Params): string {
 }
 
 export function translate(key: TranslationKey, mode: LanguageMode, params?: Params): string {
+  if (!key || typeof key !== 'string') return '';
   const dict = mode === 'am' ? am : en;
   const raw = getNested(dict as Record<string, unknown>, key);
   return interpolate(raw ?? key, params);
@@ -82,7 +84,12 @@ export function resolveHeader(key: HeaderKey, mode: LanguageMode): HeaderDisplay
 
   if (mode === 'am') return { primary: amharic, layout: 'amharic' };
   if (mode === 'bilingual') return { primary: english, accent: amharic, layout: 'inline' };
-  return { primary: english, accent: geezAccent, layout: 'inline' };
+  return { primary: english, layout: 'english' };
+}
+
+/** True when a translated accent should appear beside English (bilingual only). */
+export function showsTranslatedAccent(mode: LanguageMode): boolean {
+  return mode === 'bilingual';
 }
 
 export function getStorageKey(): string {

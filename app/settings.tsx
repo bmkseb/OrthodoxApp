@@ -48,7 +48,7 @@ export default function SettingsScreen() {
           const selected = mode === m;
           return (
             <OrthodoxPressable key={m} onPress={() => setMode(m)}>
-              <RadialCardSurface style={[styles.optionCard, selected && styles.optionCardSelected]}>
+              <RadialCardSurface tint="warm" style={[styles.optionCard, selected && styles.optionCardSelected]}>
                 <View style={styles.optionRow}>
                   <View style={[styles.radio, selected && styles.radioSelected]}>
                     {selected ? <View style={styles.radioDot} /> : null}
@@ -86,10 +86,10 @@ const styles = StyleSheet.create({
   optionCard: {
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: ManuscriptTokens.cardBorder,
+    borderColor: ManuscriptTokens.goldBorder,
     padding: 16,
   },
-  optionCardSelected: { borderColor: ManuscriptTokens.fadedGoldStrong },
+  optionCardSelected: { borderColor: ManuscriptTokens.goldFaded },
   optionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, zIndex: 1 },
   radio: {
     width: 20,

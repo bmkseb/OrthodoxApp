@@ -1,11 +1,22 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
+import { Palette, Typography } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link' | 'muted' | 'seeAll';
+  type?:
+    | 'default'
+    | 'pageTitle'
+    | 'sectionHeader'
+    | 'cardTitle'
+    | 'title'
+    | 'defaultSemiBold'
+    | 'subtitle'
+    | 'link'
+    | 'muted'
+    | 'seeAll';
 };
 
 export function ThemedText({
@@ -29,8 +40,11 @@ export function ThemedText({
   return (
     <Text
       style={[
-        { color },
+        { color: type === 'muted' ? Palette.muted : color },
         type === 'default' ? styles.default : undefined,
+        type === 'pageTitle' ? styles.pageTitle : undefined,
+        type === 'sectionHeader' ? styles.sectionHeader : undefined,
+        type === 'cardTitle' ? styles.cardTitle : undefined,
         type === 'title' ? styles.title : undefined,
         type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
         type === 'subtitle' ? styles.subtitle : undefined,
@@ -45,34 +59,17 @@ export function ThemedText({
 }
 
 const styles = StyleSheet.create({
-  default: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
+  default: Typography.body,
+  pageTitle: Typography.pageTitle,
+  sectionHeader: Typography.sectionHeader,
+  cardTitle: Typography.cardTitle,
   defaultSemiBold: {
-    fontSize: 16,
-    lineHeight: 24,
+    ...Typography.body,
     fontWeight: '600',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    lineHeight: 40,
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  link: {
-    lineHeight: 30,
-    fontSize: 16,
-  },
-  muted: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  seeAll: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  title: Typography.pageTitle,
+  subtitle: Typography.subtitle,
+  link: Typography.body,
+  muted: Typography.subtitle,
+  seeAll: Typography.subtitle,
 });

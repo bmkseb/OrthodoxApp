@@ -14,34 +14,79 @@ import { useTranslation } from '@/hooks/use-translation';
 import type { TranslationKey } from '@/lib/translations';
 import {
   CALENDAR_FILTERS,
-  CalendarEvent,
-  CalendarFilterId,
-  getDayInfo,
+  type CalendarFilter,
+  getUpcomingMajorFeasts,
+  type UpcomingFeast,
 } from '@/data/orthodoxCalendar';
 import { Layout, Palette } from '@/constants/theme';
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 export default function CalendarScreen() {
   const { t } = useTranslation();
-  const today = useMemo(() => new Date(), []);
-  const [selectedDate, setSelectedDate] = useState(today);
-  const [filter, setFilter] = useState<CalendarFilterId>('all');
+  const now = useMemo(() => new Date(), []);
+  const today = useMemo(
+    () => ({ year: now.getFullYear(), month: now.getMonth(), day: now.getDate() }),
+    [now]
+  );
+
+  const [viewYear, setViewYear] = useState(today.year);
+  const [viewMonth, setViewMonth] = useState(today.month);
+  const [selectedDay, setSelectedDay] = useState<number | null>(today.day);
+  const [filter, setFilter] = useState<CalendarFilter>('all');
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
 
-  const dayInfo = useMemo(() => getDayInfo(selectedDate), [selectedDate]);
+  const upcomingFeasts = useMemo(() => getUpcomingMajorFeasts(5, now), [now]);
+  const monthLabel = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
+  const sheetDay = selectedDay ?? today.day;
 
-  const openSheet = useCallback((date: Date) => {
-    setSelectedDate(date);
+  const openSheetForDay = useCallback((day: number) => {
+    setSelectedDay(day);
     setSheetVisible(true);
   }, []);
 
-  const handleFeastPress = useCallback((event: CalendarEvent) => {
-    setSelectedDate(event.date);
+  const handleFeastPress = useCallback((feast: UpcomingFeast) => {
+    setViewYear(feast.date.getFullYear());
+    setViewMonth(feast.date.getMonth());
+    setSelectedDay(feast.date.getDate());
     setSheetVisible(true);
   }, []);
+
+  const goPrevMonth = useCallback(() => {
+    if (viewMonth === 0) {
+      setViewYear((y) => y - 1);
+      setViewMonth(11);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  }, [viewMonth]);
+
+  const goNextMonth = useCallback(() => {
+    if (viewMonth === 11) {
+      setViewYear((y) => y + 1);
+      setViewMonth(0);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  }, [viewMonth]);
 
   return (
     <View style={styles.screen}>
-      <ScreenScrollView includeTabBarSafe={false}>
+      <ScreenScrollView>
         <View style={styles.content}>
           <View style={styles.titleRow}>
             <View style={styles.pageTitleRow}>
@@ -61,11 +106,11 @@ export default function CalendarScreen() {
             style={styles.filterScroll}
             contentContainerStyle={styles.filterRow}>
             {CALENDAR_FILTERS.map((f) => {
-              const active = filter === f.id;
+              const active = filter === f.key;
               return (
-                <OrthodoxPressable key={f.id} onPress={() => setFilter(f.id)}>
+                <OrthodoxPressable key={f.key} onPress={() => setFilter(f.key)}>
                   <Text style={[styles.filterText, active && styles.filterTextActive]}>
-                    {t(f.labelKey)}
+                    {t(f.labelKey as TranslationKey)}
                   </Text>
                 </OrthodoxPressable>
               );
@@ -73,9 +118,15 @@ export default function CalendarScreen() {
           </ScrollView>
 
           <CalendarMonthGrid
-            selectedDate={selectedDate}
-            onSelectDate={openSheet}
-            activeFilter={filter}
+            year={viewYear}
+            month={viewMonth}
+            selectedDay={selectedDay}
+            today={today}
+            filter={filter}
+            onSelectDay={openSheetForDay}
+            onPrevMonth={goPrevMonth}
+            onNextMonth={goNextMonth}
+            monthLabel={monthLabel}
           />
 
           <View style={styles.legend}>
@@ -85,15 +136,18 @@ export default function CalendarScreen() {
             <LegendItem label={t('calendar.today')} symbol="○" />
           </View>
 
-          <BilingualHeader headerKey="upcomingFeasts" variant="section" />
-          <UpcomingFeasts onPressFeast={handleFeastPress} />
+          <UpcomingFeasts feasts={upcomingFeasts} onPressFeast={handleFeastPress} />
         </View>
       </ScreenScrollView>
 
       <SaintDetailSheet
         visible={sheetVisible}
-        dayInfo={dayInfo}
+        year={viewYear}
+        month={viewMonth}
+        day={sheetDay}
+        bookmarked={bookmarked}
         onClose={() => setSheetVisible(false)}
+        onToggleBookmark={() => setBookmarked((b) => !b)}
       />
     </View>
   );
@@ -118,16 +172,16 @@ function LegendItem({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { paddingBottom: Layout.sectionGap },
+  content: { paddingBottom: Layout.sectionContentBottom },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginBottom: Layout.headerContentGap,
+    marginBottom: Layout.sectionHeaderBottom,
   },
-  pageTitleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, flex: 1 },
-  searchWrap: { marginBottom: Layout.sectionGap },
-  filterScroll: { marginBottom: Layout.sectionGap },
+  pageTitleRow: { flexDirection: 'row', alignItems: 'flex-end', flex: 1, gap: 8 },
+  searchWrap: { marginBottom: Layout.sectionHeaderBottom },
+  filterScroll: { marginBottom: Layout.sectionHeaderBottom },
   filterRow: { gap: 10, paddingRight: Layout.pagePadding },
   filterText: {
     color: Palette.muted,
@@ -148,8 +202,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 16,
-    marginBottom: Layout.sectionGap,
-    marginTop: 8,
+    marginBottom: Layout.sectionContentBottom,
+    marginTop: Layout.headerContentGap,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendSymbol: { color: Palette.gold, fontSize: 12 },

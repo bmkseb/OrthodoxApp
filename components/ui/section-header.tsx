@@ -1,12 +1,13 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
-import { GeometricWatermark } from '@/components/sacred/geometric-watermark';
-import { BilingualHeader } from '@/components/ui/bilingual-header';
+import { SacredSectionHeader } from '@/components/ui/bilingual-header';
 import { ThemedText } from '@/components/themed-text';
 import { useTranslation } from '@/hooks/use-translation';
 import type { HeaderKey } from '@/lib/translations';
-import { Layout, Spacing } from '@/constants/theme';
+import { Layout, Space, Typography } from '@/constants/theme';
+
+const SECTION_ICON_SIZE = 17;
 
 type SectionHeaderProps = {
   headerKey?: HeaderKey;
@@ -20,24 +21,30 @@ export function SectionHeader({ headerKey, title, icon, onSeeAllPress }: Section
 
   return (
     <View style={styles.container}>
-      <View style={styles.titleWrap}>
-        <View style={styles.titleRow}>
-          {icon ? <Icon name={icon} size={18} /> : null}
+      <View style={styles.titleRow}>
+        {icon ? (
+          <View style={styles.iconRail}>
+            <Icon name={icon} size={SECTION_ICON_SIZE} />
+          </View>
+        ) : null}
+        <View style={styles.labelRail}>
           {headerKey ? (
-            <BilingualHeader headerKey={headerKey} variant="section" />
+            <SacredSectionHeader headerKey={headerKey} style={styles.header} />
           ) : (
-            <ThemedText style={styles.fallbackTitle}>{title}</ThemedText>
+            <ThemedText style={styles.fallbackTitle} numberOfLines={1}>
+              {title}
+            </ThemedText>
           )}
         </View>
-        <GeometricWatermark style={styles.watermark} />
       </View>
 
       {onSeeAllPress ? (
         <TouchableOpacity
+          style={styles.seeAllWrap}
           accessibilityRole="button"
           accessibilityLabel={`See all ${title ?? headerKey ?? 'section'}`}
           onPress={onSeeAllPress}>
-          <ThemedText type="seeAll" style={styles.seeAll}>
+          <ThemedText type="seeAll" style={styles.seeAll} numberOfLines={1}>
             {t('common.seeAll')}
           </ThemedText>
         </TouchableOpacity>
@@ -49,30 +56,45 @@ export function SectionHeader({ headerKey, title, icon, onSeeAllPress }: Section
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: Layout.sectionGap,
-  },
-  titleWrap: {
-    position: 'relative',
-    flexShrink: 1,
+    marginBottom: Layout.sectionHeaderBottom,
+    gap: Space.s8,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    flex: 1,
+    minWidth: 0,
+  },
+  iconRail: {
+    width: Layout.iconRailWidth,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  labelRail: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  header: {
+    flex: 1,
+    minWidth: 0,
   },
   fallbackTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...Typography.sectionTitle,
+    flexShrink: 1,
   },
-  watermark: {
-    position: 'absolute',
-    right: -28,
-    top: -10,
+  seeAllWrap: {
+    flexShrink: 0,
+    paddingLeft: Space.s8,
+    paddingTop: Space.s4,
+    minWidth: 56,
+    alignItems: 'flex-end',
   },
   seeAll: {
-    fontSize: Spacing.sm + 6,
+    fontSize: 13,
     fontWeight: '500',
   },
 });

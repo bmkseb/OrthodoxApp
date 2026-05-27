@@ -1,15 +1,13 @@
-import React, { memo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ManuscriptCornerFrame } from '@/components/sacred/manuscript-corner-frame';
 import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
-import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
-import { VignetteOverlay } from '@/components/ui/vignette-overlay';
-import { BorderRadius, Layout, Spacing } from '@/constants/theme';
+import { BorderRadius } from '@/constants/theme';
 
 type PrayerManuscriptCardProps = {
   title: string;
@@ -22,67 +20,81 @@ export const PrayerManuscriptCard = memo(function PrayerManuscriptCard({
   imageUri,
   onPress,
 }: PrayerManuscriptCardProps) {
-  return (
-    <OrthodoxPressable style={styles.wrap} onPress={onPress} accessibilityRole="button">
+  const content = (
+    <View style={styles.outer}>
       <View style={styles.frame}>
-        <SacredImage source={{ uri: imageUri }} style={[styles.image, { opacity: ManuscriptTokens.imageSoftening }]} />
-        <View style={styles.parchmentWash} />
-        <ParchmentGrainOverlay />
-        <VignetteOverlay intensity={0.35} />
-        <ManuscriptCornerFrame inset={8} />
-        <Text style={styles.cornerCross} pointerEvents="none">
-          ☩
-        </Text>
-        <LinearGradient
-          colors={['transparent', 'rgba(0, 0, 0, 0.75)', 'rgba(0, 0, 0, 0.9)']}
-          style={styles.gradient}>
-          <ThemedText style={styles.title} numberOfLines={2}>
-            {title}
-          </ThemedText>
-        </LinearGradient>
+        <View style={styles.image}>
+          <SacredImage uri={imageUri} style={StyleSheet.absoluteFill} />
+          <View style={styles.parchmentWash} pointerEvents="none" />
+          <View style={styles.grain} pointerEvents="none" />
+          <LinearGradient
+            colors={['rgba(30, 22, 14, 0.12)', 'rgba(12, 9, 7, 0.55)', 'rgba(8, 6, 5, 0.88)']}
+            locations={[0, 0.55, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          <ManuscriptCornerFrame inset={8} opacity={0.25} />
+          <Text style={styles.cornerCross} pointerEvents="none">
+            ☩
+          </Text>
+          <View style={styles.titleBlock}>
+            <ThemedText style={styles.title} numberOfLines={2}>
+              {title}
+            </ThemedText>
+          </View>
+        </View>
       </View>
-    </OrthodoxPressable>
+    </View>
   );
+
+  if (onPress) return <OrthodoxPressable onPress={onPress}>{content}</OrthodoxPressable>;
+  return content;
 });
 
 const styles = StyleSheet.create({
-  wrap: {
-    marginRight: Spacing.md,
+  outer: {
+    width: 148,
+    height: 176,
   },
   frame: {
-    width: 140,
-    height: 168,
+    flex: 1,
+    padding: 3,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: ManuscriptTokens.cardBorder,
-    overflow: 'hidden',
-    backgroundColor: ManuscriptTokens.cardWarmEnd,
+    borderColor: ManuscriptTokens.goldBorder,
+    backgroundColor: 'rgba(201, 147, 58, 0.04)',
   },
   image: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
+    justifyContent: 'flex-end',
+    borderRadius: BorderRadius.lg - 2,
+    overflow: 'hidden',
   },
   parchmentWash: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: ManuscriptTokens.parchmentHighlight,
+    backgroundColor: ManuscriptTokens.parchmentWash,
+  },
+  grain: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: ManuscriptTokens.parchmentGrain,
   },
   cornerCross: {
     position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    fontSize: 12,
-    color: ManuscriptTokens.fadedGoldStrong,
-    opacity: 0.55,
+    top: 12,
+    right: 12,
+    fontSize: 11,
+    color: 'rgba(201, 147, 58, 0.2)',
   },
-  gradient: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 10,
-    paddingBottom: 10,
+  titleBlock: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    paddingTop: 32,
+    zIndex: 1,
   },
   title: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
-    lineHeight: 18,
+    color: 'rgba(245, 236, 215, 0.92)',
+    letterSpacing: 0.15,
+    lineHeight: 19,
   },
 });

@@ -1,10 +1,8 @@
 import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Icon } from '@/components/Icon';
-import { RadialCardSurface } from '@/components/sacred/radial-card-surface';
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Palette, Spacing } from '@/constants/theme';
+import { Layout, Palette, Space, Typography } from '@/constants/theme';
 
 type DevotionalProgressCardProps = {
   streakDays: number;
@@ -12,99 +10,122 @@ type DevotionalProgressCardProps = {
   subtitle?: string;
 };
 
+/** Calm prayer rhythm — not gamified streak UI. */
 export const DevotionalProgressCard = memo(function DevotionalProgressCard({
   streakDays,
   totalDays = 7,
   subtitle = 'Daily devotion builds spiritual rhythm',
 }: DevotionalProgressCardProps) {
-  return (
-    <RadialCardSurface style={styles.surface}>
-      <View style={styles.content}>
-        <View style={styles.left}>
-          <Icon name="flame" size={20} />
-          <ThemedText style={styles.streakText}>
-            {streakDays} Day Streak
-          </ThemedText>
-        </View>
+  const progress = Math.min(Math.max(streakDays / totalDays, 0), 1);
 
-        <View style={styles.beads}>
-          {Array.from({ length: totalDays }).map((_, index) => {
-            const isComplete = index < streakDays;
-            return (
-              <View
-                key={index}
-                style={[styles.bead, isComplete ? styles.beadComplete : styles.beadIncomplete]}>
-                <Text style={[styles.beadCross, isComplete ? styles.beadCrossComplete : styles.beadCrossIncomplete]}>
-                  †
-                </Text>
-              </View>
-            );
-          })}
-        </View>
+  return (
+    <View style={styles.surface}>
+      <View style={styles.headerRow}>
+        <ThemedText style={styles.title}>{streakDays} days of prayer</ThemedText>
+        <Text style={styles.meta}>
+          {streakDays}/{totalDays}
+        </Text>
       </View>
 
-      <ThemedText type="muted" style={styles.subtitle}>
+      <View style={styles.rhythmTrack}>
+        <View style={[styles.rhythmFill, { width: `${progress * 100}%` }]} />
+        {Array.from({ length: totalDays }).map((_, index) => {
+          const x = totalDays <= 1 ? 0 : (index / (totalDays - 1)) * 100;
+          const filled = index < streakDays;
+          return (
+            <View
+              key={index}
+              style={[
+                styles.marker,
+                { left: `${x}%` },
+                filled ? styles.markerFilled : styles.markerOpen,
+              ]}>
+              <Text style={[styles.markerGlyph, !filled && styles.markerGlyphMuted]}>✛</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      <ThemedText type="muted" style={styles.subtitle} numberOfLines={2}>
         {subtitle}
       </ThemedText>
-    </RadialCardSurface>
+    </View>
   );
 });
 
 const styles = StyleSheet.create({
   surface: {
-    marginBottom: Layout.sectionGap,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 4,
+    borderRadius: Layout.cardRadius,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Layout.cardBorderThin,
+    backgroundColor: Palette.surface,
+    paddingHorizontal: Space.s16,
+    paddingVertical: Space.s16,
+    gap: Space.s12,
   },
-  content: {
+  headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
+    gap: Space.s12,
   },
-  left: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  streakText: {
-    fontSize: 14,
+  title: {
+    ...Typography.body,
     fontWeight: '600',
+    color: Palette.text,
+    flex: 1,
   },
-  beads: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  meta: {
+    ...Typography.metadata,
+    color: Palette.muted,
+    fontSize: 10,
+    letterSpacing: 1.2,
   },
-  bead: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  rhythmTrack: {
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    overflow: 'visible',
+    justifyContent: 'center',
+  },
+  rhythmFill: {
+    position: 'absolute',
+    left: 0,
+    top: 6,
+    bottom: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(201, 147, 58, 0.22)',
+  },
+  marker: {
+    position: 'absolute',
+    top: 2,
+    width: 16,
+    height: 16,
+    marginLeft: -8,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  beadComplete: {
-    borderColor: Palette.gold,
-    backgroundColor: 'rgba(201, 147, 58, 0.15)',
+  markerFilled: {
+    borderColor: 'rgba(201, 147, 58, 0.45)',
+    backgroundColor: 'rgba(201, 147, 58, 0.12)',
   },
-  beadIncomplete: {
-    borderColor: 'rgba(201, 147, 58, 0.25)',
+  markerOpen: {
+    borderColor: 'rgba(201, 147, 58, 0.12)',
     backgroundColor: 'transparent',
   },
-  beadCross: {
-    fontSize: 10,
-    lineHeight: 12,
-  },
-  beadCrossComplete: {
+  markerGlyph: {
+    fontSize: 8,
     color: Palette.gold,
-    opacity: 1,
+    lineHeight: 10,
   },
-  beadCrossIncomplete: {
-    color: Palette.gold,
-    opacity: 0.3,
+  markerGlyphMuted: {
+    opacity: 0.35,
   },
   subtitle: {
     fontSize: 12,
+    lineHeight: 16,
+    color: Palette.muted,
   },
 });

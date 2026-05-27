@@ -1,34 +1,23 @@
 import { Tabs } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { useTranslation } from '@/hooks/use-translation';
-import { getTabLabel, type TabKey } from '@/lib/translations';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { FullScreenPlayer } from '@/components/audio/FullScreenPlayer';
+import { FloatingBottomChrome } from '@/components/FloatingBottomChrome';
+import { getFloatingChromeHeight } from '@/constants/floating-bottom';
 import { Palette } from '@/constants/theme';
+import { useAudioPlayer } from '@/contexts/audio-player-context';
+import { getTabLabel, type TabKey } from '@/lib/translations';
+import { useTranslation } from '@/hooks/use-translation';
 
 const TAB_KEYS: TabKey[] = ['explore', 'read', 'learn', 'listen', 'calendar'];
 
-function TabIcon({
-  name,
-  color,
-  focused,
-}: {
-  name: Parameters<typeof IconSymbol>[0]['name'];
-  color: string;
-  focused: boolean;
-}) {
-  return (
-    <View style={focused ? styles.iconGlow : undefined}>
-      <IconSymbol size={26} name={name} color={color} />
-    </View>
-  );
-}
-
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const { isMiniPlayerVisible } = useAudioPlayer();
   const { mode } = useTranslation();
+  const chromeHeight = getFloatingChromeHeight(isMiniPlayerVisible, insets.bottom);
 
   const labels = useMemo(
     () =>
@@ -44,106 +33,53 @@ export default function TabLayout() {
 
   const screenOptions = useMemo(
     () => ({
-      tabBarActiveTintColor: Palette.gold,
-      tabBarInactiveTintColor: Palette.muted,
       headerShown: false,
-      tabBarButton: HapticTab,
       lazy: false,
       detachInactiveScreens: false,
       sceneStyle: { backgroundColor: Palette.background },
       tabBarStyle: {
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        position: 'absolute' as const,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: chromeHeight,
+        backgroundColor: 'transparent',
         borderTopWidth: 0,
         elevation: 0,
-        height: Platform.OS === 'ios' ? 88 : 68,
-        paddingBottom: Platform.OS === 'ios' ? 8 : 8,
-        paddingTop: 8,
       },
-      tabBarLabelStyle: {
-        fontSize: 11,
-        fontWeight: '500' as const,
-        letterSpacing: mode === 'am' ? 0.15 : 0,
-      },
-      tabBarItemStyle: { paddingVertical: 4 },
-      tabBarBackground: () => (
-        <BlurView
-          intensity={60}
-          tint="dark"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-          }}
-        />
-      ),
     }),
-    [mode]
+    [chromeHeight]
   );
 
   return (
-    <Tabs screenOptions={screenOptions}>
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: labels.explore,
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? 'safari.fill' : 'safari'} color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="read"
-        options={{
-          title: labels.read,
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? 'book.fill' : 'book'} color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="learn"
-        options={{
-          title: labels.learn,
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon
-              name={focused ? 'graduationcap.fill' : 'graduationcap'}
-              color={color}
-              focused={focused}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="listen"
-        options={{
-          title: labels.listen,
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="music.note" color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="calendar"
-        options={{
-          title: labels.calendar,
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="calendar" color={color} focused={focused} />
-          ),
-        }}
-      />
-    </Tabs>
+    <View style={styles.root}>
+      <Tabs
+        screenOptions={screenOptions}
+        tabBar={(props) => (
+          <View pointerEvents="box-none" style={styles.tabBarSlot}>
+            <FloatingBottomChrome {...props} />
+          </View>
+        )}>
+        <Tabs.Screen name="explore" options={{ title: labels.explore }} />
+        <Tabs.Screen name="read" options={{ title: labels.read }} />
+        <Tabs.Screen name="learn" options={{ title: labels.learn }} />
+        <Tabs.Screen name="listen" options={{ title: labels.listen }} />
+        <Tabs.Screen name="calendar" options={{ title: labels.calendar }} />
+      </Tabs>
+      <FullScreenPlayer />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  iconGlow: {
-    shadowColor: Palette.gold,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
+  root: {
+    flex: 1,
+    backgroundColor: Palette.background,
+  },
+  tabBarSlot: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 });

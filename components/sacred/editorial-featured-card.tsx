@@ -1,113 +1,128 @@
-import React, { memo } from 'react';
+import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { memo } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ManuscriptCornerFrame } from '@/components/sacred/manuscript-corner-frame';
-import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
-import { ThemedText } from '@/components/themed-text';
-import { SacredImage } from '@/components/ui/sacred-image';
-import { VignetteOverlay } from '@/components/ui/vignette-overlay';
-import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+import { SacredImagery } from '@/constants/sacred-imagery';
+import { Layout, Opacity, Palette, Space, Typography } from '@/constants/theme';
 
 type EditorialFeaturedCardProps = {
   title: string;
-  subtitle?: string;
-  imageUri: string;
+  subtitle: string;
   badgeLabel?: string;
+  category?: string;
+  imageUri?: string;
   onPress?: () => void;
-  style?: StyleProp<ViewStyle>;
+  style?: { width?: number; marginBottom?: number };
 };
 
 export const EditorialFeaturedCard = memo(function EditorialFeaturedCard({
   title,
   subtitle,
-  imageUri,
   badgeLabel,
+  category,
+  imageUri = SacredImagery.readFeatured,
   onPress,
   style,
 }: EditorialFeaturedCardProps) {
-  return (
-    <OrthodoxPressable style={[styles.wrap, style]} onPress={onPress} accessibilityRole="button">
-      <View style={styles.card}>
-        <SacredImage source={{ uri: imageUri }} style={styles.image} />
-        <VignetteOverlay intensity={0.45} />
-        <ManuscriptCornerFrame />
-        {badgeLabel ? (
-          <View style={styles.badge}>
-            <ThemedText style={styles.badgeText}>{badgeLabel}</ThemedText>
-          </View>
+  const label = badgeLabel ?? category ?? 'Sacred Text';
+
+  const content = (
+    <View style={[styles.card, style]}>
+      <View style={styles.bgLayer}>
+        <Image source={{ uri: imageUri }} style={styles.bgImage} contentFit="cover" cachePolicy="memory-disk" />
+        {Platform.OS === 'ios' ? (
+          <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
         ) : null}
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
-          style={styles.gradient}>
-          <Text style={styles.cross}>☩</Text>
-          <ThemedText style={styles.title} numberOfLines={2}>
-            {title}
-          </ThemedText>
-          {subtitle ? (
-            <ThemedText type="muted" style={styles.subtitle} numberOfLines={2}>
-              {subtitle}
-            </ThemedText>
-          ) : null}
-        </LinearGradient>
+          colors={['rgba(40, 28, 16, 0.35)', 'rgba(12, 10, 8, 0.88)']}
+          style={StyleSheet.absoluteFill}
+        />
       </View>
-    </OrthodoxPressable>
+
+      <View style={styles.fgFrame}>
+        <Image source={{ uri: imageUri }} style={styles.fgImage} contentFit="cover" cachePolicy="memory-disk" transition={180} />
+        <LinearGradient
+          colors={['transparent', 'rgba(12, 10, 8, 0.35)', 'rgba(0, 0, 0, 0.82)']}
+          locations={[0.15, 0.55, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <ManuscriptCornerFrame inset={8} />
+      </View>
+
+      <View style={styles.textLayer}>
+        <Text style={styles.category}>{label.toUpperCase()}</Text>
+        <Text style={styles.cross}>☩</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      </View>
+    </View>
   );
+
+  if (onPress) return <OrthodoxPressable onPress={onPress}>{content}</OrthodoxPressable>;
+  return content;
 });
 
 const styles = StyleSheet.create({
-  wrap: {
-    borderRadius: BorderRadius.lg,
-  },
   card: {
-    minHeight: 200,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: ManuscriptTokens.cardBorder,
+    height: 232,
+    borderRadius: Layout.cardRadius,
     overflow: 'hidden',
-    backgroundColor: ManuscriptTokens.cardWarmEnd,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: `rgba(201, 147, 58, ${Opacity.goldBorder})`,
   },
-  image: {
+  bgLayer: {
     ...StyleSheet.absoluteFillObject,
+    transform: [{ scale: 1.06 }],
   },
-  badge: {
+  bgImage: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.55,
+  },
+  fgFrame: {
+    ...StyleSheet.absoluteFillObject,
+    margin: Space.s12,
+    marginBottom: 0,
+    borderTopLeftRadius: Space.s12,
+    borderTopRightRadius: Space.s12,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.12)',
+  },
+  fgImage: {
+    width: '100%',
+    height: '100%',
+  },
+  textLayer: {
     position: 'absolute',
-    top: Spacing.sm,
-    left: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    borderWidth: 1,
-    borderColor: ManuscriptTokens.fadedGold,
+    left: Space.s24,
+    right: Space.s24,
+    bottom: Space.s24,
+    zIndex: 3,
+    gap: Space.s8,
   },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Palette.gold,
-    letterSpacing: 0.5,
-  },
-  gradient: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.md,
-    paddingTop: Spacing.xl,
+  category: {
+    ...Typography.metadata,
+    color: Palette.muted,
   },
   cross: {
-    color: Palette.gold,
-    fontSize: 18,
-    marginBottom: Spacing.sm,
+    fontSize: 13,
+    color: Palette.muted,
+    opacity: 0.75,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...Typography.sectionTitle,
+    fontSize: 22,
     color: Palette.text,
-    marginBottom: 4,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
   subtitle: {
-    color: ManuscriptTokens.parchmentMuted,
-    lineHeight: 20,
+    ...Typography.body,
+    color: 'rgba(245, 236, 215, 0.72)',
+    fontStyle: 'italic',
   },
 });

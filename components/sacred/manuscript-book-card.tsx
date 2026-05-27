@@ -9,7 +9,7 @@ import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overl
 import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
 import { VignetteOverlay } from '@/components/ui/vignette-overlay';
-import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+import { BorderRadius, Layout, Overlays, Palette, Space, Typography } from '@/constants/theme';
 
 type ManuscriptBookCardProps = {
   title: string;
@@ -23,37 +23,42 @@ export const ManuscriptBookCard = memo(function ManuscriptBookCard({
   title,
   subtitle,
   imageUri,
-  progress,
+  progress = 0,
   onPress,
 }: ManuscriptBookCardProps) {
+  const showProgress = progress > 0;
+
   return (
     <OrthodoxPressable style={styles.wrap} onPress={onPress} accessibilityRole="button">
-      <View style={styles.card}>
-        <SacredImage source={{ uri: imageUri }} style={[styles.image, { opacity: ManuscriptTokens.imageSoftening }]} />
-        <View style={styles.parchmentWash} />
-        <ParchmentGrainOverlay />
-        <VignetteOverlay intensity={0.3} />
-        <ManuscriptCornerFrame inset={8} />
+      <View style={styles.insetBorder}>
+        <View style={styles.card}>
+          <SacredImage uri={imageUri} style={[styles.image, { opacity: ManuscriptTokens.imageSoftening }]} />
+          <View style={styles.parchmentWash} />
+          <ParchmentGrainOverlay />
+          <VignetteOverlay />
+          <ManuscriptCornerFrame inset={6} />
 
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
-          style={styles.gradient}>
-          <Text style={styles.cross}>☩</Text>
-          <ThemedText style={styles.title} numberOfLines={2}>
-            {title}
-          </ThemedText>
-          {subtitle ? (
-            <ThemedText type="muted" style={styles.subtitle} numberOfLines={1}>
-              {subtitle}
+          <LinearGradient
+            colors={[...Overlays.heroBottomStrong]}
+            locations={[0, 0.55, 1]}
+            style={styles.gradient}>
+            <Text style={styles.cross}>☩</Text>
+            <ThemedText style={styles.title} numberOfLines={2}>
+              {title}
             </ThemedText>
-          ) : null}
-        </LinearGradient>
+            {subtitle ? (
+              <ThemedText type="muted" style={styles.subtitle} numberOfLines={1}>
+                {subtitle}
+              </ThemedText>
+            ) : null}
+          </LinearGradient>
 
-        {typeof progress === 'number' ? (
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${Math.min(Math.max(progress, 0), 1) * 100}%` }]} />
-          </View>
-        ) : null}
+          {showProgress ? (
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.min(Math.max(progress, 0), 1) * 100}%` }]} />
+            </View>
+          ) : null}
+        </View>
       </View>
     </OrthodoxPressable>
   );
@@ -61,13 +66,21 @@ export const ManuscriptBookCard = memo(function ManuscriptBookCard({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: Spacing.md,
+    marginRight: Layout.cardGap,
+  },
+  insetBorder: {
+    padding: Space.s4,
+    borderRadius: BorderRadius.lg + Space.s4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
   },
   card: {
-    height: 148,
+    height: 168,
+    width: 148,
     borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: ManuscriptTokens.cardBorder,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Layout.cardBorderThin,
     overflow: 'hidden',
     backgroundColor: ManuscriptTokens.cardWarmEnd,
   },
@@ -81,29 +94,31 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
     justifyContent: 'flex-end',
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.md,
-    paddingTop: Spacing.lg,
+    paddingHorizontal: Space.s12,
+    paddingBottom: Space.s12,
+    paddingTop: Space.s16,
   },
   cross: {
-    color: Palette.gold,
-    fontSize: 14,
-    marginBottom: 6,
-    opacity: 0.65,
+    color: Palette.muted,
+    fontSize: 11,
+    marginBottom: Space.s4,
+    opacity: 0.7,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...Typography.cardTitle,
+    fontSize: 17,
     color: Palette.text,
-    lineHeight: 24,
   },
   subtitle: {
-    marginTop: 4,
-    fontSize: 13,
+    marginTop: Space.s4,
+    ...Typography.metadata,
+    textTransform: 'none',
+    letterSpacing: 0.2,
+    fontSize: 11,
   },
   progressTrack: {
     height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   progressFill: {
     height: '100%',

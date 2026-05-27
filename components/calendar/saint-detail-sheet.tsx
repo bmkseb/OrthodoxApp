@@ -1,163 +1,201 @@
 import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { memo, useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   Dimensions,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   Share,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
-import { SacredImage } from '@/components/sacred/sacred-image';
+import { Icon, type IconName } from '@/components/Icon';
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { BilingualHeader } from '@/components/ui/bilingual-header';
-import { Animation, Layout, Palette } from '@/constants/theme';
-import { DayInfo } from '@/data/orthodoxCalendar';
 import { useTranslation } from '@/hooks/use-translation';
+import type { HeaderKey } from '@/lib/translations';
+import { getDayInfo } from '@/data/orthodoxCalendar';
+import { Animation, Layout, Opacity, Palette } from '@/constants/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.6;
 
 type SaintDetailSheetProps = {
   visible: boolean;
-  dayInfo: DayInfo | null;
+  year: number;
+  month: number;
+  day: number;
+  bookmarked: boolean;
   onClose: () => void;
+  onToggleBookmark: () => void;
 };
 
-type ReadingCardProps = {
-  headerKey: 'content.morning' | 'content.liturgical' | 'content.evening';
+type ReadingSection = {
+  key: string;
+  headerKey: HeaderKey;
+  icon: IconName;
   refs: string[];
-  gradientColors: [string, string];
+  gradient: [string, string];
+  imageUri: string;
 };
 
-function ReadingCard({ headerKey, refs, gradientColors }: ReadingCardProps) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={styles.readingSection}>
-      <BilingualHeader headerKey={headerKey} variant="compact" />
-      <View style={styles.readingCardOuter}>
-        <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
-        {Platform.OS === 'ios' ? (
-          <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
-        ) : null}
-        <View style={styles.readingCardInner}>
-          <Text style={styles.readingsLabel}>{t('common.readings')}</Text>
-          <Text style={styles.readingsRefs}>{refs.join('\n')}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function SaintDetailSheetComponent({ visible, dayInfo, onClose }: SaintDetailSheetProps) {
-  const insets = useSafeAreaInsets();
+export function SaintDetailSheet({
+  visible,
+  year,
+  month,
+  day,
+  bookmarked,
+  onClose,
+  onToggleBookmark,
+}: SaintDetailSheetProps) {
   const { t } = useTranslation();
   const translateY = useSharedValue(SCREEN_HEIGHT);
+  const info = getDayInfo(year, month, day);
+
+  const sections: ReadingSection[] = [
+    {
+      key: 'morning',
+      headerKey: 'content.morning',
+      icon: 'sun',
+      refs: info.lectionary.morning,
+      gradient: ['#4A6FA5', '#8BB8E8'],
+      imageUri: 'https://picsum.photos/600/400?random=101',
+    },
+    {
+      key: 'liturgical',
+      headerKey: 'content.liturgical',
+      icon: 'church',
+      refs: info.lectionary.liturgical,
+      gradient: ['#3D2817', '#8B6914'],
+      imageUri: 'https://picsum.photos/600/400?random=102',
+    },
+    {
+      key: 'evening',
+      headerKey: 'content.evening',
+      icon: 'moon',
+      refs: info.lectionary.evening,
+      gradient: ['#1A1A2E', '#4A4A8A'],
+      imageUri: 'https://picsum.photos/600/400?random=103',
+    },
+  ];
 
   useEffect(() => {
-    translateY.value = visible
-      ? withSpring(0, { damping: 22, stiffness: 220, mass: 0.9 })
-      : withSpring(SCREEN_HEIGHT, { damping: 24, stiffness: 260 });
+    if (visible) {
+      translateY.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.8 });
+    } else {
+      translateY.value = SCREEN_HEIGHT;
+    }
   }, [visible, translateY]);
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
-  if (!dayInfo?.primaryEvent) return null;
-
-  const event = dayInfo.primaryEvent;
-  const saintName = event.saint ?? event.nameEn;
-
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `${t('sections.saintOfTheDay')}: ${saintName}\n${event.lectionaries.morning.join(', ')}`,
-      });
-    } catch {
-      /* user cancelled */
-    }
+  const handleClose = () => {
+    translateY.value = withSpring(SCREEN_HEIGHT, { damping: 22, stiffness: 200 }, (finished) => {
+      if (finished) runOnJS(onClose)();
+    });
   };
 
-  return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-        <Animated.View
-          style={[styles.sheet, { paddingBottom: insets.bottom + Layout.pagePadding }, sheetStyle]}>
-          <View style={styles.handle} />
+  const handleShare = async () => {
+    await Share.share({
+      message: `Saint of the Day: ${info.saint}\n${month + 1}/${day}/${year}\nMorning: ${info.lectionary.morning.join(', ')}`,
+    });
+  };
 
-          <View style={styles.sheetActions}>
-            <TouchableOpacity onPress={handleShare} accessibilityLabel={t('calendar.shareReading')}>
-              <Text style={styles.actionText}>{t('calendar.shareReading')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.actionText}>✕</Text>
-            </TouchableOpacity>
+  if (!visible) return null;
+
+  return (
+    <Modal transparent visible animationType="none" onRequestClose={handleClose}>
+      <Pressable style={styles.backdrop} onPress={handleClose} />
+      <Animated.View style={[styles.sheet, sheetStyle]}>
+        <View style={styles.handle} />
+        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+          <View style={styles.hero}>
+            <Image
+              source={{ uri: `https://picsum.photos/800/1200?random=${day + month * 31}` }}
+              style={styles.heroImage}
+              contentFit="cover"
+            />
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.92)']}
+              style={styles.heroGradient}
+            />
+            <View style={styles.heroActions}>
+              <OrthodoxPressable onPress={handleShare} style={styles.actionBtn}>
+                <Icon name="share" size={20} />
+              </OrthodoxPressable>
+              <OrthodoxPressable onPress={onToggleBookmark} style={styles.actionBtn}>
+                <Icon name="bookmark" size={20} color={bookmarked ? Palette.gold : Palette.muted} />
+              </OrthodoxPressable>
+            </View>
+            <View style={styles.heroText}>
+              <Text style={styles.saintLabel}>{t('sections.saintOfTheDay').toUpperCase()}</Text>
+              <Text style={styles.saintName}>{info.saint}</Text>
+              <OrthodoxPressable>
+                <Text style={styles.continueLink}>{t('common.continueToReading')}</Text>
+              </OrthodoxPressable>
+            </View>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-            <View style={styles.hero}>
-              <SacredImage source={event.image ?? ''} style={styles.heroImage} />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.92)']}
-                style={styles.heroGradient}
-              />
-              <View style={styles.heroText}>
-                <Text style={styles.heroLabel}>{t('sections.saintOfTheDay').toUpperCase()}</Text>
-                <Text style={styles.heroName}>{saintName}</Text>
-                <TouchableOpacity>
-                  <Text style={styles.continueLink}>{t('common.continueToReading')}</Text>
-                </TouchableOpacity>
+          <View style={styles.body}>
+            <BilingualHeader headerKey="lectionaries" variant="section" />
+            {sections.map((section) => (
+              <View key={section.key} style={styles.section}>
+                <View style={styles.sectionTitleRow}>
+                  <Icon name={section.icon} size={18} />
+                  <BilingualHeader headerKey={section.headerKey} variant="compact" />
+                </View>
+                <View style={styles.readingCard}>
+                  <Image source={{ uri: section.imageUri }} style={styles.cardBg} contentFit="cover" />
+                  <LinearGradient colors={[...section.gradient, 'rgba(0,0,0,0.75)']} style={styles.cardOverlay} />
+                  {Platform.OS === 'ios' ? (
+                    <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+                  ) : null}
+                  <View style={styles.cardGlass} />
+                  <View style={styles.cardContent}>
+                    <Text style={styles.readingsHeading}>{t('common.readings')}</Text>
+                    {section.refs.map((ref) => (
+                      <Text key={ref} style={styles.readingRef}>
+                        {ref}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
               </View>
-            </View>
-
-            <View style={styles.content}>
-              <BilingualHeader headerKey="lectionaries" variant="section" />
-
-              <ReadingCard
-                headerKey="content.morning"
-                refs={event.lectionaries.morning}
-                gradientColors={['rgba(30, 40, 60, 0.85)', 'rgba(15, 20, 35, 0.95)']}
-              />
-              <ReadingCard
-                headerKey="content.liturgical"
-                refs={event.lectionaries.liturgical}
-                gradientColors={['rgba(40, 28, 18, 0.85)', 'rgba(20, 14, 10, 0.95)']}
-              />
-              <ReadingCard
-                headerKey="content.evening"
-                refs={event.lectionaries.evening}
-                gradientColors={['rgba(18, 22, 40, 0.85)', 'rgba(8, 10, 22, 0.95)']}
-              />
-            </View>
-          </ScrollView>
-        </Animated.View>
-      </View>
+            ))}
+          </View>
+        </ScrollView>
+      </Animated.View>
     </Modal>
   );
 }
 
-export const SaintDetailSheet = memo(SaintDetailSheetComponent);
-
 const styles = StyleSheet.create({
   backdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'flex-end',
   },
   sheet: {
-    maxHeight: SCREEN_HEIGHT * 0.94,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: SCREEN_HEIGHT * 0.92,
     backgroundColor: Palette.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
   },
   handle: {
@@ -170,18 +208,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 4,
   },
-  sheetActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Layout.pagePadding,
-    paddingVertical: 8,
-  },
-  actionText: {
-    color: Palette.gold,
-    fontSize: 13,
-    fontWeight: '500',
-  },
   hero: {
     height: HERO_HEIGHT,
     position: 'relative',
@@ -193,57 +219,92 @@ const styles = StyleSheet.create({
   heroGradient: {
     ...StyleSheet.absoluteFillObject,
   },
+  heroActions: {
+    position: 'absolute',
+    top: 16,
+    right: Layout.pagePadding,
+    flexDirection: 'row',
+    gap: 12,
+    zIndex: 2,
+  },
+  actionBtn: {
+    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+  },
   heroText: {
     position: 'absolute',
     left: Layout.pagePadding,
     right: Layout.pagePadding,
     bottom: 28,
   },
-  heroLabel: {
-    color: 'rgba(201, 147, 58, 0.85)',
+  saintLabel: {
     fontSize: 13,
     letterSpacing: 1,
-    fontWeight: '600',
+    color: Palette.mutedGold,
+    textTransform: 'uppercase',
     marginBottom: 8,
   },
-  heroName: {
-    color: Palette.text,
+  saintName: {
     fontSize: 28,
     fontWeight: '700',
-    lineHeight: 34,
+    color: Palette.text,
     marginBottom: 12,
   },
   continueLink: {
-    color: Palette.gold,
     fontSize: 15,
-    fontWeight: '500',
+    color: Palette.gold,
+    fontWeight: '600',
   },
-  content: {
+  body: {
     padding: Layout.pagePadding,
-    gap: 20,
+    gap: Layout.sectionGap,
+    paddingBottom: 40,
   },
-  readingSection: {
-    gap: 10,
+  section: {
+    gap: Layout.headerContentGap,
   },
-  readingCardOuter: {
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Palette.text,
+  },
+  readingCard: {
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(201, 147, 58, 0.15)',
+    borderColor: `rgba(201, 147, 58, ${Opacity.goldBorder})`,
+    minHeight: 140,
   },
-  readingCardInner: {
+  cardBg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardGlass: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(20, 18, 16, 0.55)',
+  },
+  cardContent: {
     padding: 20,
-    backgroundColor: 'rgba(20, 18, 16, 0.72)',
+    zIndex: 1,
   },
-  readingsLabel: {
-    color: Palette.text,
-    fontSize: 15,
+  readingsHeading: {
+    fontSize: 16,
     fontWeight: '700',
+    color: Palette.text,
     marginBottom: 10,
   },
-  readingsRefs: {
-    color: 'rgba(245, 236, 215, 0.78)',
-    fontSize: 14,
-    lineHeight: 22.4,
+  readingRef: {
+    fontSize: 15,
+    color: 'rgba(245, 236, 215, 0.85)',
+    lineHeight: 15 * 1.6,
+    marginBottom: 4,
   },
 });

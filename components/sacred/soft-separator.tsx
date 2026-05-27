@@ -1,19 +1,18 @@
-import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
 import { Layout } from '@/constants/theme';
 
 type SoftSeparatorProps = {
-  style?: StyleProp<ViewStyle>;
+  marginVertical?: number;
 };
 
-export function SoftSeparator({ style }: SoftSeparatorProps) {
+/** Faded gold separator — softer than a hard 1px line */
+export function SoftSeparator({ marginVertical = Layout.sectionGap }: SoftSeparatorProps) {
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.wrap, { marginVertical }]}>
       <LinearGradient
-        colors={['transparent', ManuscriptTokens.separatorFade, 'transparent']}
+        colors={['transparent', 'rgba(201, 147, 58, 0.14)', 'transparent']}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
         style={styles.line}
@@ -23,12 +22,11 @@ export function SoftSeparator({ style }: SoftSeparatorProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: Layout.sectionGap / 2,
-    alignItems: 'center',
+  wrap: {
+    width: '100%',
   },
   line: {
-    height: 1,
-    width: '100%',
+    height: StyleSheet.hairlineWidth,
+    minHeight: 1,
   },
 });

@@ -1,46 +1,48 @@
 import React from 'react';
-import { StyleSheet, View, ScrollView, Dimensions, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 
-import { ExploreMicroNote } from '@/components/explore/explore-micro-note';
+import { DailyRhythmRow } from '@/components/explore/daily-rhythm-row';
+import { ExploreAtmosphere } from '@/components/explore/explore-atmosphere';
+import { ExploreQuickChips } from '@/components/explore/explore-quick-chips';
 import { ExploreSectionFrame } from '@/components/explore/explore-section-frame';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { DevotionalProgressCard } from '@/components/sacred/devotional-progress-card';
+import { ManuscriptBookCard } from '@/components/sacred/manuscript-book-card';
+import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
+import { SacredReadingHeroCard } from '@/components/sacred/sacred-reading-hero-card';
 import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
 import { PrayerManuscriptCard } from '@/components/sacred/prayer-manuscript-card';
-import { SacredReadingHeroCard } from '@/components/sacred/sacred-reading-hero-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { MediaListItem } from '@/components/ui/media-list-item';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
-import { BilingualHeader } from '@/components/ui/bilingual-header';
+import { SacredPageHeader } from '@/components/ui/bilingual-header';
 import { SettingsNavButton } from '@/components/ui/settings-nav-button';
+import { SacredImagery } from '@/constants/explore-content';
+import { Layout, Palette, Space, Typography } from '@/constants/theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { BorderRadius, Layout, Palette } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
-const STREAK_DAYS = 5;
-const HERO_IMAGE = 'https://picsum.photos/900/500?random=1';
+const PEEK_WIDTH = width * 0.78;
 
-const MORE_READINGS = [
-  { id: '2', key: 'john' as const, image: 'https://picsum.photos/400/300?random=2' },
-  { id: '3', key: 'psalms' as const, image: 'https://picsum.photos/400/300?random=3' },
+const CONTINUE_BOOKS = [
+  { id: '1', titleKey: 'horologium' as const, subKey: 'horologiumSub' as const, image: SacredImagery.continueHorologium, progress: 0.35 },
+  { id: '2', titleKey: 'holyBible' as const, subKey: 'holyBibleSub' as const, image: SacredImagery.continueBible, progress: 0.62 },
+  { id: '3', titleKey: 'liturgy' as const, subKey: 'liturgySub' as const, image: SacredImagery.continueLiturgy, progress: 0.18 },
 ];
 
 const PRAYERS = [
-  { id: '1', key: 'dailyPrayer' as const, image: 'https://picsum.photos/200/200?random=7' },
-  { id: '2', key: 'praisesMary' as const, image: 'https://picsum.photos/200/200?random=8' },
-  { id: '3', key: 'orthodoxPrayers' as const, image: 'https://picsum.photos/200/200?random=9' },
-  { id: '4', key: 'morningPrayer' as const, image: 'https://picsum.photos/200/200?random=10' },
+  { id: '1', key: 'dailyPrayer' as const, image: SacredImagery.prayerDaily },
+  { id: '2', key: 'praisesMary' as const, image: SacredImagery.prayerMary },
+  { id: '3', key: 'orthodoxPrayers' as const, image: SacredImagery.prayerOrthodox },
 ];
 
 const HYMNS = [
-  { id: '1', title: 'Covenant of Mercy', artist: 'Helena Alemu', image: 'https://picsum.photos/80/80?random=13' },
-  { id: '2', title: 'Your Graciousness has Sustained Me', artist: 'Various Artists', image: 'https://picsum.photos/80/80?random=14' },
-  { id: '3', title: 'Holy Holy Holy', artist: 'Orthodox Choir', image: 'https://picsum.photos/80/80?random=15' },
+  { id: '1', title: 'Covenant of Mercy', artist: 'Helena Alemu', image: SacredImagery.listenHymns },
+  { id: '2', title: 'Your Graciousness has Sustained Me', artist: 'Various Artists', image: SacredImagery.prayerMary },
 ];
 
 function ProfileAvatar({ initial, accentColor }: { initial: string; accentColor: string }) {
@@ -54,25 +56,25 @@ function ProfileAvatar({ initial, accentColor }: { initial: string; accentColor:
 }
 
 export default function ExploreScreen() {
-  const { t, typography, ethiopicStyle, mode } = useTranslation();
+  const { t, ethiopicStyle, mode } = useTranslation();
   const amharicText = mode === 'am' ? ethiopicStyle : undefined;
   const iconColor = useThemeColor({}, 'icon');
   const accentColor = useThemeColor({}, 'tint');
+  // Restrained meta: max 2-3 tags only per spec
+  const readingMeta = [t('explore.dailyGospel'), t('explore.bookMatthew'), t('explore.minRead')];
 
   return (
-    <ScreenScrollView>
-      <LinearGradient
-        colors={['rgba(201, 147, 58, 0.03)', 'transparent']}
-        style={styles.atmosphereTop}
-        pointerEvents="none"
-      />
-
-      <View style={styles.pageIntro}>
+    <View style={styles.screen}>
+      <ExploreAtmosphere />
+      <ScreenScrollView hideAtmosphere contentContainerStyle={styles.scroll} style={styles.scrollView}>
+        {/* Header */}
         <View style={styles.header}>
-          <BilingualHeader headerKey="explore" variant="page" />
+          <View style={styles.pageTitleWrap}>
+            <SacredPageHeader headerKey="explore" />
+          </View>
           <View style={styles.headerActions}>
             <OrthodoxPressable accessibilityLabel={t('settings.notifications')} accessibilityRole="button">
-              <IconSymbol name="bell" size={22} color={iconColor} />
+              <IconSymbol name="bell" size={20} color={iconColor} />
             </OrthodoxPressable>
             <SettingsNavButton color={iconColor} />
             <OrthodoxPressable accessibilityLabel={t('settings.profile')} accessibilityRole="button">
@@ -81,104 +83,179 @@ export default function ExploreScreen() {
           </View>
         </View>
 
-        <SearchBar placeholder={t('common.searchScriptures')} recentSearches={['Matthew', 'Psalms']} />
-
-        <View style={styles.greetingContainer}>
-          <ThemedText style={[styles.greeting, typography.section, amharicText]}>
-            {t('greeting.hello', { name: 'Bamlak' })}
-          </ThemedText>
-          <ThemedText style={[styles.greetingSub, typography.subtitle, amharicText]}>
-            {t('greeting.continueToday')}
-          </ThemedText>
+        {/* Search */}
+        <View style={styles.block}>
+          <SearchBar placeholder={t('common.searchScriptures')} recentSearches={['Matthew', 'Psalms']} />
         </View>
 
-        <DevotionalProgressCard
-          streakDays={STREAK_DAYS}
-          subtitle={t('common.devotionalRhythm')}
-        />
-      </View>
+        {/* Quick access */}
+        <View style={styles.blockTight}>
+          <ExploreQuickChips />
+        </View>
 
-      <ExploreMicroNote text={t('explore.liturgicalNote')} icon="sun" />
+        {/* Greeting */}
+        <View style={styles.blockTight}>
+          <ThemedText style={[styles.greeting, amharicText]}>{t('greeting.hello', { name: 'Bamlak' })}</ThemedText>
+          <ThemedText style={[styles.greetingSub, amharicText]}>{t('greeting.continueToday')}</ThemedText>
+        </View>
 
-      <ExploreSectionFrame headerKey="todaysReading" icon="book" showSeparator>
-        <ExploreMicroNote text={t('explore.scriptureHighlight')} icon="scroll" />
-        <SacredReadingHeroCard
-          title={t('content.matthew')}
-          imageUri={HERO_IMAGE}
-          progress={0.4}
-          metadata={t('common.dailyReading')}
-          style={styles.hero}
-        />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}>
-          {MORE_READINGS.map((reading) => (
+        {/* Devotional streak */}
+        <View style={styles.blockTight}>
+          <DevotionalProgressCard streakDays={5} subtitle={t('common.devotionalRhythm')} />
+        </View>
+
+        {/* Daily rhythm */}
+        <View style={styles.blockMedium}>
+          <DailyRhythmRow />
+        </View>
+
+        <SacredSectionDivider />
+
+        {/* Today's reading — visual centerpiece */}
+        <ExploreSectionFrame headerKey="todaysReading" icon="book">
+          <SacredReadingHeroCard
+            featured
+            title={t('content.matthew')}
+            labelCapsule={t('explore.dailyGospel')}
+            category={t('explore.bookMatthew')}
+            imageUri={SacredImagery.readingHero}
+            progress={0.4}
+            metaLabels={readingMeta}
+            style={styles.featuredHero}
+          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            snapToInterval={PEEK_WIDTH + Layout.cardGap}
+            contentContainerStyle={styles.peekCarousel}>
             <SacredReadingHeroCard
-              key={reading.id}
               compact
-              title={t(`content.${reading.key}`)}
-              imageUri={reading.image}
-              progress={0.15}
-              style={{ width: width * 0.72 }}
+              title={t('content.john')}
+              imageUri={SacredImagery.readingJohn}
+              progress={0.12}
+              style={{ width: PEEK_WIDTH }}
             />
-          ))}
-        </ScrollView>
-      </ExploreSectionFrame>
+            <SacredReadingHeroCard
+              compact
+              title={t('content.psalms')}
+              imageUri={SacredImagery.readingPsalms}
+              progress={0.08}
+              style={{ width: PEEK_WIDTH }}
+            />
+          </ScrollView>
+        </ExploreSectionFrame>
 
-      <ExploreMicroNote text={t('explore.saintCommemoration')} icon="cross" />
+        <SacredSectionDivider />
 
-      <ExploreSectionFrame headerKey="prayer" icon="sparkle" showSeparator>
-        <ExploreMicroNote text={t('explore.fastingIndicator')} icon="church" />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {PRAYERS.map((prayer) => (
-            <View key={prayer.id} style={styles.prayerCard}>
-              <PrayerManuscriptCard title={t(`content.${prayer.key}`)} imageUri={prayer.image} />
-            </View>
-          ))}
-        </ScrollView>
-      </ExploreSectionFrame>
+        {/* Prayer */}
+        <ExploreSectionFrame headerKey="prayer" icon="sparkle">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peekCarousel}>
+            {PRAYERS.map((prayer) => (
+              <PrayerManuscriptCard
+                key={prayer.id}
+                title={t(`content.${prayer.key}`)}
+                imageUri={prayer.image}
+              />
+            ))}
+          </ScrollView>
+        </ExploreSectionFrame>
 
-      <ExploreMicroNote text={t('explore.listeningContinue')} icon="music" />
+        <SacredSectionDivider />
 
-      <ExploreSectionFrame headerKey="orthodoxHymns" icon="music">
-        <View style={styles.hymnsSurface}>
-          {HYMNS.map((hymn) => (
-            <MediaListItem key={hymn.id} title={hymn.title} subtitle={hymn.artist} image={{ uri: hymn.image }} />
-          ))}
-        </View>
-      </ExploreSectionFrame>
-    </ScreenScrollView>
+        {/* Hymns */}
+        <ExploreSectionFrame headerKey="orthodoxHymns" icon="music">
+          <View style={styles.hymnsSurface}>
+            {HYMNS.map((hymn) => (
+              <MediaListItem key={hymn.id} title={hymn.title} subtitle={hymn.artist} image={{ uri: hymn.image }} />
+            ))}
+          </View>
+        </ExploreSectionFrame>
+
+        <SacredSectionDivider />
+
+        {/* Continue reading */}
+        <ExploreSectionFrame title={t('explore.continueReading')} icon="book">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peekCarousel}>
+            {CONTINUE_BOOKS.map((book) => (
+              <ManuscriptBookCard
+                key={book.id}
+                title={t(`content.${book.titleKey}`)}
+                subtitle={t(`content.${book.subKey}`)}
+                imageUri={book.image}
+                progress={book.progress}
+              />
+            ))}
+          </ScrollView>
+        </ExploreSectionFrame>
+      </ScreenScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  atmosphereTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 100, zIndex: 0 },
-  pageIntro: { marginBottom: Layout.headerContentGap, gap: Layout.headerContentGap, zIndex: 1 },
-  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  greetingContainer: { gap: 6 },
-  greeting: { letterSpacing: -0.3, color: Palette.text },
-  greetingSub: { color: ManuscriptTokens.mutedText },
-  hero: { marginBottom: Layout.cardGap },
-  scrollContent: { gap: Layout.cardGap, paddingRight: Layout.pagePadding },
-  prayerCard: { marginRight: Layout.cardGap },
+  screen: {
+    flex: 1,
+    backgroundColor: Palette.background,
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  scroll: {
+    paddingBottom: Layout.sectionContentBottom,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: Space.s8,
+    marginBottom: Space.s12,
+  },
+  pageTitleWrap: { flex: 1, minWidth: 0 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Space.s8 },
+  block: { marginBottom: Space.s12 },
+  blockTight: { marginBottom: Space.s8 },
+  blockMedium: { marginBottom: Space.s12 },
+  greeting: {
+    ...Typography.cardTitle,
+    color: Palette.text,
+  },
+  greetingSub: {
+    color: ManuscriptTokens.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: Space.s4,
+  },
+  featuredHero: { marginBottom: Space.s12 },
+  peekCarousel: {
+    gap: Layout.cardGap,
+    paddingRight: Layout.pagePadding,
+    marginRight: -Layout.pagePadding,
+  },
   hymnsSurface: {
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: ManuscriptTokens.cardBorder,
-    backgroundColor: 'rgba(30, 26, 22, 0.35)',
-    padding: 4,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: ManuscriptTokens.goldBorder,
+    backgroundColor: Palette.surface,
+    paddingVertical: Space.s4,
+    paddingHorizontal: Space.s4,
   },
   avatarRing: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1.5,
-    borderColor: ManuscriptTokens.fadedGoldStrong,
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: ManuscriptTokens.goldSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatar: { width: 32, height: 32, borderRadius: BorderRadius.full, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 14, fontWeight: '600' },
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { fontSize: 13, fontWeight: '600' },
 });

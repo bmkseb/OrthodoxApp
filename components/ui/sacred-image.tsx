@@ -1,33 +1,40 @@
-import React, { memo } from 'react';
-import { Image, type ImageSource } from 'expo-image';
-import { StyleSheet, type ImageStyle, type StyleProp } from 'react-native';
+import { Image, type ImageProps, type ImageStyle } from 'expo-image';
+import { memo } from 'react';
+import { StyleSheet, type StyleProp } from 'react-native';
+
+import { Palette } from '@/constants/theme';
 
 type SacredImageProps = {
-  source: ImageSource;
+  uri: string;
   style?: StyleProp<ImageStyle>;
-  contentFit?: 'cover' | 'contain' | 'fill';
-  transition?: number;
+  contentFit?: ImageProps['contentFit'];
+  priority?: ImageProps['priority'];
+  recyclingKey?: string;
 };
 
+/** Non-blocking hero/thumbnail — card-tone fill, disk cache, short fade-in */
 export const SacredImage = memo(function SacredImage({
-  source,
+  uri,
   style,
   contentFit = 'cover',
-  transition = 300,
+  priority = 'normal',
+  recyclingKey,
 }: SacredImageProps) {
   return (
     <Image
-      source={source}
+      source={{ uri }}
       style={[styles.image, style]}
       contentFit={contentFit}
-      transition={transition}
+      cachePolicy="memory-disk"
+      transition={180}
+      priority={priority}
+      recyclingKey={recyclingKey ?? uri}
     />
   );
 });
 
 const styles = StyleSheet.create({
   image: {
-    width: '100%',
-    height: '100%',
+    backgroundColor: Palette.card,
   },
 });

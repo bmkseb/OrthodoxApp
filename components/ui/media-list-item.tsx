@@ -21,8 +21,12 @@ export function MediaListItem({ title, subtitle, image, onPress }: MediaListItem
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <ImageBackground source={image} style={styles.thumbnail} imageStyle={styles.thumbnailImage} />
       <View style={styles.info}>
-        <ThemedText style={styles.title}>{title}</ThemedText>
-        <ThemedText type="muted">{subtitle}</ThemedText>
+        <ThemedText style={styles.title} numberOfLines={1}>
+          {title}
+        </ThemedText>
+        <ThemedText type="muted" style={styles.subtitle} numberOfLines={1}>
+          {subtitle}
+        </ThemedText>
       </View>
     </TouchableOpacity>
   );
@@ -32,7 +36,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Layout.sectionGap,
+    marginBottom: Layout.listItemGap,
     borderLeftWidth: Layout.listAccentBorder,
     borderLeftColor: Palette.gold,
     paddingLeft: Layout.listContentInset,
@@ -45,12 +49,18 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   info: {
-    marginLeft: Spacing.md,
+    marginLeft: Spacing.md - 2,
     flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    gap: 2,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.15,
+  },
+  subtitle: {
+    fontSize: 12,
   },
 });

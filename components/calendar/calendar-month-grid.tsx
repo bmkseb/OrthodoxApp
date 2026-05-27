@@ -1,10 +1,9 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  FadeIn,
-  FadeOut,
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -12,329 +11,301 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { OrthodoxPressable } from '@/components/ui/orthodox-pressable';
-import { Animation, Palette } from '@/constants/theme';
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { Icon } from '@/components/Icon';
 import {
-  CalendarFilterId,
-  DayInfo,
+  CalendarFilter,
   getDayInfo,
   matchesFilter,
 } from '@/data/orthodoxCalendar';
+import { BorderRadius, Layout, Palette } from '@/constants/theme';
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 type CalendarMonthGridProps = {
-  selectedDate: Date;
-  onSelectDate: (date: Date) => void;
-  activeFilter: CalendarFilterId;
-};
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function getMonthGrid(year: number, month: number): (Date | null)[] {
-  const firstDay = new Date(year, month, 1);
-  const startOffset = firstDay.getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (Date | null)[] = [];
-
-  for (let i = 0; i < startOffset; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
-  while (cells.length % 7 !== 0) cells.push(null);
-  return cells;
-}
-
-type DayCellProps = {
-  date: Date;
-  dayInfo: DayInfo;
-  isToday: boolean;
-  isSelected: boolean;
-  isDimmed: boolean;
-  isCurrentMonth: boolean;
-  onPress: (date: Date) => void;
+  year: number;
+  month: number;
+  selectedDay: number | null;
+  today: { year: number; month: number; day: number };
+  filter: CalendarFilter;
+  onSelectDay: (day: number) => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  monthLabel: string;
 };
 
 function DayCell({
-  date,
-  dayInfo,
+  day,
+  year,
+  month,
   isToday,
   isSelected,
-  isDimmed,
-  isCurrentMonth,
+  filter,
   onPress,
-}: DayCellProps) {
+  pulseMajor,
+}: {
+  day: number;
+  year: number;
+  month: number;
+  isToday: boolean;
+  isSelected: boolean;
+  filter: CalendarFilter;
+  onPress: () => void;
+  pulseMajor: boolean;
+}) {
+  const info = getDayInfo(year, month, day);
+  const dimmed = !matchesFilter(filter, info);
+  const isMajor = !!info.majorFeast;
+  const showCross = isMajor || info.hasFeast || info.hasMarian;
+
   const pulse = useSharedValue(1);
 
   useEffect(() => {
-    if (dayInfo.isMajorFeast && isCurrentMonth) {
+    if (pulseMajor && isMajor) {
       pulse.value = withRepeat(
-        withSequence(withTiming(1.06, { duration: 900 }), withTiming(1, { duration: 900 })),
+        withSequence(
+          withTiming(1.08, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) })
+        ),
         -1,
         false
       );
+    } else {
+      pulse.value = 1;
     }
-  }, [dayInfo.isMajorFeast, isCurrentMonth, pulse]);
+  }, [pulseMajor, isMajor, pulse]);
 
   const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: dayInfo.isMajorFeast && isCurrentMonth ? pulse.value : 1 }],
+    transform: [{ scale: pulse.value }],
   }));
 
-  const showCross = dayInfo.isFeast || dayInfo.isMajorFeast;
-  const fastingTint = dayInfo.isFasting && !dayInfo.isMajorFeast;
-
   return (
-    <OrthodoxPressable
-      style={[styles.dayCell, isDimmed && styles.dayCellDimmed]}
-      onPress={() => onPress(date)}
-      accessibilityRole="button"
-      accessibilityLabel={`${date.getDate()}`}>
-      <Animated.View style={[styles.dayInner, pulseStyle]}>
-        {dayInfo.isMajorFeast && (
-          <LinearGradient
-            colors={['#D4A84B', '#C9933A', '#A67A2E']}
-            style={styles.majorCircle}
-          />
-        )}
-        {isSelected && !dayInfo.isMajorFeast && <View style={styles.selectedCircle} />}
-        {isToday && !isSelected && !dayInfo.isMajorFeast && <View style={styles.todayRing} />}
-        {showCross && (
-          <Text style={[styles.cross, isDimmed && styles.crossDimmed]}>☩</Text>
-        )}
-        <Text
+    <OrthodoxPressable style={styles.dayCell} onPress={onPress} haptic={false}>
+      <Animated.View style={[styles.dayInner, dimmed && styles.dayDimmed, pulseStyle]}>
+        {showCross ? <Text style={styles.feastCross}>☩</Text> : <View style={styles.crossSpacer} />}
+        <View
           style={[
-            styles.dayNumber,
-            !isCurrentMonth && styles.dayNumberOutside,
-            fastingTint && styles.dayNumberFasting,
-            isSelected && styles.dayNumberSelected,
-            dayInfo.isMajorFeast && styles.dayNumberMajor,
-            isDimmed && styles.dayNumberDimmed,
+            styles.dayCircle,
+            isToday && !isSelected && styles.dayTodayRing,
+            isSelected && styles.daySelected,
+            isMajor && !isSelected && styles.dayMajor,
           ]}>
-          {date.getDate()}
-        </Text>
+          {isMajor && !isSelected ? (
+            <LinearGradient
+              colors={['#E8C06A', '#C9933A', '#8B6914']}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          ) : null}
+          <Text
+            style={[
+              styles.dayText,
+              info.fasting && !isSelected && styles.dayFasting,
+              isSelected && styles.dayTextSelected,
+              isMajor && !isSelected && styles.dayTextMajor,
+            ]}>
+            {day}
+          </Text>
+        </View>
       </Animated.View>
     </OrthodoxPressable>
   );
 }
 
-function CalendarMonthGridComponent({
-  selectedDate,
-  onSelectDate,
-  activeFilter,
+export function CalendarMonthGrid({
+  year,
+  month,
+  selectedDay,
+  today,
+  filter,
+  onSelectDay,
+  onPrevMonth,
+  onNextMonth,
+  monthLabel,
 }: CalendarMonthGridProps) {
-  const today = useMemo(() => new Date(), []);
-  const [viewMonth, setViewMonth] = useState(selectedDate.getMonth());
-  const [viewYear, setViewYear] = useState(selectedDate.getFullYear());
-  const [slideKey, setSlideKey] = useState(0);
+  const slideX = useSharedValue(0);
+  const opacity = useSharedValue(1);
 
-  const cells = useMemo(() => getMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
+  useEffect(() => {
+    slideX.value = 12;
+    opacity.value = 0;
+    slideX.value = withTiming(0, { duration: 280 });
+    opacity.value = withTiming(1, { duration: 280 });
+  }, [year, month, slideX, opacity]);
 
-  const changeMonth = useCallback(
-    (delta: number) => {
-      Haptics.selectionAsync();
-      let nextMonth = viewMonth + delta;
-      let nextYear = viewYear;
-      if (nextMonth < 0) {
-        nextMonth = 11;
-        nextYear -= 1;
-      } else if (nextMonth > 11) {
-        nextMonth = 0;
-        nextYear += 1;
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateX: slideX.value }],
+  }));
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+  const weeks: (number | null)[][] = [];
+  let d = 1;
+
+  for (let row = 0; row < totalCells / 7; row++) {
+    const week: (number | null)[] = [];
+    for (let col = 0; col < 7; col++) {
+      const idx = row * 7 + col;
+      if (idx < firstWeekday || d > daysInMonth) week.push(null);
+      else {
+        week.push(d);
+        d++;
       }
-      setViewMonth(nextMonth);
-      setViewYear(nextYear);
-      setSlideKey((k) => k + 1);
-    },
-    [viewMonth, viewYear]
-  );
+    }
+    weeks.push(week);
+  }
+
+  const handlePrev = () => {
+    Haptics.selectionAsync();
+    onPrevMonth();
+  };
+
+  const handleNext = () => {
+    Haptics.selectionAsync();
+    onNextMonth();
+  };
+
+  const isCurrentMonth = today.year === year && today.month === month;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => changeMonth(-1)}
-          style={styles.chevronBtn}
-          accessibilityLabel="Previous month">
-          <Text style={styles.chevron}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.monthLabel}>
-          {MONTHS[viewMonth]} {viewYear}
-        </Text>
-        <TouchableOpacity
-          onPress={() => changeMonth(1)}
-          style={styles.chevronBtn}
-          accessibilityLabel="Next month">
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
+    <View style={styles.wrap}>
+      <View style={styles.monthHeader}>
+        <OrthodoxPressable onPress={handlePrev} style={styles.chevronBtn}>
+          <Icon name="chevron-left" size={22} />
+        </OrthodoxPressable>
+        <Text style={styles.monthTitle}>{monthLabel}</Text>
+        <OrthodoxPressable onPress={handleNext} style={styles.chevronBtn}>
+          <Icon name="chevron-right" size={22} />
+        </OrthodoxPressable>
       </View>
 
       <View style={styles.weekdayRow}>
-        {WEEKDAYS.map((day) => (
-          <Text key={day} style={styles.weekday}>
-            {day}
+        {WEEKDAYS.map((label) => (
+          <Text key={label} style={styles.weekdayLabel}>
+            {label}
           </Text>
         ))}
       </View>
 
-      <Animated.View
-        key={slideKey}
-        entering={FadeIn.duration(Animation.tabFadeMs)}
-        exiting={FadeOut.duration(Animation.tabFadeMs)}
-        style={styles.grid}>
-        {cells.map((date, index) => {
-          if (!date) {
-            return <View key={`empty-${index}`} style={styles.dayCell} />;
-          }
-          const dayInfo = getDayInfo(date);
-          const dimmed = activeFilter !== 'all' && !matchesFilter(dayInfo, activeFilter);
-          return (
-            <DayCell
-              key={date.toISOString()}
-              date={date}
-              dayInfo={dayInfo}
-              isToday={isSameDay(date, today)}
-              isSelected={isSameDay(date, selectedDate)}
-              isDimmed={dimmed}
-              isCurrentMonth={date.getMonth() === viewMonth}
-              onPress={onSelectDate}
-            />
-          );
-        })}
+      <Animated.View style={animStyle}>
+        {weeks.map((week, wi) => (
+          <View key={`w-${wi}`} style={styles.weekRow}>
+            {week.map((dayNum, di) =>
+              dayNum !== null ? (
+                <DayCell
+                  key={`d-${dayNum}`}
+                  day={dayNum}
+                  year={year}
+                  month={month}
+                  isToday={isCurrentMonth && dayNum === today.day}
+                  isSelected={selectedDay === dayNum}
+                  filter={filter}
+                  onPress={() => onSelectDay(dayNum)}
+                  pulseMajor={isCurrentMonth}
+                />
+              ) : (
+                <View key={`e-${wi}-${di}`} style={styles.dayCell} />
+              )
+            )}
+          </View>
+        ))}
       </Animated.View>
     </View>
   );
 }
 
-export const CalendarMonthGrid = memo(CalendarMonthGridComponent);
-
-const CELL_SIZE = 44;
-
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 8,
+  wrap: {
+    marginBottom: Layout.sectionGap,
   },
-  header: {
+  monthHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: Layout.headerContentGap,
   },
   chevronBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 8,
   },
-  chevron: {
-    color: Palette.gold,
-    fontSize: 28,
-    fontWeight: '300',
-    lineHeight: 32,
-  },
-  monthLabel: {
-    color: Palette.text,
-    fontSize: 18,
+  monthTitle: {
+    fontSize: 22,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    color: Palette.text,
+    letterSpacing: -0.3,
   },
   weekdayRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  weekday: {
+  weekdayLabel: {
     flex: 1,
     textAlign: 'center',
-    color: Palette.gold,
-    opacity: 0.6,
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 1,
-    textTransform: 'uppercase',
+    color: 'rgba(201, 147, 58, 0.6)',
   },
-  grid: {
+  weekRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
   },
   dayCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    maxHeight: CELL_SIZE + 8,
-  },
-  dayCellDimmed: {
-    opacity: 0.35,
+    paddingVertical: 6,
+    minHeight: 52,
   },
   dayInner: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  majorCircle: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: CELL_SIZE / 2,
+  dayDimmed: {
+    opacity: 0.25,
   },
-  selectedCircle: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: CELL_SIZE / 2,
-    backgroundColor: Palette.gold,
-  },
-  todayRing: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: CELL_SIZE / 2,
-    borderWidth: 2,
-    borderColor: Palette.gold,
-  },
-  cross: {
-    position: 'absolute',
-    top: 2,
+  feastCross: {
     fontSize: 8,
     color: Palette.gold,
     lineHeight: 10,
+    marginBottom: 2,
   },
-  crossDimmed: {
-    opacity: 0.5,
+  crossSpacer: {
+    height: 10,
+    marginBottom: 2,
   },
-  dayNumber: {
-    color: Palette.text,
-    fontSize: 15,
+  dayCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  dayTodayRing: {
+    borderWidth: 2,
+    borderColor: Palette.gold,
+    backgroundColor: 'transparent',
+  },
+  daySelected: {
+    backgroundColor: Palette.gold,
+  },
+  dayMajor: {
+    borderWidth: 0,
+  },
+  dayText: {
+    fontSize: 14,
     fontWeight: '500',
-    zIndex: 1,
+    color: Palette.text,
   },
-  dayNumberOutside: {
-    opacity: 0.3,
+  dayFasting: {
+    color: Palette.mutedGold,
   },
-  dayNumberFasting: {
-    color: 'rgba(201, 147, 58, 0.7)',
-  },
-  dayNumberSelected: {
-    color: '#000000',
+  dayTextSelected: {
+    color: Palette.background,
     fontWeight: '700',
   },
-  dayNumberMajor: {
-    color: '#000000',
+  dayTextMajor: {
+    color: Palette.background,
     fontWeight: '700',
-  },
-  dayNumberDimmed: {
-    opacity: 0.5,
   },
 });

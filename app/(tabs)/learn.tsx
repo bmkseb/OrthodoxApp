@@ -1,177 +1,198 @@
-import React from 'react';
-import { Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useMemo, useState } from 'react';
+import { Dimensions, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
-import { LearnHeroCard } from '@/components/sacred/learn-hero-card';
-import { SoftSeparator } from '@/components/sacred/soft-separator';
-import { ThemedText } from '@/components/themed-text';
-import { BilingualHeader } from '@/components/ui/bilingual-header';
-import { SearchBar } from '@/components/ui/search-bar';
+import { LearnCollectionCard } from '@/components/learn/learn-collection-card';
+import { LearnFeaturedHero } from '@/components/learn/learn-featured-hero';
+import { LearnRecentStrip } from '@/components/learn/learn-recent-strip';
+import { LearnSearchResults } from '@/components/learn/learn-search-results';
+import { LearnTeachingCard } from '@/components/learn/learn-teaching-card';
+import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
+import {
+  LEARN_COLLECTIONS,
+  LEARN_CONTINUE_ID,
+  LEARN_DAILY_ID,
+  LEARN_RECENT_IDS,
+  LEARN_SAVED_IDS,
+  findTopicById,
+  getFeatured,
+  searchLearnLibrary,
+} from '@/data/learnLibrary';
+import { learnText } from '@/lib/learn-i18n';
+import { SacredPageHeader } from '@/components/ui/bilingual-header';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
+import { SearchBar } from '@/components/ui/search-bar';
+import { SectionHeader } from '@/components/ui/section-header';
 import { SettingsNavButton } from '@/components/ui/settings-nav-button';
+import { ThemedText } from '@/components/themed-text';
 import { useTranslation } from '@/hooks/use-translation';
-import type { TranslationKey } from '@/lib/translations';
-import { BorderRadius, Layout, Palette } from '@/constants/theme';
+import { Layout, Space, Typography } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
 
-const PILLAR_KEYS = ['trinity', 'incarnation', 'baptism', 'communion', 'resurrection'] as const;
-const SACRAMENT_KEYS = [
-  'baptismSacrament',
-  'chrismation',
-  'holyCommunion',
-  'penance',
-  'matrimony',
-  'holyOrders',
-  'anointingSick',
-] as const;
-
-function FadedRowSeparator() {
-  return (
-    <View style={styles.separatorWrap}>
-      <LinearGradient
-        colors={['transparent', 'rgba(201, 147, 58, 0.1)', 'transparent']}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.separatorLine}
-      />
-    </View>
-  );
-}
-
-function LearnListRow({ label, isLast }: { label: string; isLast: boolean }) {
-  const { typography, ethiopicStyle, mode } = useTranslation();
-  return (
-    <>
-      <OrthodoxPressable style={styles.listRow}>
-        <ThemedText style={[styles.listRowText, typography.body, mode === 'am' ? ethiopicStyle : undefined]}>
-          {label}
-        </ThemedText>
-        <Text style={styles.chevron}>›</Text>
-      </OrthodoxPressable>
-      {!isLast ? <FadedRowSeparator /> : null}
-    </>
-  );
-}
-
-function TopicSection({
-  sectionKey,
-  icon,
-  itemKeys,
-}: {
-  sectionKey: 'fivePillars' | 'sevenSacraments';
-  icon: 'pillar' | 'scroll';
-  itemKeys: readonly string[];
-}) {
-  const { t } = useTranslation();
-  return (
-    <View style={styles.topicSection}>
-      <OrthodoxPressable style={styles.topicHeader}>
-        <View style={styles.topicTitleRow}>
-          <Icon name={icon} size={18} />
-          <BilingualHeader headerKey={`learn.${sectionKey}`} variant="section" />
-        </View>
-        <Text style={styles.topicChevron}>›</Text>
-      </OrthodoxPressable>
-      <View style={styles.stackedCard}>
-        <LinearGradient
-          colors={['#1C1814', '#161412', '#12100E']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.cardGrain} pointerEvents="none" />
-        {itemKeys.map((key, index) => (
-          <LearnListRow
-            key={key}
-            label={t(`learn.${key}` as TranslationKey)}
-            isLast={index === itemKeys.length - 1}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
-
 export default function LearnScreen() {
-  const { t } = useTranslation();
-  const featuredWidth = width - Layout.pagePadding * 2;
+  const { t, mode } = useTranslation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [featuredIndex] = useState(0);
+
+  const featured = getFeatured(featuredIndex);
+  const featuredTitle = learnText(featured.titleEn, featured.titleAm, mode);
+  const featuredCategory = learnText(featured.categoryEn, featured.categoryAm, mode);
+
+  const searchGroups = useMemo(
+    () => (searchQuery.trim() ? searchLearnLibrary(searchQuery) : []),
+    [searchQuery]
+  );
+
+  const recentItems = useMemo(
+    () =>
+      LEARN_RECENT_IDS.map((id) => {
+        const found = findTopicById(id);
+        if (!found) return null;
+        return {
+          id,
+          title: learnText(found.topic.titleEn, found.topic.titleAm, mode),
+          collection: learnText(found.collection.titleEn, found.collection.titleAm, mode),
+        };
+      }).filter(Boolean) as { id: string; title: string; collection: string }[],
+    [mode]
+  );
+
+  const continueTopic = findTopicById(LEARN_CONTINUE_ID);
+  const dailyTopic = findTopicById(LEARN_DAILY_ID);
+
+  const savedItems = useMemo(
+    () =>
+      LEARN_SAVED_IDS.map((id) => findTopicById(id)).filter(Boolean) as NonNullable<
+        ReturnType<typeof findTopicById>
+      >[],
+    []
+  );
+
+  const showLibrary = !searchQuery.trim();
 
   return (
-    <ScreenScrollView>
+    <ScreenScrollView contentContainerStyle={styles.scroll}>
       <View style={styles.pageHeader}>
         <View style={styles.pageTitleRow}>
-          <Icon name="brain" size={22} />
-          <BilingualHeader headerKey="learn" variant="page" />
+          <View style={styles.pageIconRail}>
+            <Icon name="brain" size={20} />
+          </View>
+          <SacredPageHeader headerKey="learn" />
         </View>
         <SettingsNavButton />
       </View>
       <ThemedText type="muted" style={styles.pageSubtitle}>
-        {t('learn.theology')}
+        {t('learn.librarySubtitle')}
       </ThemedText>
 
       <View style={styles.searchWrap}>
-        <SearchBar placeholder={t('common.searchTopics')} recentSearches={['Trinity', 'Sacraments']} />
+        <SearchBar
+          placeholder={t('learn.searchLearn')}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          recentSearches={['Trinity', 'Eucharist', 'Mary', 'Cross', 'Fasting']}
+        />
       </View>
 
-      <LearnHeroCard
-        title={t('learn.mysteryTrinity')}
-        subtitle={t('learn.fiveMysteries')}
-        imageUri="https://picsum.photos/900/520?random=40"
-        style={{ width: featuredWidth, marginBottom: Layout.sectionGap }}
-      />
+      {showLibrary ? (
+        <>
+          <SectionHeader title={t('learn.featuredTopic')} icon="sparkle" />
+          <LearnFeaturedHero
+            title={featuredTitle}
+            category={featuredCategory}
+            readMin={featured.readMin}
+            imageUri={featured.imageUri}
+            style={{ width: width - Layout.pagePadding * 2, marginBottom: Layout.sectionHeaderBottom }}
+          />
 
-      <SoftSeparator />
+          <SectionHeader title={t('learn.sacredCollections')} icon="pillar" />
+          {LEARN_COLLECTIONS.map((collection, index) => (
+            <LearnCollectionCard
+              key={collection.id}
+              collection={collection}
+              defaultExpanded={index === 0}
+            />
+          ))}
 
-      <TopicSection sectionKey="fivePillars" icon="pillar" itemKeys={PILLAR_KEYS} />
-      <TopicSection sectionKey="sevenSacraments" icon="scroll" itemKeys={SACRAMENT_KEYS} />
+          <SacredSectionDivider />
+
+          <SectionHeader title={t('learn.recentlyStudied')} icon="scroll" />
+          <LearnRecentStrip items={recentItems} />
+
+          {continueTopic ? (
+            <>
+              <SectionHeader title={t('learn.continueLearning')} icon="book" />
+              <LearnTeachingCard
+                label={t('learn.continueLearning')}
+                title={learnText(continueTopic.topic.titleEn, continueTopic.topic.titleAm, mode)}
+                readMin={continueTopic.topic.readMin}
+              />
+            </>
+          ) : null}
+
+          {dailyTopic ? (
+            <>
+              <SectionHeader title={t('learn.dailyTeaching')} icon="sun" />
+              <LearnTeachingCard
+                label={t('learn.dailyTeaching')}
+                title={learnText(dailyTopic.topic.titleEn, dailyTopic.topic.titleAm, mode)}
+                readMin={dailyTopic.topic.readMin}
+              />
+            </>
+          ) : null}
+
+          {savedItems.length > 0 ? (
+            <>
+              <SectionHeader title={t('learn.savedTeachings')} icon="bookmark" />
+              <View style={styles.savedList}>
+                {savedItems.map(({ topic, collection }) => (
+                  <LearnTeachingCard
+                    key={topic.id}
+                    label={learnText(collection.titleEn, collection.titleAm, mode)}
+                    title={learnText(topic.titleEn, topic.titleAm, mode)}
+                    readMin={topic.readMin}
+                  />
+                ))}
+              </View>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <LearnSearchResults groups={searchGroups} />
+      )}
     </ScreenScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: { paddingBottom: Layout.sectionContentBottom },
   pageHeader: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginBottom: Layout.titleSubtitleGap,
+    marginBottom: Space.s4,
+    gap: Space.s8,
   },
-  pageTitleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, flex: 1 },
-  pageSubtitle: { marginBottom: Layout.sectionGap, marginLeft: 34 },
-  searchWrap: { marginBottom: Layout.sectionGap },
-  topicSection: { marginBottom: Layout.sectionGap + 4 },
-  topicHeader: {
+  pageTitleRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: Layout.headerContentGap + 4,
+    flex: 1,
+    minWidth: 0,
   },
-  topicTitleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  topicChevron: { color: 'rgba(201, 147, 58, 0.55)', fontSize: 20, fontWeight: '300' },
-  stackedCard: {
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(201, 147, 58, 0.14)',
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12 },
-      android: { elevation: 4 },
-    }),
+  pageIconRail: {
+    width: Layout.iconRailWidth,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+    paddingBottom: 2,
   },
-  cardGrain: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(245, 236, 215, 0.012)' },
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    minHeight: 58,
-    zIndex: 1,
+  pageSubtitle: {
+    marginBottom: Layout.headerContentGap,
+    marginLeft: Layout.iconRailWidth,
+    ...Typography.body,
+    fontSize: 13,
+    color: undefined,
   },
-  listRowText: { flex: 1, paddingRight: 12, color: Palette.text },
-  chevron: { color: 'rgba(138, 128, 112, 0.85)', fontSize: 16, fontWeight: '300' },
-  separatorWrap: { paddingHorizontal: 20, zIndex: 1 },
-  separatorLine: { height: StyleSheet.hairlineWidth, minHeight: 1 },
+  searchWrap: { marginBottom: Layout.sectionHeaderBottom },
+  savedList: { gap: 0 },
 });

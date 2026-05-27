@@ -1,114 +1,98 @@
-import React, { memo } from 'react';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
-import { CategoryBadge } from '@/components/ui/category-badge';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
-import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
-import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
-import { ThemedText } from '@/components/themed-text';
-import { SacredImage } from '@/components/ui/sacred-image';
-import { VignetteOverlay } from '@/components/ui/vignette-overlay';
-import { BorderRadius, Layout, Opacity, Palette, Spacing } from '@/constants/theme';
+import { BorderRadius, Layout, Palette } from '@/constants/theme';
 
 type LearnHeroCardProps = {
   title: string;
-  subtitle?: string;
-  imageUri: string;
+  subtitle: string;
+  imageUri?: string;
   onPress?: () => void;
-  style?: StyleProp<ViewStyle>;
+  style?: { width?: number; marginBottom?: number };
 };
 
-export const LearnHeroCard = memo(function LearnHeroCard({
+const DEFAULT_IMAGE = 'https://picsum.photos/900/520?random=learn-hero';
+
+export function LearnHeroCard({
   title,
   subtitle,
-  imageUri,
+  imageUri = DEFAULT_IMAGE,
   onPress,
   style,
 }: LearnHeroCardProps) {
-  return (
-    <OrthodoxPressable style={[styles.wrap, style]} onPress={onPress} accessibilityRole="button">
-      <View style={styles.card}>
-        <SacredImage source={{ uri: imageUri }} style={styles.image} />
-        <View style={styles.crimsonWash} />
-        <ParchmentGrainOverlay />
-        <VignetteOverlay />
-        <CategoryBadge style={styles.badge} />
-        <Text style={styles.watermark} pointerEvents="none">
-          ☩
-        </Text>
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.82)', 'rgba(0,0,0,0.95)']}
-          locations={[0.25, 0.55, 0.78, 1]}
-          style={styles.gradient}>
-          {subtitle ? (
-            <ThemedText style={styles.subtitle} numberOfLines={1}>
-              {subtitle.toUpperCase()}
-            </ThemedText>
-          ) : null}
-          <ThemedText style={styles.title} numberOfLines={2}>
-            {title}
-          </ThemedText>
-        </LinearGradient>
+  const content = (
+    <View style={[styles.card, style]}>
+      <Image source={{ uri: imageUri }} style={styles.image} contentFit="cover" />
+      <LinearGradient
+        colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.82)', 'rgba(0,0,0,0.96)']}
+        locations={[0, 0.35, 0.7, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <Text style={styles.cornerCross} pointerEvents="none">
+        ☩
+      </Text>
+      <View style={styles.textBlock}>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+        <Text style={styles.title}>{title}</Text>
       </View>
-    </OrthodoxPressable>
+    </View>
   );
-});
+
+  if (onPress) return <OrthodoxPressable onPress={onPress}>{content}</OrthodoxPressable>;
+  return content;
+}
 
 const styles = StyleSheet.create({
-  wrap: {
-    borderRadius: BorderRadius.lg,
-    shadowColor: ManuscriptTokens.shadowColor,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    elevation: 5,
-  },
   card: {
     height: 228,
     borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: ManuscriptTokens.cardBorder,
     overflow: 'hidden',
-    backgroundColor: ManuscriptTokens.cardWarmEnd,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 147, 58, 0.22)',
+    backgroundColor: Palette.card,
+    ...Platform.select({
+      ios: {
+        shadowColor: Palette.gold,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 14,
+      },
+      android: { elevation: 6 },
+    }),
   },
   image: {
-    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
-  crimsonWash: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(139, 26, 26, 0.25)',
-  },
-  badge: {
+  cornerCross: {
     position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-  },
-  watermark: {
-    position: 'absolute',
-    top: Spacing.md,
-    right: Spacing.md + 28,
-    fontSize: 28,
+    top: 16,
+    right: 18,
+    fontSize: 20,
     color: Palette.gold,
-    opacity: Opacity.watermark,
+    opacity: 0.08,
   },
-  gradient: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.md + 4,
-    paddingTop: Spacing.xl,
+  textBlock: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 28,
+    gap: 10,
   },
   subtitle: {
-    fontSize: 11,
-    letterSpacing: 1.2,
-    color: ManuscriptTokens.parchmentMuted,
-    marginBottom: Spacing.sm,
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.6,
+    color: 'rgba(245, 236, 215, 0.55)',
+    textTransform: 'uppercase',
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: Palette.text,
-    lineHeight: 28,
+    letterSpacing: -0.5,
+    lineHeight: 30,
   },
 });

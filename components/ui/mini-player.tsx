@@ -1,13 +1,14 @@
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
 import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+
+export const MINI_PLAYER_HEIGHT = Layout.miniPlayerHeight;
 
 type MiniPlayerProps = {
   title: string;
@@ -18,6 +19,7 @@ type MiniPlayerProps = {
   onPlayPause?: () => void;
   onSkipBack?: () => void;
   onSkipForward?: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function MiniPlayer({
@@ -29,23 +31,24 @@ export function MiniPlayer({
   onPlayPause,
   onSkipBack,
   onSkipForward,
+  style,
 }: MiniPlayerProps) {
-  const tabBarHeight = useBottomTabBarHeight();
+  const pct = Math.min(Math.max(progress, 0), 1) * 100;
 
   return (
-    <View style={[styles.container, { bottom: tabBarHeight }]}>
-      <View style={styles.divider} />
+    <View style={[styles.container, style]} pointerEvents="auto">
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.min(Math.max(progress, 0), 1) * 100}%` }]} />
+        <View style={[styles.progressFill, { width: `${pct}%` }]} />
+        <View style={[styles.progressGlow, { left: `${pct}%` }]} />
       </View>
 
       {Platform.OS === 'ios' ? (
-        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={88} tint="dark" style={StyleSheet.absoluteFill} />
       ) : null}
       <View style={styles.glass} />
 
       <View style={styles.content}>
-        <SacredImage source={{ uri: artworkUri }} style={styles.artwork} />
+        <SacredImage uri={artworkUri} style={styles.artwork} />
 
         <View style={styles.meta}>
           <ThemedText style={styles.title} numberOfLines={1}>
@@ -58,13 +61,13 @@ export function MiniPlayer({
 
         <View style={styles.controls}>
           <OrthodoxPressable onPress={onSkipBack} accessibilityLabel="Previous track">
-            <Icon name="skip-back" size={20} />
+            <Icon name="skip-back" size={17} />
           </OrthodoxPressable>
           <OrthodoxPressable onPress={onPlayPause} accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
             <Icon name={isPlaying ? 'pause' : 'play'} size={22} />
           </OrthodoxPressable>
           <OrthodoxPressable onPress={onSkipForward} accessibilityLabel="Next track">
-            <Icon name="skip-forward" size={20} />
+            <Icon name="skip-forward" size={17} />
           </OrthodoxPressable>
         </View>
       </View>
@@ -74,53 +77,75 @@ export function MiniPlayer({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: Layout.miniPlayerHeight,
+    height: MINI_PLAYER_HEIGHT,
+    width: '100%',
     overflow: 'hidden',
-    zIndex: 10,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Layout.cardBorder,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(201, 147, 58, 0.12)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+      },
+      android: { elevation: 16 },
+    }),
   },
   progressTrack: {
     height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    zIndex: 3,
   },
   progressFill: {
     height: '100%',
     backgroundColor: Palette.gold,
   },
+  progressGlow: {
+    position: 'absolute',
+    top: -2,
+    width: 4,
+    height: 6,
+    marginLeft: -2,
+    borderRadius: 2,
+    backgroundColor: Palette.gold,
+    shadowColor: Palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
   glass: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Palette.glass,
+    backgroundColor: 'rgba(14, 12, 10, 0.78)',
   },
   content: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Layout.pagePadding,
-    gap: Spacing.md,
+    gap: Spacing.md - 2,
   },
   artwork: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: BorderRadius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.22)',
   },
   meta: {
     flex: 1,
     minWidth: 0,
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     color: Palette.text,
-    marginBottom: 2,
+    marginBottom: 1,
+    letterSpacing: -0.1,
   },
   artist: {
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: '400',
     color: Palette.mutedGold,
   },
   controls: {

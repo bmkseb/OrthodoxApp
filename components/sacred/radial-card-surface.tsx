@@ -1,48 +1,54 @@
-import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type ViewProps } from 'react-native';
 
-import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
-import { Layout } from '@/constants/theme';
+import { Palette } from '@/constants/theme';
 
-type RadialCardSurfaceProps = {
+type RadialCardSurfaceProps = ViewProps & {
   children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
+  tint?: 'warm' | 'cool' | 'neutral';
 };
 
-export function RadialCardSurface({ children, style }: RadialCardSurfaceProps) {
+const TINTS = {
+  warm: ['#1A1612', '#12100E', '#0A0908'] as const,
+  cool: ['#141820', '#0E1014', '#080A0C'] as const,
+  neutral: ['#161412', '#100E0C', '#0A0908'] as const,
+};
+
+/** Radial-style depth so surfaces never read as flat black */
+export function RadialCardSurface({ children, tint = 'neutral', style, ...rest }: RadialCardSurfaceProps) {
+  const colors = TINTS[tint];
+
   return (
-    <View style={[styles.wrapper, style]}>
+    <View style={[styles.wrap, style]} {...rest}>
       <LinearGradient
-        colors={[ManuscriptTokens.cardWarmStart, ManuscriptTokens.cardWarmMid, ManuscriptTokens.cardWarmEnd]}
+        colors={[colors[0], colors[1], colors[2]]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
-        colors={['rgba(201, 147, 58, 0.08)', 'transparent']}
+        colors={['rgba(201, 147, 58, 0.06)', 'transparent', 'rgba(201, 147, 58, 0.03)']}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
-        style={[StyleSheet.absoluteFill, styles.sideGlow]}
+        style={StyleSheet.absoluteFill}
       />
+      <ParchmentGrainOverlayInline />
       {children}
     </View>
   );
 }
 
+function ParchmentGrainOverlayInline() {
+  return <View style={styles.inlineGrain} pointerEvents="none" />;
+}
+
 const styles = StyleSheet.create({
-  wrapper: {
-    borderRadius: Layout.cardRadius,
-    borderWidth: 1,
-    borderColor: ManuscriptTokens.cardBorder,
+  wrap: {
     overflow: 'hidden',
-    shadowColor: ManuscriptTokens.shadowColor,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: ManuscriptTokens.shadowOpacity,
-    shadowRadius: 12,
-    elevation: 4,
+    backgroundColor: Palette.card,
   },
-  sideGlow: {
-    opacity: 0.6,
+  inlineGrain: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(245, 236, 215, 0.015)',
   },
 });

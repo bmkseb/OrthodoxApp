@@ -34,7 +34,7 @@ export function SearchBar({
     <View>
       <View style={styles.container}>
         <View style={styles.innerShadow} pointerEvents="none" />
-        <Icon name="search" size={18} color={Palette.muted} />
+        <Icon name="search" size={16} color={Palette.muted} />
         <TextInput
           style={styles.input}
           placeholder={placeholder}
@@ -46,7 +46,7 @@ export function SearchBar({
         />
         {query.length > 0 ? (
           <OrthodoxPressable onPress={() => handleChange('')} accessibilityLabel="Clear search">
-            <Icon name="close" size={16} color={Palette.muted} />
+            <Icon name="close" size={15} color={Palette.muted} />
           </OrthodoxPressable>
         ) : null}
       </View>
@@ -76,12 +76,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm + 2,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 4,
+    gap: Spacing.sm,
+    height: Layout.searchBarHeight,
+    paddingHorizontal: Spacing.md - 2,
     borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     backgroundColor: Palette.card,
     overflow: 'hidden',
     ...Platform.select({
@@ -93,14 +93,14 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+    height: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
     borderTopLeftRadius: BorderRadius.lg,
     borderTopRightRadius: BorderRadius.lg,
   },
   input: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: Palette.text,
     paddingVertical: 0,
   },
@@ -108,17 +108,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.sm,
-    marginTop: Spacing.sm,
+    marginTop: Spacing.sm - 2,
   },
   recentChip: {
-    paddingHorizontal: Spacing.sm + 4,
-    paddingVertical: Spacing.xs + 2,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: Spacing.xs + 1,
     borderRadius: BorderRadius.full,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: Layout.cardBorder,
     backgroundColor: 'rgba(30, 26, 20, 0.6)',
   },
   recentText: {
-    fontSize: 12,
+    fontSize: 11,
   },
 });

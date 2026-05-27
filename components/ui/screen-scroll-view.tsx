@@ -1,16 +1,22 @@
 import React from 'react';
-import { RefreshControl, ScrollView, StyleSheet, type ScrollViewProps } from 'react-native';
+import { RefreshControl, StyleSheet, type ScrollViewProps } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
+import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
-import { Layout, Spacing } from '@/constants/theme';
+import { Layout, Palette, Spacing } from '@/constants/theme';
+import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
 
 type ScreenScrollViewProps = ScrollViewProps & {
   children: React.ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
-  includeTabBarSafe?: boolean;
+  /** When false, omits floating tab bar / mini player inset (stack screens). */
+  includeFloatingChrome?: boolean;
+  /** Skip default SacredAtmosphere (e.g. Explore uses its own). */
+  hideAtmosphere?: boolean;
 };
 
 export function ScreenScrollView({
@@ -18,27 +24,35 @@ export function ScreenScrollView({
   contentContainerStyle,
   refreshing,
   onRefresh,
-  includeTabBarSafe = true,
+  includeFloatingChrome = true,
+  hideAtmosphere = false,
+  style,
   ...props
 }: ScreenScrollViewProps) {
   const insets = useSafeAreaInsets();
-  const tabBarPadding = includeTabBarSafe ? Layout.tabBarSafe : 0;
+  const floatingInset = useFloatingBottomInset();
+  const bottomPadding = includeFloatingChrome
+    ? floatingInset
+    : insets.bottom + Spacing.xl;
 
   return (
-    <ThemedView style={styles.screen}>
+    <ThemedView style={[styles.screen, style]} pointerEvents="box-none">
+      {hideAtmosphere ? null : <SacredAtmosphere />}
       <ParchmentGrainOverlay />
       <ScrollView
+        style={styles.scroll}
+        nestedScrollEnabled
         showsVerticalScrollIndicator={false}
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor="#C9933A" />
+            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={Palette.gold} />
           ) : undefined
         }
         contentContainerStyle={[
           styles.content,
           {
-            paddingBottom: insets.bottom + Spacing.lg + tabBarPadding,
-            paddingTop: insets.top + Spacing.sm,
+            paddingBottom: bottomPadding,
+            paddingTop: insets.top + Spacing.md,
           },
           contentContainerStyle,
         ]}
@@ -51,6 +65,10 @@ export function ScreenScrollView({
 
 const styles = StyleSheet.create({
   screen: {
+    flex: 1,
+    backgroundColor: Palette.background,
+  },
+  scroll: {
     flex: 1,
   },
   content: {

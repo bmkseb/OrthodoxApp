@@ -1,4 +1,3 @@
-import React from 'react';
 import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
 
 import { Palette } from '@/constants/theme';
@@ -12,215 +11,270 @@ export type IconName =
   | 'scroll'
   | 'sparkle'
   | 'cross'
+  | 'search'
+  | 'chevron-left'
+  | 'chevron-right'
+  | 'chevron-down'
+  | 'rewind'
+  | 'forward'
+  | 'heart'
+  | 'list'
+  | 'play'
+  | 'pause'
+  | 'skip-back'
+  | 'skip-forward'
+  | 'close'
   | 'sun'
   | 'church'
   | 'moon'
   | 'bookmark'
   | 'share'
   | 'globe'
-  | 'flame'
-  | 'play'
-  | 'pause'
-  | 'skip-back'
-  | 'skip-forward'
-  | 'chevron-left'
-  | 'chevron-right'
-  | 'search'
-  | 'close';
+  | 'flame';
 
 type IconProps = {
   name: IconName;
   size?: number;
   color?: string;
+  strokeWidth?: number;
 };
 
 const STROKE = 1.5;
 
-function IconPaths({ name, color }: { name: IconName; color: string }) {
-  const strokeProps = {
+export function Icon({ name, size = 18, color = Palette.gold, strokeWidth = STROKE }: IconProps) {
+  const props = {
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    fill: 'none',
     stroke: color,
-    strokeWidth: STROKE,
+    strokeWidth,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
-    fill: 'none' as const,
   };
 
   switch (name) {
     case 'brain':
       return (
-        <>
-          <Path d="M9 4.5c-2 0-3.5 1.5-3.5 3.5 0 .8.3 1.5.8 2-1 .5-1.8 1.5-1.8 2.8 0 1.7 1.3 3.2 3 3.2" {...strokeProps} />
-          <Path d="M9 4.5c2 0 3.5 1.5 3.5 3.5 0 .8-.3 1.5-.8 2 1 .5 1.8 1.5 1.8 2.8 0 1.7-1.3 3.2-3 3.2" {...strokeProps} />
-          <Path d="M9 6.5v5" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Path d="M8 5c-2 1-3 3-3 5a4 4 0 0 0 4 4" />
+          <Path d="M16 5c2 1 3 3 3 5a4 4 0 0 1-4 4" />
+          <Path d="M12 5v14" />
+          <Path d="M9 12h6" />
+        </Svg>
       );
     case 'music':
       return (
-        <>
-          <Path d="M12 3.5v9.5" {...strokeProps} />
-          <Path d="M12 3.5l-4.5 1.5v6.5" {...strokeProps} />
-          <Circle cx="7.5" cy="13.5" r="2" {...strokeProps} />
-          <Circle cx="12" cy="12.5" r="2" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Path d="M9 18V5l10-2v13" />
+          <Circle cx="7" cy="18" r="2" />
+          <Circle cx="17" cy="16" r="2" />
+        </Svg>
       );
     case 'book':
       return (
-        <>
-          <Path d="M4.5 4.5h4.5c1.2 0 2.2 1 2.2 2.2v9.3H6.7c-1.2 0-2.2-1-2.2-2.2V4.5z" {...strokeProps} />
-          <Path d="M13.5 4.5H9c-1.2 0-2.2 1-2.2 2.2v9.3h4.5c1.2 0 2.2-1 2.2-2.2V4.5z" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <Path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          <Line x1="8" y1="6" x2="16" y2="6" />
+          <Line x1="8" y1="10" x2="14" y2="10" />
+        </Svg>
       );
     case 'calendar':
       return (
-        <>
-          <Rect x="3.5" y="5" width="11" height="10" rx="1.5" {...strokeProps} />
-          <Line x1="3.5" y1="8" x2="14.5" y2="8" {...strokeProps} />
-          <Line x1="6.5" y1="3" x2="6.5" y2="6.5" {...strokeProps} />
-          <Line x1="11.5" y1="3" x2="11.5" y2="6.5" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Rect x="3" y="4" width="18" height="18" rx="2" />
+          <Line x1="16" y1="2" x2="16" y2="6" />
+          <Line x1="8" y1="2" x2="8" y2="6" />
+          <Line x1="3" y1="10" x2="21" y2="10" />
+          <Circle cx="8" cy="14" r="0.5" fill={color} stroke="none" />
+          <Circle cx="12" cy="14" r="0.5" fill={color} stroke="none" />
+          <Circle cx="16" cy="14" r="0.5" fill={color} stroke="none" />
+        </Svg>
       );
     case 'pillar':
       return (
-        <>
-          <Path d="M6 4.5h6v1.5H6z" {...strokeProps} />
-          <Path d="M7 6v8.5" {...strokeProps} />
-          <Path d="M11 6v8.5" {...strokeProps} />
-          <Path d="M5.5 14.5h7v1H5.5z" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Path d="M8 3h8v3H8z" />
+          <Path d="M7 6h10v12H7z" />
+          <Path d="M6 18h12v3H6z" />
+          <Line x1="12" y1="6" x2="12" y2="18" />
+        </Svg>
       );
     case 'scroll':
       return (
-        <>
-          <Path d="M5 5.5c0-1.1.9-2 2-2h5c1.7 0 3 1.3 3 3v7.5c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V5.5z" {...strokeProps} />
-          <Path d="M7 3.5c-1.1 0-2 .9-2 2" {...strokeProps} />
-          <Line x1="8" y1="7.5" x2="12" y2="7.5" {...strokeProps} />
-          <Line x1="8" y1="10" x2="12" y2="10" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Path d="M6 4h10a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H6" />
+          <Path d="M6 4a3 3 0 0 0-3 3v11a3 3 0 0 0 3 3" />
+          <Line x1="8" y1="8" x2="14" y2="8" />
+          <Line x1="8" y1="12" x2="12" y2="12" />
+        </Svg>
       );
     case 'sparkle':
       return (
-        <>
-          <Path d="M9 2.5v3" {...strokeProps} />
-          <Path d="M9 12.5v3" {...strokeProps} />
-          <Path d="M2.5 9h3" {...strokeProps} />
-          <Path d="M12.5 9h3" {...strokeProps} />
-          <Path d="M4.8 4.8l2.1 2.1" {...strokeProps} />
-          <Path d="M11.1 11.1l2.1 2.1" {...strokeProps} />
-          <Path d="M13.2 4.8l-2.1 2.1" {...strokeProps} />
-          <Path d="M6.9 11.1l-2.1 2.1" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Path d="M12 3l1.2 4.2L17.5 8.5l-4.3 1.2L12 14l-1.2-4.3L6.5 8.5l4.3-1.3z" />
+          <Path d="M19 14l.6 2.1 2.1.6-2.1.6L19 20l-.6-2.1-2.1-.6 2.1-.6z" />
+        </Svg>
       );
     case 'cross':
       return (
-        <>
-          <Path d="M9 3v12" {...strokeProps} />
-          <Path d="M5.5 6.5h7" {...strokeProps} />
-          <Path d="M6.5 4.5h5" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Path d="M12 4v16" />
+          <Path d="M7 8h10" />
+          <Path d="M9 6l3-2 3 2" />
+          <Path d="M9 18l3 2 3-2" />
+        </Svg>
       );
-    case 'sun':
+    case 'search':
       return (
-        <>
-          <Circle cx="9" cy="9" r="3" {...strokeProps} />
-          <Line x1="9" y1="2" x2="9" y2="4" {...strokeProps} />
-          <Line x1="9" y1="14" x2="9" y2="16" {...strokeProps} />
-          <Line x1="2" y1="9" x2="4" y2="9" {...strokeProps} />
-          <Line x1="14" y1="9" x2="16" y2="9" {...strokeProps} />
-          <Line x1="4" y1="4" x2="5.5" y2="5.5" {...strokeProps} />
-          <Line x1="12.5" y1="12.5" x2="14" y2="14" {...strokeProps} />
-          <Line x1="14" y1="4" x2="12.5" y2="5.5" {...strokeProps} />
-          <Line x1="5.5" y1="12.5" x2="4" y2="14" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Circle cx="11" cy="11" r="7" />
+          <Line x1="16.5" y1="16.5" x2="21" y2="21" />
+        </Svg>
       );
-    case 'church':
+    case 'chevron-left':
       return (
-        <>
-          <Path d="M9 2.5v3" {...strokeProps} />
-          <Path d="M7 5.5h4" {...strokeProps} />
-          <Path d="M5.5 7.5h7v7H5.5z" {...strokeProps} />
-          <Path d="M8 10.5h2v4H8z" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Polyline points="15 18 9 12 15 6" />
+        </Svg>
       );
-    case 'moon':
-      return <Path d="M12.5 4.5a5.5 5.5 0 1 0 0 9 4.5 4.5 0 1 1 0-9z" {...strokeProps} />;
-    case 'bookmark':
-      return <Path d="M5.5 3.5h7v11l-3.5-2-3.5 2V3.5z" {...strokeProps} />;
-    case 'share':
+    case 'chevron-right':
       return (
-        <>
-          <Circle cx="13" cy="5" r="2" {...strokeProps} />
-          <Circle cx="5" cy="9" r="2" {...strokeProps} />
-          <Circle cx="13" cy="13" r="2" {...strokeProps} />
-          <Line x1="6.8" y1="8" x2="11.2" y2="6" {...strokeProps} />
-          <Line x1="6.8" y1="10" x2="11.2" y2="12" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Polyline points="9 18 15 12 9 6" />
+        </Svg>
       );
-    case 'globe':
+    case 'chevron-down':
       return (
-        <>
-          <Circle cx="9" cy="9" r="6.5" {...strokeProps} />
-          <Path d="M2.5 9h13" {...strokeProps} />
-          <Path d="M9 2.5c2 2 2 11 0 13" {...strokeProps} />
-          <Path d="M9 2.5c-2 2-2 11 0 13" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Polyline points="6 9 12 15 18 9" />
+        </Svg>
       );
-    case 'flame':
+    case 'rewind':
       return (
-        <>
-          <Path d="M9 3.5c1 2 2.5 3 2.5 5.5a2.5 2.5 0 1 1-5 0c0-1.5 1-2.5 2.5-5.5z" {...strokeProps} />
-          <Path d="M9 10.5c.8.8 1.2 1.5 1.2 2.2a1.2 1.2 0 1 1-2.4 0c0-.7.4-1.4 1.2-2.2z" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Path d="M11 7v10l-7-5 7-5z" />
+          <Path d="M18 7v10l-7-5 7-5z" />
+        </Svg>
+      );
+    case 'forward':
+      return (
+        <Svg {...props}>
+          <Path d="M13 7v10l7-5-7-5z" />
+          <Path d="M6 7v10l7-5-7-5z" />
+        </Svg>
+      );
+    case 'heart':
+      return (
+        <Svg {...props}>
+          <Path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 7 3.5C19 15.65 12 20 12 20z" />
+        </Svg>
+      );
+    case 'list':
+      return (
+        <Svg {...props}>
+          <Line x1="8" y1="6" x2="21" y2="6" />
+          <Line x1="8" y1="12" x2="21" y2="12" />
+          <Line x1="8" y1="18" x2="21" y2="18" />
+          <Line x1="3" y1="6" x2="3.01" y2="6" />
+          <Line x1="3" y1="12" x2="3.01" y2="12" />
+          <Line x1="3" y1="18" x2="3.01" y2="18" />
+        </Svg>
       );
     case 'play':
-      return <Path d="M7 5.5l6 3.5-6 3.5V5.5z" fill={color} />;
+      return (
+        <Svg {...props}>
+          <Polyline points="9 6 17 12 9 18 9 6" fill={color} />
+        </Svg>
+      );
     case 'pause':
       return (
-        <>
-          <Line x1="7" y1="5.5" x2="7" y2="12.5" stroke={color} strokeWidth={2} strokeLinecap="round" />
-          <Line x1="11" y1="5.5" x2="11" y2="12.5" stroke={color} strokeWidth={2} strokeLinecap="round" />
-        </>
+        <Svg {...props}>
+          <Line x1="9" y1="6" x2="9" y2="18" />
+          <Line x1="15" y1="6" x2="15" y2="18" />
+        </Svg>
       );
     case 'skip-back':
       return (
-        <>
-          <Path d="M13.5 5.5v7" {...strokeProps} />
-          <Path d="M11 9l-5.5 3.5V5.5L11 9z" fill={color} />
-        </>
+        <Svg {...props}>
+          <Polyline points="11 6 5 12 11 18" />
+          <Line x1="5" y1="6" x2="5" y2="18" />
+        </Svg>
       );
     case 'skip-forward':
       return (
-        <>
-          <Path d="M4.5 5.5v7" {...strokeProps} />
-          <Path d="M7 9l5.5 3.5V5.5L7 9z" fill={color} />
-        </>
-      );
-    case 'chevron-left':
-      return <Polyline points="11.5,4.5 6.5,9 11.5,13.5" {...strokeProps} />;
-    case 'chevron-right':
-      return <Polyline points="6.5,4.5 11.5,9 6.5,13.5" {...strokeProps} />;
-    case 'search':
-      return (
-        <>
-          <Circle cx="8" cy="8" r="4.5" {...strokeProps} />
-          <Line x1="11.5" y1="11.5" x2="14.5" y2="14.5" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Polyline points="13 6 19 12 13 18" />
+          <Line x1="19" y1="6" x2="19" y2="18" />
+        </Svg>
       );
     case 'close':
       return (
-        <>
-          <Line x1="5.5" y1="5.5" x2="12.5" y2="12.5" {...strokeProps} />
-          <Line x1="12.5" y1="5.5" x2="5.5" y2="12.5" {...strokeProps} />
-        </>
+        <Svg {...props}>
+          <Line x1="18" y1="6" x2="6" y2="18" />
+          <Line x1="6" y1="6" x2="18" y2="18" />
+        </Svg>
+      );
+    case 'sun':
+      return (
+        <Svg {...props}>
+          <Circle cx="12" cy="12" r="4" />
+          <Line x1="12" y1="2" x2="12" y2="5" />
+          <Line x1="12" y1="19" x2="12" y2="22" />
+          <Line x1="2" y1="12" x2="5" y2="12" />
+          <Line x1="19" y1="12" x2="22" y2="12" />
+          <Line x1="4.2" y1="4.2" x2="6.3" y2="6.3" />
+          <Line x1="17.7" y1="17.7" x2="19.8" y2="19.8" />
+          <Line x1="4.2" y1="19.8" x2="6.3" y2="17.7" />
+          <Line x1="17.7" y1="6.3" x2="19.8" y2="4.2" />
+        </Svg>
+      );
+    case 'church':
+      return (
+        <Svg {...props}>
+          <Path d="M12 3v4" />
+          <Path d="M8 7h8" />
+          <Path d="M6 10h12v11H6z" />
+          <Path d="M10 14h4v7h-4z" />
+        </Svg>
+      );
+    case 'moon':
+      return (
+        <Svg {...props}>
+          <Path d="M20 14a8 8 0 1 1-8-8 6 6 0 0 0 8 8z" />
+        </Svg>
+      );
+    case 'bookmark':
+      return (
+        <Svg {...props}>
+          <Path d="M6 4h12v16l-6-4-6 4V4z" />
+        </Svg>
+      );
+    case 'share':
+      return (
+        <Svg {...props}>
+          <Path d="M16 8l-8 4 8 4" />
+          <Circle cx="6" cy="12" r="2" />
+          <Circle cx="18" cy="8" r="2" />
+          <Circle cx="18" cy="16" r="2" />
+        </Svg>
+      );
+    case 'globe':
+      return (
+        <Svg {...props}>
+          <Circle cx="12" cy="12" r="9" />
+          <Path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+        </Svg>
+      );
+    case 'flame':
+      return (
+        <Svg {...props}>
+          <Path d="M12 3c-1 4-4 5-4 9a4 4 0 0 0 8 0c0-3-2.5-4.5-4-9z" />
+          <Path d="M12 14v3" opacity={0.5} />
+        </Svg>
       );
     default:
       return null;
   }
-}
-
-export function Icon({ name, size = 18, color = Palette.gold }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
-      <IconPaths name={name} color={color} />
-    </Svg>
-  );
 }
