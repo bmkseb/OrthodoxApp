@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -10,13 +10,18 @@ import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
 import { useTranslation } from '@/hooks/use-translation';
 import type { TranslationKey } from '@/lib/translations';
+import {
+  BIBLE_CANON_81,
+  getBookTitle,
+  NEW_TESTAMENT_BOOKS,
+  OLD_TESTAMENT_BOOKS,
+  type BibleBook,
+} from '@/data/bibleCanon';
+import { scriptureLangQuery } from '@/hooks/use-scripture-lang';
 import { BorderRadius, Layout, Palette } from '@/constants/theme';
 
 type LanguageTab = 'english' | 'amharic' | 'geez';
 const LANGUAGE_TAB_KEYS: LanguageTab[] = ['english', 'amharic', 'geez'];
-
-const OLD_TESTAMENT = ['Genesis', 'Exodus', 'Deuteronomy', 'Leviticus', 'Numbers', 'Joshua', 'Judges'];
-const NEW_TESTAMENT = ['Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', 'Galatians'];
 
 function LanguageTabs({ activeTab, onChange }: { activeTab: LanguageTab; onChange: (t: LanguageTab) => void }) {
   const { t } = useTranslation();
@@ -39,10 +44,20 @@ function LanguageTabs({ activeTab, onChange }: { activeTab: LanguageTab; onChang
   );
 }
 
-function ScriptureRow({ label, isLast }: { label: string; isLast: boolean }) {
+type BookRow = { bookId: string; label: string; onPress: () => void };
+
+function ScriptureRow({
+  label,
+  isLast,
+  onPress,
+}: {
+  label: string;
+  isLast: boolean;
+  onPress: () => void;
+}) {
   return (
     <>
-      <OrthodoxPressable style={styles.scriptureRow}>
+      <OrthodoxPressable style={styles.scriptureRow} onPress={onPress}>
         <ThemedText style={styles.scriptureText}>{label}</ThemedText>
         <Text style={styles.rowChevron}>›</Text>
       </OrthodoxPressable>
@@ -51,8 +66,18 @@ function ScriptureRow({ label, isLast }: { label: string; isLast: boolean }) {
   );
 }
 
-function CollapsibleGroup({ title, items, defaultOpen = false }: { title: string; items: string[]; defaultOpen?: boolean }) {
+function CollapsibleGroup({
+  title,
+  rows,
+  defaultOpen = false,
+}: {
+  title: string;
+  rows: BookRow[];
+  defaultOpen?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  if (rows.length === 0) return null;
+
   return (
     <View style={styles.groupWrap}>
       <OrthodoxPressable style={styles.groupHeader} onPress={() => setIsOpen((p) => !p)}>
@@ -61,8 +86,13 @@ function CollapsibleGroup({ title, items, defaultOpen = false }: { title: string
       </OrthodoxPressable>
       {isOpen && (
         <View style={styles.stackedCard}>
-          {items.map((item, index) => (
-            <ScriptureRow key={item} label={item} isLast={index === items.length - 1} />
+          {rows.map((row, index) => (
+            <ScriptureRow
+              key={row.bookId}
+              label={row.label}
+              isLast={index === rows.length - 1}
+              onPress={row.onPress}
+            />
           ))}
         </View>
       )}
@@ -73,6 +103,42 @@ function CollapsibleGroup({ title, items, defaultOpen = false }: { title: string
 export default function CatalogScreen() {
   const { t } = useTranslation();
   const [activeLanguage, setActiveLanguage] = useState<LanguageTab>('english');
+  const [query, setQuery] = useState('');
+
+  const filteredIds = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return new Set(BIBLE_CANON_81.map((b) => b.book_id));
+    return new Set(
+      BIBLE_CANON_81.filter(
+        (b) =>
+          b.title_english.toLowerCase().includes(q) ||
+          b.title_vernacular.includes(query.trim()) ||
+          b.title_geez.includes(query.trim()),
+      ).map((b) => b.book_id),
+    );
+  }, [query]);
+
+  const langQ = scriptureLangQuery(activeLanguage);
+
+  const toRow = (b: BibleBook): BookRow => ({
+    bookId: b.book_id,
+    label: getBookTitle(b, activeLanguage),
+    onPress: () => router.push(`/book/${b.book_id}${langQ}`),
+  });
+
+  // Same display_order as English: flat OT / NT lists (sorted in bibleCanon.ts)
+  const oldTestament = OLD_TESTAMENT_BOOKS.filter((b) => filteredIds.has(b.book_id)).map(toRow);
+  const newTestament = NEW_TESTAMENT_BOOKS.filter((b) => filteredIds.has(b.book_id)).map(toRow);
+
+  const otTitle =
+    activeLanguage === 'geez'
+      ? `${t('catalog.oldTestamentGeez')} (${OLD_TESTAMENT_BOOKS.length})`
+      : `${t('catalog.oldTestament')} (${OLD_TESTAMENT_BOOKS.length})`;
+
+  const ntTitle =
+    activeLanguage === 'geez'
+      ? `${t('catalog.newTestamentGeez')} (${NEW_TESTAMENT_BOOKS.length})`
+      : `${t('catalog.newTestament')} (${NEW_TESTAMENT_BOOKS.length})`;
 
   return (
     <ScreenScrollView>
@@ -88,11 +154,20 @@ export default function CatalogScreen() {
       <LanguageTabs activeTab={activeLanguage} onChange={setActiveLanguage} />
 
       <View style={styles.searchWrap}>
-        <SearchBar placeholder={t('catalog.searchPlaceholder')} recentSearches={['Genesis', 'Matthew']} />
+        <SearchBar
+          placeholder={t('catalog.searchPlaceholder')}
+          recentSearches={['Genesis', 'Matthew', 'Enoch']}
+          value={query}
+          onChangeText={setQuery}
+        />
       </View>
 
-      <CollapsibleGroup title={t('catalog.oldTestament')} items={OLD_TESTAMENT} defaultOpen />
-      <CollapsibleGroup title={t('catalog.newTestament')} items={NEW_TESTAMENT} />
+      <ThemedText type="muted" style={styles.canonCount}>
+        {BIBLE_CANON_81.length} {t('catalog.booksInCanon')}
+      </ThemedText>
+
+      <CollapsibleGroup title={otTitle} rows={oldTestament} defaultOpen />
+      <CollapsibleGroup title={ntTitle} rows={newTestament} />
     </ScreenScrollView>
   );
 }
@@ -108,10 +183,11 @@ const styles = StyleSheet.create({
   segmentLabelActive: { color: Palette.background },
   segmentLabelInactive: { color: Palette.muted },
   searchWrap: { marginBottom: Layout.sectionGap },
+  canonCount: { marginBottom: Layout.headerContentGap },
   groupWrap: { marginBottom: Layout.sectionGap },
   groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: Layout.headerContentGap },
   groupChevron: { color: Palette.gold, fontSize: 18 },
-  groupTitle: { fontSize: 18, fontWeight: '600', color: Palette.text },
+  groupTitle: { fontSize: 18, fontWeight: '600', color: Palette.text, flex: 1 },
   stackedCard: {
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
@@ -120,7 +196,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   scriptureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  scriptureText: { fontSize: 16, color: Palette.text },
+  scriptureText: { fontSize: 16, color: Palette.text, flex: 1 },
   rowChevron: { color: Palette.muted, fontSize: 18 },
   rowDivider: { height: 1, backgroundColor: Layout.cardBorder, marginHorizontal: 16 },
 });

@@ -31,7 +31,13 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# scripture ingestion (large binaries / generated dumps)
+data/pdfs/*.pdf
+extracted_output/*.json
+extracted_output/*_raw.txt
 
 # typescript
 *.tsbuildinfo

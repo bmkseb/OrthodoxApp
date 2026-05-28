@@ -1,0 +1,731 @@
+[
+  {
+    "book_id": "genesis",
+    "title_vernacular": "ኦሪት ዘፍጥረት",
+    "title_english": "Genesis",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 1,
+    "title_geez": "ኦሪት ዘፍጥረት"
+  },
+  {
+    "book_id": "exodus",
+    "title_vernacular": "ኦሪት ዘጸአት",
+    "title_english": "Exodus",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 2,
+    "title_geez": "ኦሪት ዘፀአት"
+  },
+  {
+    "book_id": "leviticus",
+    "title_vernacular": "ኦሪት ዘሌዋውያን",
+    "title_english": "Leviticus",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 3,
+    "title_geez": "ኦሪት ዘሌዋውያን"
+  },
+  {
+    "book_id": "numbers",
+    "title_vernacular": "ኦሪት ዘኁልቁ",
+    "title_english": "Numbers",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 4,
+    "title_geez": "ኦሪት ዘኁልቁ"
+  },
+  {
+    "book_id": "deuteronomy",
+    "title_vernacular": "ኦሪት ዘዳግም",
+    "title_english": "Deuteronomy",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 5,
+    "title_geez": "ኦሪት ዘዳግም"
+  },
+  {
+    "book_id": "joshua",
+    "title_vernacular": "መጽሐፈ ኢያሱ ወልደ ነዌ",
+    "title_english": "Joshua",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 6,
+    "title_geez": "ኢያሱ"
+  },
+  {
+    "book_id": "judges",
+    "title_vernacular": "መጽሐፈ መሳፍንት",
+    "title_english": "Judges",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 7,
+    "title_geez": "መጽሐፈ መሳፍንት"
+  },
+  {
+    "book_id": "ruth",
+    "title_vernacular": "መጽሐፈ ሩት",
+    "title_english": "Ruth",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 8,
+    "title_geez": "ሩት"
+  },
+  {
+    "book_id": "samuel",
+    "title_vernacular": "መጽሐፈ ሳሙኤል ቀዳማዊ / ካልአዊ",
+    "title_english": "I and II Samuel",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 9,
+    "title_geez": "መጽሐፈ ሳሙኤል"
+  },
+  {
+    "book_id": "kings",
+    "title_vernacular": "መጽሐፈ ነገሥት ቀዳማዊ / ካልአዊ",
+    "title_english": "I and II Kings",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 10,
+    "title_geez": "መጽሐፈ ነገሥት"
+  },
+  {
+    "book_id": "1_chronicles",
+    "title_vernacular": "መጽሐፈ ዜና መዋዕል ቀዳማዊ",
+    "title_english": "I Chronicles",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 11,
+    "title_geez": "መጽሐፈ ዜና መዋዕል ቀዳማዊ"
+  },
+  {
+    "book_id": "2_chronicles",
+    "title_vernacular": "መጽሐፈ ዜና መዋዕል ካልአዊ",
+    "title_english": "II Chronicles",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 12,
+    "title_geez": "መጽሐፈ ዜና መዋዕል ካልአዊ (ጸሎተ ምናሴ)"
+  },
+  {
+    "book_id": "jubilees",
+    "title_vernacular": "መጽሐፈ ኩፋሌ",
+    "title_english": "Jublee",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 13,
+    "title_geez": "መጽሐፈ ኩፋሌ"
+  },
+  {
+    "book_id": "enoch",
+    "title_vernacular": "መጽሐፈ ሄኖክ",
+    "title_english": "Enoch",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 14,
+    "title_geez": "መጽሐፈ ሔኖክ"
+  },
+  {
+    "book_id": "ezra_nehemiah",
+    "title_vernacular": "መጽሐፈ ዕዝራ / መጽሐፈ ነህምያ",
+    "title_english": "Ezra and Nehemia",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 15,
+    "title_geez": "ዕዝራ ወነህምያ"
+  },
+  {
+    "book_id": "ezra_sutu_el",
+    "title_vernacular": "መጽሐፈ ዕዝራ ሱቱኤል",
+    "title_english": "Ezra (2nd) and Ezra Sutuel",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 16,
+    "title_geez": "ዕዝራ ሱቱኤል"
+  },
+  {
+    "book_id": "tobit",
+    "title_vernacular": "መጽሐፈ ጦቢት",
+    "title_english": "Tobit",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 17,
+    "title_geez": "ጦቢት"
+  },
+  {
+    "book_id": "judith",
+    "title_vernacular": "መጽሐፈ ዮዲት",
+    "title_english": "Judith",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 18,
+    "title_geez": "ዮዲት"
+  },
+  {
+    "book_id": "esther",
+    "title_vernacular": "መጽሐፈ አስቴር",
+    "title_english": "Esther",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 19,
+    "title_geez": "አስቴር"
+  },
+  {
+    "book_id": "meqabyan_1",
+    "title_vernacular": "መጽሐፈ መቃብያን ቀዳማዊ",
+    "title_english": "I Maccabees",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 20,
+    "title_geez": "መቃብያን ቀዳማዊ"
+  },
+  {
+    "book_id": "meqabyan_2_3",
+    "title_vernacular": "መጽሐፈ መቃብያን ካልአዊ / ሣልሳዊ",
+    "title_english": "II and III Maccabees",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 21,
+    "title_geez": "መቃብያን ካልአዊ / ሦልሳዊ"
+  },
+  {
+    "book_id": "job",
+    "title_vernacular": "መጽሐፈ ኢዮብ",
+    "title_english": "Job",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 22,
+    "title_geez": "ኢዮብ"
+  },
+  {
+    "book_id": "psalms",
+    "title_vernacular": "መዝሙረ ዳዊት",
+    "title_english": "Psalms",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 23,
+    "title_geez": "መጽሐፈ ዳዊት"
+  },
+  {
+    "book_id": "proverbs",
+    "title_vernacular": "መጽሐፈ ምሳሌ",
+    "title_english": "Proverbs",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 24,
+    "title_geez": "ምሳሌ"
+  },
+  {
+    "book_id": "tegsats",
+    "title_vernacular": "መጽሐፈ ተግሣጽ",
+    "title_english": "Tegsats (Reproof)",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 25,
+    "title_geez": "ተግሣጽ"
+  },
+  {
+    "book_id": "wisdom",
+    "title_vernacular": "መጽሐፈ ጥበብ",
+    "title_english": "Metsihafe Tibeb (the books of wisdom)",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 26,
+    "title_geez": "መጽሐፈ ጥበብ"
+  },
+  {
+    "book_id": "ecclesiastes",
+    "title_vernacular": "መጽሐፈ መክብብ",
+    "title_english": "Ecclesiastes",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 27,
+    "title_geez": "መክብብ"
+  },
+  {
+    "book_id": "song_of_songs",
+    "title_vernacular": "መኃልየ መኃልይ",
+    "title_english": "The Song of Songs",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 28,
+    "title_geez": "ማኅሌተ ማኅሌት"
+  },
+  {
+    "book_id": "isaiah",
+    "title_vernacular": "ትንቢተ ኢሳይያስ",
+    "title_english": "Isaiah",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 29,
+    "title_geez": "ኢሳይያስ"
+  },
+  {
+    "book_id": "jeremiah",
+    "title_vernacular": "ትንቢተ ኤርምያስ",
+    "title_english": "Jeremiah",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 30,
+    "title_geez": "ኤርምያስ"
+  },
+  {
+    "book_id": "ezekiel",
+    "title_vernacular": "ትንቢተ ሕዝቅኤል",
+    "title_english": "Ezekiel",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 31,
+    "title_geez": "ሕዝቅኤል"
+  },
+  {
+    "book_id": "daniel",
+    "title_vernacular": "ትንቢተ ዳንኤል",
+    "title_english": "Daniel",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 32,
+    "title_geez": "ዳንኤል"
+  },
+  {
+    "book_id": "hosea",
+    "title_vernacular": "ትንቢተ ሆሴዕ",
+    "title_english": "Hosea",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 33,
+    "title_geez": "ሆሴዕ"
+  },
+  {
+    "book_id": "amos",
+    "title_vernacular": "ትንቢተ አሞጽ",
+    "title_english": "Amos",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 34,
+    "title_geez": "አሞጽ"
+  },
+  {
+    "book_id": "micah",
+    "title_vernacular": "ትንቢተ ሚክያስ",
+    "title_english": "Micah",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 35,
+    "title_geez": "ሚክያስ"
+  },
+  {
+    "book_id": "joel",
+    "title_vernacular": "ትንቢተ ኢዮኤል",
+    "title_english": "Joel",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 36,
+    "title_geez": "ኢዮኤል"
+  },
+  {
+    "book_id": "obadiah",
+    "title_vernacular": "ትንቢተ አብድዩ",
+    "title_english": "Obadiah",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 37,
+    "title_geez": "አብድዩ"
+  },
+  {
+    "book_id": "jonah",
+    "title_vernacular": "ትንቢተ ዮናስ",
+    "title_english": "Jonah",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 38,
+    "title_geez": "ዮናስ"
+  },
+  {
+    "book_id": "nahum",
+    "title_vernacular": "ትንቢተ ናሆም",
+    "title_english": "Nahum",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 39,
+    "title_geez": "ናሆም"
+  },
+  {
+    "book_id": "habakkuk",
+    "title_vernacular": "ትንቢተ ዕንባቆም",
+    "title_english": "Habakkuk",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 40,
+    "title_geez": "ዕንባቆም"
+  },
+  {
+    "book_id": "zephaniah",
+    "title_vernacular": "ትንቢተ ሶፎንያስ",
+    "title_english": "Zephaniah",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 41,
+    "title_geez": "ሶፎንያስ"
+  },
+  {
+    "book_id": "haggai",
+    "title_vernacular": "ትንቢተ ሐጌ",
+    "title_english": "Haggai",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 42,
+    "title_geez": "ሐጌ"
+  },
+  {
+    "book_id": "zechariah",
+    "title_vernacular": "ትንቢተ ዘካርያስ",
+    "title_english": "Zechariah",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 43,
+    "title_geez": "ዘካርያስ"
+  },
+  {
+    "book_id": "malachi",
+    "title_vernacular": "ትንቢተ ሚልክያስ",
+    "title_english": "Malachi",
+    "testament": "Old Testament",
+    "canon_tier": "Narrow",
+    "display_order": 44,
+    "title_geez": "ሚልክያስ"
+  },
+  {
+    "book_id": "sirach",
+    "title_vernacular": "መጽሐፈ ሲራክ",
+    "title_english": "Book of Joshua the son of Sirac",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 45,
+    "title_geez": "ሲራክ"
+  },
+  {
+    "book_id": "joseph_ben_gurion",
+    "title_vernacular": "መጽሐፈ ዮሲጶስ",
+    "title_english": "The Book of Josephas the Son of Bengorion",
+    "testament": "Old Testament",
+    "canon_tier": "Broader",
+    "display_order": 46,
+    "title_geez": "ዮሲፎን"
+  },
+  {
+    "book_id": "matthew",
+    "title_vernacular": "ወንጌል ዘማቴዎስ",
+    "title_english": "Matthew",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 47,
+    "title_geez": "ማቴዎስ"
+  },
+  {
+    "book_id": "mark",
+    "title_vernacular": "ወንጌል ዘማርቆስ",
+    "title_english": "Mark",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 48,
+    "title_geez": "ማርቆስ"
+  },
+  {
+    "book_id": "luke",
+    "title_vernacular": "ወንጌል ዘሉቃስ",
+    "title_english": "Luke",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 49,
+    "title_geez": "ሉቃስ"
+  },
+  {
+    "book_id": "john",
+    "title_vernacular": "ወንጌል ዘዮሐንስ",
+    "title_english": "John",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 50,
+    "title_geez": "ዮሐንስ"
+  },
+  {
+    "book_id": "acts",
+    "title_vernacular": "ግብረ ሐዋርያት",
+    "title_english": "The Acts",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 51,
+    "title_geez": "ግብረ ሐዋርያት"
+  },
+  {
+    "book_id": "romans",
+    "title_vernacular": "ወደ ሮሜ ሰዎች",
+    "title_english": "Romans",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 52,
+    "title_geez": "ሮሜ"
+  },
+  {
+    "book_id": "1_corinthians",
+    "title_vernacular": "ወደ ቆሮንቶስ ሰዎች መጀመሪያ",
+    "title_english": "I Corinthians",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 53,
+    "title_geez": "ቆሮንቶስ ቀዳማዊ"
+  },
+  {
+    "book_id": "2_corinthians",
+    "title_vernacular": "ወደ ቆሮንቶስ ሰዎች ሁለተኛ",
+    "title_english": "II Corinthians",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 54,
+    "title_geez": "ቆሮንቶስ ካልአዊ"
+  },
+  {
+    "book_id": "galatians",
+    "title_vernacular": "ወደ ገላትያ ሰዎች",
+    "title_english": "Galatians",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 55,
+    "title_geez": "ገላትያ"
+  },
+  {
+    "book_id": "ephesians",
+    "title_vernacular": "ወደ ኤፌሶን ሰዎች",
+    "title_english": "Ephesians",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 56,
+    "title_geez": "ኤፌሶን"
+  },
+  {
+    "book_id": "philippians",
+    "title_vernacular": "ወደ ፊልጵስዩስ ሰዎች",
+    "title_english": "Philippians",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 57,
+    "title_geez": "ፊልጵስዩስ"
+  },
+  {
+    "book_id": "colossians",
+    "title_vernacular": "ወደ ቆላስይስ ሰዎች",
+    "title_english": "Colossians",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 58,
+    "title_geez": "ቆላስያስ"
+  },
+  {
+    "book_id": "1_thessalonians",
+    "title_vernacular": "ወደ ተሰሎንቄ ሰዎች መጀመሪያ",
+    "title_english": "I Thessalonians",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 59,
+    "title_geez": "ተሰሎንቄ ቀዳማዊ"
+  },
+  {
+    "book_id": "2_thessalonians",
+    "title_vernacular": "ወደ ተሰሎንቄ ሰዎች ሁለተኛ",
+    "title_english": "II Thessalonians",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 60,
+    "title_geez": "ተሰሎንቄ ካልአዊ"
+  },
+  {
+    "book_id": "1_timothy",
+    "title_vernacular": "ወደ ጢሞቴዎስ መጀመሪያ",
+    "title_english": "I Timothy",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 61,
+    "title_geez": "ጢሞቴዎስ ቀዳማዊ"
+  },
+  {
+    "book_id": "2_timothy",
+    "title_vernacular": "ወደ ጢሞቴዎስ ሁለተኛ",
+    "title_english": "II Timothy",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 62,
+    "title_geez": "ጢሞቴዎስ ካልአዊ"
+  },
+  {
+    "book_id": "titus",
+    "title_vernacular": "ወደ ቲቶ",
+    "title_english": "Titus",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 63,
+    "title_geez": "ቲቶ"
+  },
+  {
+    "book_id": "philemon",
+    "title_vernacular": "ወደ ፊልሞና",
+    "title_english": "Philemon",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 64,
+    "title_geez": "ፊልሞን"
+  },
+  {
+    "book_id": "hebrews",
+    "title_vernacular": "ወደ ዕብራውያን",
+    "title_english": "Hebrews",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 65,
+    "title_geez": "ዕብራውያን"
+  },
+  {
+    "book_id": "1_peter",
+    "title_vernacular": "መጽሐፈ ጴጥሮስ ቀዳማዊ",
+    "title_english": "I Peter",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 66,
+    "title_geez": "ጴጥሮስ ቀዳማዊ"
+  },
+  {
+    "book_id": "2_peter",
+    "title_vernacular": "መጽሐፈ ጴጥሮስ ካልአዊ",
+    "title_english": "II Peter",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 67,
+    "title_geez": "ጴጥሮስ ካልአዊ"
+  },
+  {
+    "book_id": "1_john",
+    "title_vernacular": "መጽሐፈ ዮሐንስ ቀዳማዊ",
+    "title_english": "I John",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 68,
+    "title_geez": "ዮሐንስ ቀዳማዊ"
+  },
+  {
+    "book_id": "2_john",
+    "title_vernacular": "መጽሐፈ ዮሐንስ ካልአዊ",
+    "title_english": "II John",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 69,
+    "title_geez": "ዮሐንስ ካልአዊ"
+  },
+  {
+    "book_id": "3_john",
+    "title_vernacular": "መጽሐፈ ዮሐንስ ሦልሳዊ",
+    "title_english": "III John",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 70,
+    "title_geez": "ዮሐንስ ሦልሳዊ"
+  },
+  {
+    "book_id": "james",
+    "title_vernacular": "መጽሐፈ ያዕቆብ",
+    "title_english": "James",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 71,
+    "title_geez": "ያዕቆብ"
+  },
+  {
+    "book_id": "jude",
+    "title_vernacular": "መጽሐፈ ይሁዳ",
+    "title_english": "Jude",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 72,
+    "title_geez": "ይሁዳ"
+  },
+  {
+    "book_id": "revelation",
+    "title_vernacular": "ራእየ ዮሐንስ",
+    "title_english": "Revelation",
+    "testament": "New Testament",
+    "canon_tier": "Narrow",
+    "display_order": 73,
+    "title_geez": "ራእየ ዮሐንስ"
+  },
+  {
+    "book_id": "serate_tsion",
+    "title_vernacular": "መጽሐፈ ሲኖዶስ",
+    "title_english": "Sirate Tsion (the book of order)",
+    "testament": "New Testament",
+    "canon_tier": "Broader",
+    "display_order": 74,
+    "title_geez": "ስራተ ፅዮን"
+  },
+  {
+    "book_id": "teezaz",
+    "title_vernacular": "መጽሐፈ ተዕዛዝ",
+    "title_english": "Tizaz (the book of Herald)",
+    "testament": "New Testament",
+    "canon_tier": "Broader",
+    "display_order": 75,
+    "title_geez": "ተዕዛዝ"
+  },
+  {
+    "book_id": "gitsew",
+    "title_vernacular": "መጽሐፈ ግጽወ",
+    "title_english": "Gitsew",
+    "testament": "New Testament",
+    "canon_tier": "Broader",
+    "display_order": 76,
+    "title_geez": "ግጽወ"
+  },
+  {
+    "book_id": "abtilis",
+    "title_vernacular": "መጽሐፈ አብቲሊስ",
+    "title_english": "Abtilis",
+    "testament": "New Testament",
+    "canon_tier": "Broader",
+    "display_order": 77,
+    "title_geez": "አብቲሊስ"
+  },
+  {
+    "book_id": "covenant_1",
+    "title_vernacular": "መጽሐፈ ኪዳን (ቀዳማዊ)",
+    "title_english": "The I book of Dominos",
+    "testament": "New Testament",
+    "canon_tier": "Broader",
+    "display_order": 78,
+    "title_geez": "መጽሐፈ ኪዳን ቀዳማዊ"
+  },
+  {
+    "book_id": "covenant_2",
+    "title_vernacular": "መጽሐፈ ኪዳን (ካልአዊ)",
+    "title_english": "The II book of Dominos",
+    "testament": "New Testament",
+    "canon_tier": "Broader",
+    "display_order": 79,
+    "title_geez": "መጽሐፈ ኪዳን ካልአዊ"
+  },
+  {
+    "book_id": "clement",
+    "title_vernacular": "መጽሐፈ ቀሌምንጦስ",
+    "title_english": "The book of Clement",
+    "testament": "New Testament",
+    "canon_tier": "Broader",
+    "display_order": 80,
+    "title_geez": "ቀሌምንጦስ"
+  },
+  {
+    "book_id": "didascalia",
+    "title_vernacular": "መጽሐፈ ዲድስቅልያ",
+    "title_english": "Didascalia",
+    "testament": "New Testament",
+    "canon_tier": "Broader",
+    "display_order": 81,
+    "title_geez": "ዲዳስቃሊያ"
+  }
+]
