@@ -11,6 +11,7 @@ export type TranslationKey =
   | `listen.${keyof TranslationDictionary['listen']}`
   | `calendar.${keyof TranslationDictionary['calendar']}`
   | `catalog.${keyof TranslationDictionary['catalog']}`
+  | `scripture.${keyof TranslationDictionary['scripture']}`
   | `settings.${keyof TranslationDictionary['settings']}`
   | `common.${keyof TranslationDictionary['common']}`
   | `greeting.${keyof TranslationDictionary['greeting']}`

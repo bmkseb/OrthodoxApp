@@ -27,6 +27,7 @@ import { learnText } from '@/lib/learn-i18n';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
 import { SectionHeader } from '@/components/ui/section-header';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import { Layout, Space } from '@/constants/theme';
 
@@ -38,7 +39,13 @@ export default function LearnScreen() {
   const { t, mode } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [topicFilter, setTopicFilter] = useState<LearnTopicFilter | null>(null);
+  const { recentSearches, addRecentSearch } = useRecentSearches('learn');
   const [featuredIndex] = useState(0);
+
+  const handleSearchSubmit = (term: string) => {
+    setSearchQuery(term);
+    void addRecentSearch(term);
+  };
 
   const featured = getFeatured(featuredIndex);
   const featuredTitle = learnText(featured.titleEn, featured.titleAm, mode);
@@ -81,7 +88,7 @@ export default function LearnScreen() {
   const showLibrary = !effectiveQuery;
 
   return (
-    <ScreenScrollView contentContainerStyle={styles.scroll}>
+    <ScreenScrollView>
       <PageHeader title="Learn" geez="ትምህርት" />
 
       <View style={styles.searchWrap}>
@@ -93,6 +100,8 @@ export default function LearnScreen() {
             setSearchQuery(text);
             if (text.trim()) setTopicFilter(null);
           }}
+          onSearchSubmit={handleSearchSubmit}
+          recentSearches={recentSearches}
         />
       </View>
 
@@ -185,7 +194,6 @@ export default function LearnScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: Layout.sectionContentBottom },
   searchWrap: { marginBottom: Space.s12 },
   filterWrap: { marginBottom: Layout.sectionHeaderBottom },
   sectionHeader: { marginBottom: Space.s12 },

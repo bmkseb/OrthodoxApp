@@ -10,6 +10,8 @@ type SearchBarProps = {
   placeholder?: string;
   value?: string;
   onChangeText?: (text: string) => void;
+  /** Called when user submits search or taps a recent chip. Use to persist recents. */
+  onSearchSubmit?: (term: string) => void;
   recentSearches?: string[];
   onRecentPress?: (term: string) => void;
   /** Override the placeholder text colour. Defaults to `Palette.muted`. */
@@ -20,17 +22,33 @@ export function SearchBar({
   placeholder = 'Search',
   value,
   onChangeText,
+  onSearchSubmit,
   recentSearches,
   onRecentPress,
   placeholderTextColor = Palette.muted,
 }: SearchBarProps) {
   const [internalValue, setInternalValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const query = value ?? internalValue;
-  const showRecent = recentSearches?.length && !query;
+  const showRecent = isFocused && Boolean(recentSearches?.length) && !query.trim();
+
+  const applyTerm = (text: string) => {
+    setInternalValue(text);
+    onChangeText?.(text);
+    onSearchSubmit?.(text);
+    onRecentPress?.(text);
+  };
 
   const handleChange = (text: string) => {
     setInternalValue(text);
     onChangeText?.(text);
+  };
+
+  const handleSubmit = () => {
+    const trimmed = query.trim();
+    if (trimmed) {
+      onSearchSubmit?.(trimmed);
+    }
   };
 
   return (
@@ -44,6 +62,9 @@ export function SearchBar({
           placeholderTextColor={placeholderTextColor}
           value={query}
           onChangeText={handleChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onSubmitEditing={handleSubmit}
           returnKeyType="search"
           accessibilityLabel={placeholder}
         />
@@ -60,10 +81,7 @@ export function SearchBar({
             <OrthodoxPressable
               key={term}
               style={styles.recentChip}
-              onPress={() => {
-                handleChange(term);
-                onRecentPress?.(term);
-              }}>
+              onPress={() => applyTerm(term)}>
               <ThemedText type="muted" style={styles.recentText}>
                 {term}
               </ThemedText>

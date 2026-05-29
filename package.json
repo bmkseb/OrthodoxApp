@@ -8,7 +8,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "ingest:extract": "python scripts/ingestion/extract_bible.py",
+    "ingest:books": "node scripts/ingestion/seed.mjs --books",
+    "ingest:seed": "node scripts/ingestion/seed.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -40,7 +43,8 @@
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.5.1"
+    "react-native-worklets": "0.5.1",
+    "@supabase/supabase-js": "^2.49.0"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",

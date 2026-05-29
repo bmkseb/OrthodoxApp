@@ -1,0 +1,33 @@
+{
+  "book_id": "genesis",
+  "chapters": {
+    "1": [
+      {
+        "verse": 1,
+        "text_english": "In the beginning God created the heaven and the earth.",
+        "text_amharic": "በመጀመሪያ ፈጣህኝ:: መሬትንና ሰማዩን ፈጠረ።",
+        "text_geez": "በመጀመሪያ ፈጣህኝ:: ፈጠረ ፡ ምድረ ፡ ወሰማየ ።"
+      },
+      {
+        "verse": 2,
+        "text_english": "And the earth was without form, and void; and darkness was upon the face of the deep.",
+        "text_amharic": "የምድሩም ገፅ ባዶ ነበርና አንዳችም አልነበረም። ጨለማም በውኃ ፊት ነበረ።",
+        "text_geez": "ይከውን ፡ ደቀቀ ፡ ምድረ ፡ ወአልቦ ፡ ጌጦ ፡ ወጽልኢ ፡ ብረቱ ፡ ወመንፈስ ፡ ቅዱስ ፡ ይሠርሕ ፡ ላዕለ ፡ ማይ ።"
+      },
+      {
+        "verse": 3,
+        "text_english": "And God said, Let there be light: and there was light.",
+        "text_amharic": "እግዚአብሔርም “ብርሃን ይሁን” አለ። ብርሃንም ሆነ።",
+        "text_geez": "ወይብል ፡ እግዚአብሔር ፡ ይብራር ፡ ብርሃን ፡ ወኀበረ ፡ ብርሃን ።"
+      }
+    ],
+    "2": [
+      {
+        "verse": 1,
+        "text_english": "Thus the heavens and the earth were finished, and all the host of them.",
+        "text_amharic": "ሰማይና ምድርም እና ሁሉም ዘራፋቸው ተፈጸሙ።",
+        "text_geez": "ወተፈጸሙ ፡ ሰማያት ፡ ወምድር ፡ ወኵሉ ፡ ጕሥሐቶሙ ።"
+      }
+    ]
+  }
+}

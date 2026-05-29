@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ExploreAtmosphere } from '@/components/explore/explore-atmosphere';
@@ -19,6 +19,7 @@ import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
 import { SacredImagery } from '@/constants/explore-content';
 import { Layout, Palette, Space, Typography } from '@/constants/theme';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 
 const MUTED_GOLD = '#8A8070';
@@ -42,12 +43,42 @@ const HYMNS = [
 
 export default function ExploreScreen() {
   const { t, ethiopicStyle, mode } = useTranslation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const { recentSearches, addRecentSearch } = useRecentSearches('explore');
   const amharicText = mode === 'am' ? ethiopicStyle : undefined;
+
+  const q = searchQuery.trim().toLowerCase();
+  const hasSearch = q.length > 0;
+  const matches = (text: string) => !hasSearch || text.toLowerCase().includes(q);
+
+  const filteredHymns = useMemo(() => {
+    if (!hasSearch) return HYMNS;
+    return HYMNS.filter((h) => matches(h.title) || matches(h.artist));
+  }, [hasSearch, q]);
+
+  const filteredPrayers = useMemo(() => {
+    if (!hasSearch) return PRAYERS;
+    return PRAYERS.filter((p) => matches(t(`content.${p.key}`)));
+  }, [hasSearch, q, t]);
+
+  const filteredContinue = useMemo(() => {
+    if (!hasSearch) return CONTINUE_BOOKS;
+    return CONTINUE_BOOKS.filter((b) => {
+      const title = t(`content.${b.titleKey}`);
+      const sub = t(`content.${b.subKey}`);
+      return matches(title) || matches(sub);
+    });
+  }, [hasSearch, q, t]);
+
+  const handleSearchSubmit = (term: string) => {
+    setSearchQuery(term);
+    void addRecentSearch(term);
+  };
 
   return (
     <View style={styles.screen}>
       <ExploreAtmosphere />
-      <ScreenScrollView hideAtmosphere contentContainerStyle={styles.scroll} style={styles.scrollView}>
+      <ScreenScrollView hideAtmosphere style={styles.scrollView}>
         <PageHeader title="Explore" />
 
         {/* Search */}
@@ -55,6 +86,10 @@ export default function ExploreScreen() {
           <SearchBar
             placeholder={t('common.searchScriptures')}
             placeholderTextColor={MUTED_GOLD}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSearchSubmit={handleSearchSubmit}
+            recentSearches={recentSearches}
           />
         </View>
 
@@ -100,7 +135,7 @@ export default function ExploreScreen() {
         {/* Prayer */}
         <ExploreSectionFrame headerKey="prayer" icon="sparkle">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peekCarousel}>
-            {PRAYERS.map((prayer) => (
+            {filteredPrayers.map((prayer) => (
               <PrayerManuscriptCard
                 key={prayer.id}
                 title={t(`content.${prayer.key}`)}
@@ -115,7 +150,7 @@ export default function ExploreScreen() {
         {/* Hymns */}
         <ExploreSectionFrame headerKey="orthodoxHymns" icon="music">
           <View style={styles.hymnsSurface}>
-            {HYMNS.map((hymn) => (
+            {filteredHymns.map((hymn) => (
               <MediaListItem key={hymn.id} title={hymn.title} subtitle={hymn.artist} image={{ uri: hymn.image }} />
             ))}
           </View>
@@ -126,7 +161,7 @@ export default function ExploreScreen() {
         {/* Continue reading */}
         <ExploreSectionFrame title={t('explore.continueReading')} icon="book">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peekCarousel}>
-            {CONTINUE_BOOKS.map((book) => (
+            {filteredContinue.map((book) => (
               <ManuscriptBookCard
                 key={book.id}
                 title={t(`content.${book.titleKey}`)}
@@ -150,9 +185,6 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     backgroundColor: 'transparent',
-  },
-  scroll: {
-    paddingBottom: Layout.sectionContentBottom,
   },
   block: { marginBottom: Space.s12 },
   blockTight: { marginBottom: Space.s8 },

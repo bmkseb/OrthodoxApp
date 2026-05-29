@@ -31,7 +31,7 @@ export default function ReadScreen() {
   const featuredWidth = width - Layout.pagePadding * 2;
 
   return (
-    <ScreenScrollView contentContainerStyle={styles.scroll}>
+    <ScreenScrollView>
       <PageHeader title="Read" geez="መጽሐፍ" />
 
       <View style={styles.section}>
@@ -93,7 +93,6 @@ export default function ReadScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: Layout.sectionContentBottom },
   section: {
     marginBottom: Layout.sectionContentBottom,
   },

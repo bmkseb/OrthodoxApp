@@ -17,6 +17,7 @@ import { MediaListItem } from '@/components/ui/media-list-item';
 import { SearchBar } from '@/components/ui/search-bar';
 import { useAudioPlayer, type AudioTrack } from '@/contexts/audio-player-context';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import { resolvePlayerTrackCopy } from '@/lib/audio-track-display';
 import { SacredImagery } from '@/constants/sacred-imagery';
@@ -170,6 +171,8 @@ function SegmentedTabs({
 export default function ListenScreen() {
   const { t, mode } = useTranslation();
   const [activeTab, setActiveTab] = useState<ListenTab>('hymns');
+  const [searchQuery, setSearchQuery] = useState('');
+  const { recentSearches, addRecentSearch } = useRecentSearches('listen');
   const { playTrack, isPlaying } = useAudioPlayer();
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = useFloatingBottomInset();
@@ -225,6 +228,21 @@ export default function ListenScreen() {
     [content.featured, t]
   );
 
+  const q = searchQuery.trim().toLowerCase();
+  const filteredTracks = useMemo(() => {
+    if (!q) return content.tracks;
+    return content.tracks.filter((track) => {
+      const title = resolveLabel(t, track.titleKey, track.title);
+      const artist = resolveLabel(t, track.artistKey, track.artist);
+      return title.toLowerCase().includes(q) || artist.toLowerCase().includes(q);
+    });
+  }, [content.tracks, q, t]);
+
+  const handleSearchSubmit = (term: string) => {
+    setSearchQuery(term);
+    void addRecentSearch(term);
+  };
+
   return (
     <ThemedView style={styles.root}>
       <SacredAtmosphere />
@@ -244,6 +262,10 @@ export default function ListenScreen() {
           <SearchBar
             placeholder={t('listen.searchPlaceholder')}
             placeholderTextColor={MUTED_GOLD}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSearchSubmit={handleSearchSubmit}
+            recentSearches={recentSearches}
           />
         </View>
         <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
@@ -261,7 +283,7 @@ export default function ListenScreen() {
           <BilingualHeader amharic="ተወዳጅ" english="Featured" />
         </View>
         <View style={styles.trackList}>
-          {content.tracks.map((track) => (
+          {filteredTracks.map((track) => (
             <MediaListItem
               key={track.id}
               title={resolveLabel(t, track.titleKey, track.title)}

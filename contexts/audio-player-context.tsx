@@ -43,6 +43,7 @@ type AudioPlayerContextValue = {
   previousTrack: () => void;
   seekTo: (progress: number) => void;
   skipSeconds: (delta: number) => void;
+  dismissMiniPlayer: () => void;
   /** @deprecated use playPause */
   togglePlay: () => void;
   /** @deprecated use playPause */
@@ -111,6 +112,19 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     });
   }, [expandProgress, finishClose]);
 
+  const dismissMiniPlayer = useCallback(() => {
+    if (isFullPlayerOpen) {
+      expandProgress.value = withSpring(0, COLLAPSE_SPRING, (finished) => {
+        if (finished) runOnJS(finishClose)();
+      });
+    }
+    setIsPlaying(false);
+    setCurrentTrack(null);
+    setQueue([]);
+    setQueueIndex(0);
+    setProgress(0);
+  }, [isFullPlayerOpen, expandProgress, finishClose]);
+
   const playPause = useCallback(() => {
     setIsPlaying((p) => !p);
   }, []);
@@ -171,6 +185,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       playTrack,
       openFullPlayer,
       closeFullPlayer,
+      dismissMiniPlayer,
       playPause,
       nextTrack,
       previousTrack,
@@ -191,6 +206,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       playTrack,
       openFullPlayer,
       closeFullPlayer,
+      dismissMiniPlayer,
       playPause,
       nextTrack,
       previousTrack,
