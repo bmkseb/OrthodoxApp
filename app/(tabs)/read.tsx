@@ -2,17 +2,15 @@ import React from 'react';
 import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { Icon } from '@/components/Icon';
+import { PageHeader } from '@/components/orthodox/PageHeader';
 import { EditorialFeaturedCard } from '@/components/sacred/editorial-featured-card';
 import { ManuscriptBookCard } from '@/components/sacred/manuscript-book-card';
 import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
-import { SacredPageHeader } from '@/components/ui/bilingual-header';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SectionHeader } from '@/components/ui/section-header';
-import { SettingsNavButton } from '@/components/ui/settings-nav-button';
 import { useTranslation } from '@/hooks/use-translation';
 import { SacredImagery } from '@/constants/sacred-imagery';
-import { Layout, Space } from '@/constants/theme';
+import { Layout } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -34,15 +32,7 @@ export default function ReadScreen() {
 
   return (
     <ScreenScrollView contentContainerStyle={styles.scroll}>
-      <View style={styles.topRow}>
-        <View style={styles.pageTitleRow}>
-          <View style={styles.pageIconRail}>
-            <Icon name="book" size={20} />
-          </View>
-          <SacredPageHeader headerKey="read" />
-        </View>
-        <SettingsNavButton />
-      </View>
+      <PageHeader title="Read" geez="መጽሐፍ" />
 
       <View style={styles.section}>
         <SectionHeader headerKey="continueReading" icon="book" />
@@ -104,25 +94,6 @@ export default function ReadScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingBottom: Layout.sectionContentBottom },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: Layout.sectionHeaderBottom,
-    gap: Space.s8,
-  },
-  pageTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    flex: 1,
-    minWidth: 0,
-  },
-  pageIconRail: {
-    width: Layout.iconRailWidth,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    paddingBottom: 2,
-  },
   section: {
     marginBottom: Layout.sectionContentBottom,
   },

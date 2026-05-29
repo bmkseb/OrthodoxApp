@@ -50,7 +50,9 @@ export function getTabLabel(key: TabKey, mode: LanguageMode): string {
 export function normalizeStoredMode(stored: string | null): LanguageMode {
   if (stored === 'am' || stored === 'bilingual' || stored === 'en') return stored;
   if (stored === 'liturgical') return 'en';
-  return 'en';
+  // Default to bilingual so headers show both Amharic + English out of the box;
+  // users can switch via the globe icon → language sheet.
+  return 'bilingual';
 }
 
 function resolveHeaderPath(key: HeaderKey) {

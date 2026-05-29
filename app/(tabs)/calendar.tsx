@@ -4,12 +4,10 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CalendarMonthGrid } from '@/components/calendar/calendar-month-grid';
 import { SaintDetailSheet } from '@/components/calendar/saint-detail-sheet';
 import { UpcomingFeasts } from '@/components/calendar/upcoming-feasts';
-import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
-import { BilingualHeader } from '@/components/ui/bilingual-header';
+import { PageHeader } from '@/components/orthodox/PageHeader';
 import { SearchBar } from '@/components/ui/search-bar';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
-import { SettingsNavButton } from '@/components/ui/settings-nav-button';
 import { useTranslation } from '@/hooks/use-translation';
 import type { TranslationKey } from '@/lib/translations';
 import {
@@ -88,13 +86,7 @@ export default function CalendarScreen() {
     <View style={styles.screen}>
       <ScreenScrollView>
         <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <View style={styles.pageTitleRow}>
-              <Icon name="calendar" size={22} />
-              <BilingualHeader headerKey="calendar" variant="page" />
-            </View>
-            <SettingsNavButton />
-          </View>
+          <PageHeader title="Calendar" geez="ቀን" />
 
           <View style={styles.searchWrap}>
             <SearchBar placeholder={t('calendar.searchPlaceholder')} recentSearches={['Feast', 'Lent']} />
@@ -173,13 +165,6 @@ function LegendItem({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingBottom: Layout.sectionContentBottom },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: Layout.sectionHeaderBottom,
-  },
-  pageTitleRow: { flexDirection: 'row', alignItems: 'flex-end', flex: 1, gap: 8 },
   searchWrap: { marginBottom: Layout.sectionHeaderBottom },
   filterScroll: { marginBottom: Layout.sectionHeaderBottom },
   filterRow: { gap: 10, paddingRight: Layout.pagePadding },

@@ -1,12 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 
-import { Icon } from '@/components/Icon';
 import { LearnCollectionCard } from '@/components/learn/learn-collection-card';
 import { LearnFeaturedHero } from '@/components/learn/learn-featured-hero';
 import { LearnRecentStrip } from '@/components/learn/learn-recent-strip';
 import { LearnSearchResults } from '@/components/learn/learn-search-results';
 import { LearnTeachingCard } from '@/components/learn/learn-teaching-card';
+import {
+  LearnTopicFilters,
+  type LearnTopicFilter,
+} from '@/components/learn/learn-topic-filters';
+import { BilingualHeader } from '@/components/orthodox/BilingualHeader';
+import { PageHeader } from '@/components/orthodox/PageHeader';
 import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
 import {
   LEARN_COLLECTIONS,
@@ -19,29 +24,33 @@ import {
   searchLearnLibrary,
 } from '@/data/learnLibrary';
 import { learnText } from '@/lib/learn-i18n';
-import { SacredPageHeader } from '@/components/ui/bilingual-header';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
 import { SectionHeader } from '@/components/ui/section-header';
-import { SettingsNavButton } from '@/components/ui/settings-nav-button';
-import { ThemedText } from '@/components/themed-text';
 import { useTranslation } from '@/hooks/use-translation';
-import { Layout, Space, Typography } from '@/constants/theme';
+import { Layout, Space } from '@/constants/theme';
+
+const MUTED_GOLD = '#8A8070';
 
 const { width } = Dimensions.get('window');
 
 export default function LearnScreen() {
   const { t, mode } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [topicFilter, setTopicFilter] = useState<LearnTopicFilter | null>(null);
   const [featuredIndex] = useState(0);
 
   const featured = getFeatured(featuredIndex);
   const featuredTitle = learnText(featured.titleEn, featured.titleAm, mode);
   const featuredCategory = learnText(featured.categoryEn, featured.categoryAm, mode);
 
+  // The free-text search wins; an active topic filter acts as a quick-pick
+  // for the same search input, so changing one clears the other.
+  const effectiveQuery = searchQuery.trim() || topicFilter || '';
+
   const searchGroups = useMemo(
-    () => (searchQuery.trim() ? searchLearnLibrary(searchQuery) : []),
-    [searchQuery]
+    () => (effectiveQuery ? searchLearnLibrary(effectiveQuery) : []),
+    [effectiveQuery]
   );
 
   const recentItems = useMemo(
@@ -69,44 +78,54 @@ export default function LearnScreen() {
     []
   );
 
-  const showLibrary = !searchQuery.trim();
+  const showLibrary = !effectiveQuery;
 
   return (
     <ScreenScrollView contentContainerStyle={styles.scroll}>
-      <View style={styles.pageHeader}>
-        <View style={styles.pageTitleRow}>
-          <View style={styles.pageIconRail}>
-            <Icon name="brain" size={20} />
-          </View>
-          <SacredPageHeader headerKey="learn" />
-        </View>
-        <SettingsNavButton />
-      </View>
-      <ThemedText type="muted" style={styles.pageSubtitle}>
-        {t('learn.librarySubtitle')}
-      </ThemedText>
+      <PageHeader title="Learn" geez="ትምህርት" />
 
       <View style={styles.searchWrap}>
         <SearchBar
           placeholder={t('learn.searchLearn')}
+          placeholderTextColor={MUTED_GOLD}
           value={searchQuery}
-          onChangeText={setSearchQuery}
-          recentSearches={['Trinity', 'Eucharist', 'Mary', 'Cross', 'Fasting']}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+            if (text.trim()) setTopicFilter(null);
+          }}
+        />
+      </View>
+
+      <View style={styles.filterWrap}>
+        <LearnTopicFilters
+          activeFilter={topicFilter}
+          onChange={(filter) => {
+            setTopicFilter(filter);
+            if (filter) setSearchQuery('');
+          }}
         />
       </View>
 
       {showLibrary ? (
         <>
-          <SectionHeader title={t('learn.featuredTopic')} icon="sparkle" />
+          <View style={styles.sectionHeader}>
+            <BilingualHeader amharic="ዋና" english="Featured Teaching" />
+          </View>
           <LearnFeaturedHero
             title={featuredTitle}
             category={featuredCategory}
             readMin={featured.readMin}
             imageUri={featured.imageUri}
+            // TODO: Replace with properly licensed Ethiopian Orthodox imagery
+            // (authentic ሥላሴ / Trinity iconography, Ethiopian liturgical art).
+            // The Trinity card was previously falling back to an Italian coastal village stock photo.
+            placeholder={featured.id === 'trinity' ? 'trinity' : undefined}
             style={{ width: width - Layout.pagePadding * 2, marginBottom: Layout.sectionHeaderBottom }}
           />
 
-          <SectionHeader title={t('learn.sacredCollections')} icon="pillar" />
+          <View style={styles.sectionHeader}>
+            <BilingualHeader amharic="ስብስብ" english="Sacred Collections" />
+          </View>
           {LEARN_COLLECTIONS.map((collection, index) => (
             <LearnCollectionCard
               key={collection.id}
@@ -167,32 +186,8 @@ export default function LearnScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingBottom: Layout.sectionContentBottom },
-  pageHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: Space.s4,
-    gap: Space.s8,
-  },
-  pageTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    flex: 1,
-    minWidth: 0,
-  },
-  pageIconRail: {
-    width: Layout.iconRailWidth,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    paddingBottom: 2,
-  },
-  pageSubtitle: {
-    marginBottom: Layout.headerContentGap,
-    marginLeft: Layout.iconRailWidth,
-    ...Typography.body,
-    fontSize: 13,
-    color: undefined,
-  },
-  searchWrap: { marginBottom: Layout.sectionHeaderBottom },
+  searchWrap: { marginBottom: Space.s12 },
+  filterWrap: { marginBottom: Layout.sectionHeaderBottom },
+  sectionHeader: { marginBottom: Space.s12 },
   savedList: { gap: 0 },
 });

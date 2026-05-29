@@ -1,30 +1,34 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Icon } from '@/components/Icon';
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { BilingualHeader } from '@/components/orthodox/BilingualHeader';
+import { PageHeader } from '@/components/orthodox/PageHeader';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FeaturedHeroCard } from '@/components/ui/featured-hero-card';
 import { MediaListItem } from '@/components/ui/media-list-item';
 import { SearchBar } from '@/components/ui/search-bar';
-import { SacredPageHeader } from '@/components/ui/bilingual-header';
-import { SectionHeader } from '@/components/ui/section-header';
-import { SettingsNavButton } from '@/components/ui/settings-nav-button';
 import { useAudioPlayer, type AudioTrack } from '@/contexts/audio-player-context';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
 import { useTranslation } from '@/hooks/use-translation';
 import { resolvePlayerTrackCopy } from '@/lib/audio-track-display';
 import { SacredImagery } from '@/constants/sacred-imagery';
 import { translate, type LanguageMode, type TranslationKey } from '@/lib/translations';
-import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
+import { Layout, Palette, Space } from '@/constants/theme';
 
 type ListenTab = 'hymns' | 'sermons' | 'melodies';
 const TAB_KEYS: ListenTab[] = ['hymns', 'sermons', 'melodies'];
-const RECENT_SEARCHES = ['Helena Alemu', 'Repentance', 'Holy Holy'];
+// Muted gold used for the search placeholder per design spec.
+const MUTED_GOLD = '#8A8070';
+// 200ms-feel spring used by the sliding segmented-tab pill.
+const PILL_SPRING = { damping: 18, stiffness: 240, mass: 0.6 } as const;
 
 type Track = {
   id: string;
@@ -91,34 +95,75 @@ function getCategoryLabel(key: ListenTab, t: (k: TranslationKey) => string, mode
   return translate('listen.melodies', 'en');
 }
 
-function SegmentedTabs({ activeTab, onChange }: { activeTab: ListenTab; onChange: (t: ListenTab) => void }) {
+type TabLayouts = Partial<Record<ListenTab, { x: number; width: number }>>;
+
+function SegmentedTabs({
+  activeTab,
+  onChange,
+}: {
+  activeTab: ListenTab;
+  onChange: (t: ListenTab) => void;
+}) {
   const { t, mode } = useTranslation();
+  const [layouts, setLayouts] = useState<TabLayouts>({});
+
+  const pillX = useSharedValue(0);
+  const pillWidth = useSharedValue(0);
+  const pillOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    const layout = layouts[activeTab];
+    if (!layout) return;
+    if (pillOpacity.value === 0) {
+      // First measurement — snap into place, then fade in so the pill never
+      // appears to "fly in" from the origin on initial mount.
+      pillX.value = layout.x;
+      pillWidth.value = layout.width;
+      pillOpacity.value = withSpring(1, PILL_SPRING);
+    } else {
+      pillX.value = withSpring(layout.x, PILL_SPRING);
+      pillWidth.value = withSpring(layout.width, PILL_SPRING);
+    }
+  }, [activeTab, layouts, pillOpacity, pillX, pillWidth]);
+
+  const handleLayout = useCallback((key: ListenTab, e: LayoutChangeEvent) => {
+    const { x, width } = e.nativeEvent.layout;
+    setLayouts((prev) => {
+      const existing = prev[key];
+      if (existing && existing.x === x && existing.width === width) return prev;
+      return { ...prev, [key]: { x, width } };
+    });
+  }, []);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: pillX.value }],
+    width: pillWidth.value,
+    opacity: pillOpacity.value,
+  }));
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.segmentScroll}
-      style={styles.segmentScrollView}>
+    <View style={styles.segmentContainer}>
+      <Animated.View style={[styles.segmentPill, pillStyle]} pointerEvents="none" />
       {TAB_KEYS.map((key) => {
         const isActive = activeTab === key;
-        const isMelodies = key === 'melodies';
         return (
-          <OrthodoxPressable
+          <Pressable
             key={key}
-            style={[
-              styles.segmentPill,
-              isMelodies && styles.segmentPillWide,
-              isActive ? styles.segmentPillActive : styles.segmentPillInactive,
-            ]}
-            onPress={() => onChange(key)}>
-            <Text style={[styles.segmentLabel, isActive ? styles.segmentLabelActive : styles.segmentLabelInactive]}>
+            onLayout={(e) => handleLayout(key, e)}
+            onPress={() => onChange(key)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
+            style={styles.segmentTab}>
+            <Text
+              style={[styles.segmentLabel, isActive ? styles.segmentLabelActive : styles.segmentLabelInactive]}
+              numberOfLines={1}
+              allowFontScaling={false}>
               {getListenTabLabel(t, mode, key)}
             </Text>
-          </OrthodoxPressable>
+          </Pressable>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -194,15 +239,12 @@ export default function ListenScreen() {
             paddingBottom: scrollBottomPadding,
           },
         ]}>
-        <View style={styles.titleRow}>
-          <View style={styles.pageTitleRow}>
-            <Icon name="music" size={20} color={Palette.muted} />
-            <SacredPageHeader headerKey="listen" />
-          </View>
-          <SettingsNavButton />
-        </View>
+        <PageHeader title="Listen" geez="መዝሙር" />
         <View style={styles.searchWrap}>
-          <SearchBar placeholder={t('listen.searchPlaceholder')} recentSearches={RECENT_SEARCHES} />
+          <SearchBar
+            placeholder={t('listen.searchPlaceholder')}
+            placeholderTextColor={MUTED_GOLD}
+          />
         </View>
         <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
         <FeaturedHeroCard
@@ -210,8 +252,14 @@ export default function ListenScreen() {
           subtitle={resolveLabel(t, content.featured.subtitleKey, content.featured.subtitle)}
           imageSource={{ uri: content.featured.image }}
           isPlayingWarm={isPlaying}
+          // TODO: Replace with properly licensed Ethiopian Orthodox imagery
+          // (Lalibela rock-hewn churches, Yared chant manuscripts, debtera with sistrum).
+          // The Yared melodies card was previously falling back to a Taj Mahal stock photo.
+          placeholder={activeTab === 'melodies' ? 'liturgy' : undefined}
         />
-        <SectionHeader headerKey="featured" icon={content.sectionIcon} />
+        <View style={styles.featuredHeader}>
+          <BilingualHeader amharic="ተወዳጅ" english="Featured" />
+        </View>
         <View style={styles.trackList}>
           {content.tracks.map((track) => (
             <MediaListItem
@@ -232,49 +280,41 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.background },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: Layout.pagePadding },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: Layout.sectionHeaderBottom,
-  },
-  pageTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    flex: 1,
-    minWidth: 0,
-    gap: Space.s8,
-  },
   searchWrap: { marginBottom: Space.s12 },
-  segmentScrollView: { marginBottom: Space.s12 },
-  segmentScroll: { gap: Space.s8, paddingRight: Space.s8 },
-  segmentPill: {
-    borderRadius: BorderRadius.full,
-    paddingVertical: Space.s8,
-    paddingHorizontal: Space.s16,
+  segmentContainer: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    backgroundColor: '#1A1815',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: Space.s16,
+    position: 'relative',
+  },
+  segmentTab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'transparent',
-    minWidth: 88,
+    justifyContent: 'center',
+    zIndex: 2,
   },
-  segmentPillWide: {
-    minWidth: 176,
-    paddingHorizontal: Space.s16,
-  },
-  segmentPillActive: {
-    backgroundColor: Palette.gold,
-    borderColor: 'rgba(201, 147, 58, 0.32)',
-  },
-  segmentPillInactive: {
-    backgroundColor: Palette.surfaceWarm,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+  segmentPill: {
+    position: 'absolute',
+    top: 4,
+    bottom: 4,
+    left: 0,
+    borderRadius: 8,
+    backgroundColor: '#C9933A',
+    zIndex: 1,
   },
   segmentLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
     letterSpacing: 0.1,
   },
-  segmentLabelActive: { color: Palette.background },
-  segmentLabelInactive: { color: Palette.muted },
+  segmentLabelActive: { color: '#000000', fontWeight: '600' },
+  segmentLabelInactive: { color: MUTED_GOLD, fontWeight: '500' },
+  featuredHeader: {
+    marginBottom: Space.s8,
+  },
   trackList: { paddingBottom: Space.s4 },
 });

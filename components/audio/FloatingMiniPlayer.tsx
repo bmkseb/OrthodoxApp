@@ -118,6 +118,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.08)',
+    // 1px gold hairline at the top edge to visually separate the player from
+    // the page beneath it (30% opacity per spec).
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(201, 147, 58, 0.3)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',

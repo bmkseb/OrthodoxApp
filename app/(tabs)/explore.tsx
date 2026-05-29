@@ -1,32 +1,27 @@
 import React from 'react';
-import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { DailyRhythmRow } from '@/components/explore/daily-rhythm-row';
 import { ExploreAtmosphere } from '@/components/explore/explore-atmosphere';
 import { ExploreQuickChips } from '@/components/explore/explore-quick-chips';
 import { ExploreSectionFrame } from '@/components/explore/explore-section-frame';
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { TodaysDevotionGrid } from '@/components/explore/todays-devotion-grid';
+import { TodaysGospelCard } from '@/components/explore/todays-gospel-card';
+import { BilingualHeader } from '@/components/orthodox/BilingualHeader';
+import { PageHeader } from '@/components/orthodox/PageHeader';
 import { DevotionalProgressCard } from '@/components/sacred/devotional-progress-card';
 import { ManuscriptBookCard } from '@/components/sacred/manuscript-book-card';
 import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
-import { SacredReadingHeroCard } from '@/components/sacred/sacred-reading-hero-card';
 import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
 import { PrayerManuscriptCard } from '@/components/sacred/prayer-manuscript-card';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { MediaListItem } from '@/components/ui/media-list-item';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
-import { SacredPageHeader } from '@/components/ui/bilingual-header';
-import { SettingsNavButton } from '@/components/ui/settings-nav-button';
 import { SacredImagery } from '@/constants/explore-content';
 import { Layout, Palette, Space, Typography } from '@/constants/theme';
 import { useTranslation } from '@/hooks/use-translation';
-import { useThemeColor } from '@/hooks/use-theme-color';
 
-const { width } = Dimensions.get('window');
-const PEEK_WIDTH = width * 0.78;
+const MUTED_GOLD = '#8A8070';
 
 const CONTINUE_BOOKS = [
   { id: '1', titleKey: 'horologium' as const, subKey: 'horologiumSub' as const, image: SacredImagery.continueHorologium, progress: 0.35 },
@@ -45,50 +40,25 @@ const HYMNS = [
   { id: '2', title: 'Your Graciousness has Sustained Me', artist: 'Various Artists', image: SacredImagery.prayerMary },
 ];
 
-function ProfileAvatar({ initial, accentColor }: { initial: string; accentColor: string }) {
-  return (
-    <View style={styles.avatarRing}>
-      <ThemedView variant="card" style={styles.avatar}>
-        <ThemedText style={[styles.avatarText, { color: accentColor }]}>{initial}</ThemedText>
-      </ThemedView>
-    </View>
-  );
-}
-
 export default function ExploreScreen() {
   const { t, ethiopicStyle, mode } = useTranslation();
   const amharicText = mode === 'am' ? ethiopicStyle : undefined;
-  const iconColor = useThemeColor({}, 'icon');
-  const accentColor = useThemeColor({}, 'tint');
-  // Restrained meta: max 2-3 tags only per spec
-  const readingMeta = [t('explore.dailyGospel'), t('explore.bookMatthew'), t('explore.minRead')];
 
   return (
     <View style={styles.screen}>
       <ExploreAtmosphere />
       <ScreenScrollView hideAtmosphere contentContainerStyle={styles.scroll} style={styles.scrollView}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.pageTitleWrap}>
-            <SacredPageHeader headerKey="explore" />
-          </View>
-          <View style={styles.headerActions}>
-            <OrthodoxPressable accessibilityLabel={t('settings.notifications')} accessibilityRole="button">
-              <IconSymbol name="bell" size={20} color={iconColor} />
-            </OrthodoxPressable>
-            <SettingsNavButton color={iconColor} />
-            <OrthodoxPressable accessibilityLabel={t('settings.profile')} accessibilityRole="button">
-              <ProfileAvatar initial="B" accentColor={accentColor} />
-            </OrthodoxPressable>
-          </View>
-        </View>
+        <PageHeader title="Explore" />
 
         {/* Search */}
         <View style={styles.block}>
-          <SearchBar placeholder={t('common.searchScriptures')} recentSearches={['Matthew', 'Psalms']} />
+          <SearchBar
+            placeholder={t('common.searchScriptures')}
+            placeholderTextColor={MUTED_GOLD}
+          />
         </View>
 
-        {/* Quick access */}
+        {/* Filter pills (Daily Reading / Prayer / Hymns) */}
         <View style={styles.blockTight}>
           <ExploreQuickChips />
         </View>
@@ -100,51 +70,30 @@ export default function ExploreScreen() {
         </View>
 
         {/* Devotional streak */}
-        <View style={styles.blockTight}>
+        <View style={styles.blockMedium}>
           <DevotionalProgressCard streakDays={5} subtitle={t('common.devotionalRhythm')} />
         </View>
 
-        {/* Daily rhythm */}
-        <View style={styles.blockMedium}>
-          <DailyRhythmRow />
+        {/* "ቃል | Logos" — single focused reading for today */}
+        <View style={styles.todaysBlock}>
+          <BilingualHeader amharic="ቃል" english="Logos" />
+          <Text style={styles.logosSubtitle} allowFontScaling={false}>
+            The Word for today
+          </Text>
+          <TodaysGospelCard
+            title="Book of Matthew"
+            subtitle="Chapter 7-10"
+            chipLabel={t('explore.dailyGospel').toUpperCase()}
+            minutesLabel="12 MIN"
+            progress={0.4}
+            imageUri={SacredImagery.readingHero}
+          />
         </View>
 
-        <SacredSectionDivider />
-
-        {/* Today's reading — visual centerpiece */}
-        <ExploreSectionFrame headerKey="todaysReading" icon="book">
-          <SacredReadingHeroCard
-            featured
-            title={t('content.matthew')}
-            labelCapsule={t('explore.dailyGospel')}
-            category={t('explore.bookMatthew')}
-            imageUri={SacredImagery.readingHero}
-            progress={0.4}
-            metaLabels={readingMeta}
-            style={styles.featuredHero}
-          />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            decelerationRate="fast"
-            snapToInterval={PEEK_WIDTH + Layout.cardGap}
-            contentContainerStyle={styles.peekCarousel}>
-            <SacredReadingHeroCard
-              compact
-              title={t('content.john')}
-              imageUri={SacredImagery.readingJohn}
-              progress={0.12}
-              style={{ width: PEEK_WIDTH }}
-            />
-            <SacredReadingHeroCard
-              compact
-              title={t('content.psalms')}
-              imageUri={SacredImagery.readingPsalms}
-              progress={0.08}
-              style={{ width: PEEK_WIDTH }}
-            />
-          </ScrollView>
-        </ExploreSectionFrame>
+        {/* "ቅዱስ | Today's Devotion" — three-card row (saint / lectionary / hymn) */}
+        <View style={styles.devotionBlock}>
+          <TodaysDevotionGrid />
+        </View>
 
         <SacredSectionDivider />
 
@@ -205,18 +154,9 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: Layout.sectionContentBottom,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: Space.s8,
-    marginBottom: Space.s12,
-  },
-  pageTitleWrap: { flex: 1, minWidth: 0 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Space.s8 },
   block: { marginBottom: Space.s12 },
   blockTight: { marginBottom: Space.s8 },
-  blockMedium: { marginBottom: Space.s12 },
+  blockMedium: { marginBottom: Space.s16 },
   greeting: {
     ...Typography.cardTitle,
     color: Palette.text,
@@ -227,7 +167,20 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: Space.s4,
   },
-  featuredHero: { marginBottom: Space.s12 },
+  todaysBlock: {
+    marginBottom: Layout.sectionContentBottom,
+  },
+  devotionBlock: {
+    marginBottom: Layout.sectionContentBottom,
+  },
+  logosSubtitle: {
+    marginTop: 4,
+    marginBottom: Space.s12,
+    fontSize: 13,
+    fontWeight: '400',
+    letterSpacing: 0.3,
+    color: MUTED_GOLD,
+  },
   peekCarousel: {
     gap: Layout.cardGap,
     paddingRight: Layout.pagePadding,
@@ -241,21 +194,4 @@ const styles = StyleSheet.create({
     paddingVertical: Space.s4,
     paddingHorizontal: Space.s4,
   },
-  avatarRing: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: ManuscriptTokens.goldSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 13, fontWeight: '600' },
 });

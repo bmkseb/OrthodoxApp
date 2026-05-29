@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+import { Layout, Palette, Spacing } from '@/constants/theme';
 
 type MediaListItemProps = {
   title: string;
@@ -36,17 +36,17 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Layout.listItemGap,
-    borderLeftWidth: Layout.listAccentBorder,
+    marginBottom: 12,
+    borderLeftWidth: 3,
     borderLeftColor: Palette.gold,
     paddingLeft: Layout.listContentInset,
   },
   thumbnail: {
-    width: Layout.thumbnailSize,
-    height: Layout.thumbnailSize,
+    width: 52,
+    height: 52,
   },
   thumbnailImage: {
-    borderRadius: BorderRadius.sm,
+    borderRadius: 10,
   },
   info: {
     marginLeft: Spacing.md - 2,
@@ -56,11 +56,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
+    color: Palette.text,
     letterSpacing: -0.15,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 13,
+    color: '#8A8070',
   },
 });

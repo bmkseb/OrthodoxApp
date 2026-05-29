@@ -5,6 +5,7 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-na
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
 import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
+import { SacredImagePlaceholder } from '@/components/sacred/sacred-image-placeholder';
 import { ThemedText } from '@/components/themed-text';
 import { EditorialMetaRow } from '@/components/ui/editorial-meta-row';
 import { SacredImage } from '@/components/ui/sacred-image';
@@ -17,6 +18,11 @@ type LearnFeaturedHeroProps = {
   readMin: number;
   imageUri: string;
   onPress?: () => void;
+  /**
+   * Render a sacred gradient + motif placeholder instead of the network image.
+   * Use this when no properly licensed Ethiopian Orthodox imagery is sourced yet.
+   */
+  placeholder?: 'liturgy' | 'trinity';
   style?: StyleProp<ViewStyle>;
 };
 
@@ -26,6 +32,7 @@ export const LearnFeaturedHero = memo(function LearnFeaturedHero({
   readMin,
   imageUri,
   onPress,
+  placeholder,
   style,
 }: LearnFeaturedHeroProps) {
   return (
@@ -36,7 +43,12 @@ export const LearnFeaturedHero = memo(function LearnFeaturedHero({
         pointerEvents="none"
       />
       <View style={styles.card}>
-        <SacredImage uri={imageUri} style={styles.image} />
+        {placeholder ? (
+          // TODO: Replace with properly licensed Ethiopian Orthodox imagery
+          <SacredImagePlaceholder variant={placeholder} />
+        ) : (
+          <SacredImage uri={imageUri} style={styles.image} />
+        )}
         <ParchmentGrainOverlay />
         <VignetteOverlay />
         <LinearGradient

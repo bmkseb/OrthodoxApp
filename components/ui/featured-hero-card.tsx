@@ -4,6 +4,7 @@ import { type ImageSource } from 'expo-image';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { SacredImagePlaceholder } from '@/components/sacred/sacred-image-placeholder';
 import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
 import { VignetteOverlay } from '@/components/ui/vignette-overlay';
@@ -15,6 +16,11 @@ type FeaturedHeroCardProps = {
   imageSource: ImageSource;
   isPlayingWarm?: boolean;
   onPress?: () => void;
+  /**
+   * Render a sacred gradient + motif placeholder instead of the network image.
+   * Use this when no properly licensed Ethiopian Orthodox imagery is sourced yet.
+   */
+  placeholder?: 'liturgy' | 'trinity';
   style?: StyleProp<ViewStyle>;
 };
 
@@ -24,6 +30,7 @@ export const FeaturedHeroCard = memo(function FeaturedHeroCard({
   imageSource,
   isPlayingWarm = false,
   onPress,
+  placeholder,
   style,
 }: FeaturedHeroCardProps) {
   const imageUri =
@@ -44,7 +51,12 @@ export const FeaturedHeroCard = memo(function FeaturedHeroCard({
       ) : null}
       <OrthodoxPressable style={styles.pressable} onPress={onPress} accessibilityRole="button">
         <View style={[styles.border, isPlayingWarm && styles.borderWarm]}>
-          <SacredImage uri={imageUri} style={styles.image} />
+          {placeholder ? (
+            // TODO: Replace with properly licensed Ethiopian Orthodox imagery
+            <SacredImagePlaceholder variant={placeholder} />
+          ) : (
+            <SacredImage uri={imageUri} style={styles.image} />
+          )}
           <VignetteOverlay />
           <LinearGradient
             colors={[...Overlays.heroCinematic]}

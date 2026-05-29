@@ -11,7 +11,7 @@ const gez = {
     prayer: 'ጸሎት',
     orthodoxHymns: 'መዝሙር',
     continueReading: 'ቀጥል',
-    featured: 'የተመረጠ',
+    featured: 'ተወዳጅ',
     orthodoxCatalog: 'መጻሕፍት',
     upcomingFeasts: 'በዓላት',
     saints: 'ቅዱሳን',

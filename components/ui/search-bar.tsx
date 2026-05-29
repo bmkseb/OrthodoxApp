@@ -12,6 +12,8 @@ type SearchBarProps = {
   onChangeText?: (text: string) => void;
   recentSearches?: string[];
   onRecentPress?: (term: string) => void;
+  /** Override the placeholder text colour. Defaults to `Palette.muted`. */
+  placeholderTextColor?: string;
 };
 
 export function SearchBar({
@@ -20,6 +22,7 @@ export function SearchBar({
   onChangeText,
   recentSearches,
   onRecentPress,
+  placeholderTextColor = Palette.muted,
 }: SearchBarProps) {
   const [internalValue, setInternalValue] = useState('');
   const query = value ?? internalValue;
@@ -38,7 +41,7 @@ export function SearchBar({
         <TextInput
           style={styles.input}
           placeholder={placeholder}
-          placeholderTextColor={Palette.muted}
+          placeholderTextColor={placeholderTextColor}
           value={query}
           onChangeText={handleChange}
           returnKeyType="search"

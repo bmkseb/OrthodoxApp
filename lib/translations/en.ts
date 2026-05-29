@@ -28,7 +28,7 @@ const en = {
     dailyTeaching: 'Daily Teaching',
     savedTeachings: 'Saved Teachings',
     topicsCount: '{{count}} Topics',
-    searchLearn: 'Search theology, sacraments, saints…',
+    searchLearn: 'Search teachings, saints, sacraments...',
     searchResults: 'Search Results',
     noResults: 'No teachings found',
     fivePillars: '5 Pillars',
@@ -58,7 +58,7 @@ const en = {
     featuredHymns: 'Featured Hymns',
     featuredSermons: 'Featured Sermons',
     featuredMelodies: 'Featured Melodies',
-    searchPlaceholder: 'Search Sermons, Preachers, Title, etc.',
+    searchPlaceholder: 'Search hymns, sermons, melodies...',
   },
   calendar: {
     searchPlaceholder: 'Search Dates',

@@ -1,15 +1,17 @@
 import React, { useCallback, useState } from 'react';
 import { LayoutAnimation, Platform, StyleSheet, Text, UIManager, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
-import { Icon, type IconName } from '@/components/Icon';
+import { Icon } from '@/components/Icon';
 import { LearnTopicRow } from '@/components/learn/learn-topic-row';
 import type { LearnCollection, LearnTopic } from '@/data/learnLibrary';
 import { learnText, levelLabel } from '@/lib/learn-i18n';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { useTranslation } from '@/hooks/use-translation';
-import { BorderRadius, Layout, Palette, Space, Typography } from '@/constants/theme';
+import { BorderRadius, Palette, Space } from '@/constants/theme';
+
+const MUTED_GOLD = '#8A8070';
+const COLLAPSED_HEIGHT = 80;
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -42,28 +44,24 @@ export function LearnCollectionCard({
     <View style={styles.wrap}>
       <OrthodoxPressable onPress={toggle} accessibilityRole="button" accessibilityState={{ expanded }}>
         <View style={styles.card}>
-          <LinearGradient
-            colors={['rgba(53, 48, 40, 0.7)', 'rgba(28, 24, 20, 0.95)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.header}>
-            <View style={styles.iconWrap}>
-              <Icon name={collection.icon} size={18} />
+          <View style={styles.iconWrap}>
+            <Icon name={collection.icon} size={20} color={Palette.gold} />
+          </View>
+          <View style={styles.headerCopy}>
+            <ThemedText style={styles.title} numberOfLines={1}>
+              {title}
+            </ThemedText>
+            <ThemedText style={styles.description} numberOfLines={1}>
+              {description}
+            </ThemedText>
+          </View>
+          <View style={styles.trailing}>
+            <View style={[styles.chevronWrap, expanded && styles.chevronOpen]}>
+              <Icon name="chevron-right" size={18} color={Palette.gold} />
             </View>
-            <View style={styles.headerCopy}>
-              <ThemedText style={styles.title} numberOfLines={2}>
-                {title}
-              </ThemedText>
-              <ThemedText style={styles.description} numberOfLines={2}>
-                {description}
-              </ThemedText>
-              <ThemedText style={styles.count}>
-                {t('learn.topicsCount', { count: topicCount })}
-              </ThemedText>
-            </View>
-            <Text style={[styles.chevron, expanded && styles.chevronOpen]}>›</Text>
+            <Text style={styles.count} numberOfLines={1} allowFontScaling={false}>
+              {t('learn.topicsCount', { count: topicCount })}
+            </Text>
           </View>
         </View>
       </OrthodoxPressable>
@@ -90,57 +88,63 @@ export function LearnCollectionCard({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: Layout.cardGap },
+  wrap: { marginBottom: 12 },
   card: {
-    borderRadius: BorderRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Layout.cardBorderThin,
-    overflow: 'hidden',
-  },
-  header: {
+    height: COLLAPSED_HEIGHT,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: Space.s16,
-    gap: Space.s12,
-    zIndex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    gap: 14,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.18)',
+    backgroundColor: 'rgba(28, 24, 20, 0.85)',
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.sm,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(201, 147, 58, 0.12)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Layout.cardBorderThin,
+    borderColor: 'rgba(201, 147, 58, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
-  headerCopy: { flex: 1, minWidth: 0, gap: Space.s4 },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    gap: 2,
+  },
   title: {
-    ...Typography.cardTitle,
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: '600',
     color: Palette.text,
+    letterSpacing: -0.15,
+    lineHeight: 20,
   },
   description: {
-    ...Typography.body,
     fontSize: 13,
-    color: Palette.muted,
+    color: MUTED_GOLD,
+    lineHeight: 17,
   },
-  count: {
-    ...Typography.metadata,
-    color: Palette.muted,
-    marginTop: Space.s4,
-    textTransform: 'none',
-    letterSpacing: 0.2,
+  trailing: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 4,
+    minWidth: 56,
   },
-  chevron: {
-    fontSize: 20,
-    color: Palette.muted,
-    fontWeight: '300',
-    marginTop: 4,
+  chevronWrap: {
     transform: [{ rotate: '0deg' }],
   },
   chevronOpen: {
     transform: [{ rotate: '90deg' }],
+  },
+  count: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: MUTED_GOLD,
+    letterSpacing: 0.2,
   },
   topicsPanel: {
     marginTop: Space.s8,

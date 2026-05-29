@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { LanguageProvider } from '@/contexts/language-context';
 import { AudioPlayerProvider } from '@/contexts/audio-player-context';
+import { AuthProvider } from '@/contexts/auth-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { LanguageGate } from '@/components/navigation/language-gate';
 import { Animation, Palette } from '@/constants/theme';
@@ -31,8 +32,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <LanguageProvider>
-        <AudioPlayerProvider>
-          <LanguageGate>
+        <AuthProvider>
+          <AudioPlayerProvider>
+            <LanguageGate>
             <ThemeProvider value={OrthodoxNavigationTheme}>
               <GestureHandlerRootView style={styles.root}>
                 <Stack
@@ -50,13 +52,22 @@ export default function RootLayout() {
                     name="settings"
                     options={{ headerShown: false, animation: 'slide_from_bottom' }}
                   />
+                  <Stack.Screen
+                    name="auth/welcome"
+                    options={{ headerShown: false, animation: 'fade' }}
+                  />
+                  <Stack.Screen
+                    name="profile"
+                    options={{ headerShown: false, animation: 'slide_from_bottom' }}
+                  />
                   <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
                 </Stack>
               </GestureHandlerRootView>
               <StatusBar style="light" />
             </ThemeProvider>
-          </LanguageGate>
-        </AudioPlayerProvider>
+            </LanguageGate>
+          </AudioPlayerProvider>
+        </AuthProvider>
       </LanguageProvider>
     </SafeAreaProvider>
   );

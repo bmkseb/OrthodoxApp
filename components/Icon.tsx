@@ -30,6 +30,7 @@ export type IconName =
   | 'bookmark'
   | 'share'
   | 'globe'
+  | 'bell'
   | 'flame';
 
 type IconProps = {
@@ -265,6 +266,13 @@ export function Icon({ name, size = 18, color = Palette.gold, strokeWidth = STRO
         <Svg {...props}>
           <Circle cx="12" cy="12" r="9" />
           <Path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+        </Svg>
+      );
+    case 'bell':
+      return (
+        <Svg {...props}>
+          <Path d="M18 16v-5a6 6 0 0 0-12 0v5l-2 3h16l-2-3z" />
+          <Path d="M10 19a2 2 0 0 0 4 0" />
         </Svg>
       );
     case 'flame':
