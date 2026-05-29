@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ScriptureBackBar } from '@/components/scripture/scripture-back-bar';
+import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
@@ -45,7 +46,7 @@ export default function BookChaptersScreen() {
 
   if (!book) {
     return (
-      <ScreenScrollView>
+      <ScreenScrollView includeFloatingChrome={false}>
         <ScriptureBackBar />
         <EmptyState title={t('scripture.bookNotFound')} />
       </ScreenScrollView>
@@ -56,12 +57,9 @@ export default function BookChaptersScreen() {
   const langQ = scriptureLangQuery(lang);
 
   return (
-    <ScreenScrollView>
+    <ScreenScrollView includeFloatingChrome={false}>
       <ScriptureBackBar />
-      <ThemedText style={styles.bookTitle}>{title}</ThemedText>
-      <ThemedText type="muted" style={styles.subtitle}>
-        {t('scripture.selectChapter')}
-      </ThemedText>
+      <ScriptureBookHeader title={title} subtitle={t('scripture.selectChapter')} />
 
       {loading ? (
         <ActivityIndicator color={Palette.gold} style={styles.spinner} />
@@ -98,13 +96,6 @@ export default function BookChaptersScreen() {
 }
 
 const styles = StyleSheet.create({
-  bookTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: Palette.text,
-    marginBottom: Layout.titleSubtitleGap,
-  },
-  subtitle: { marginBottom: Layout.sectionGap },
   spinner: { marginTop: 32 },
   grid: {
     flexDirection: 'row',

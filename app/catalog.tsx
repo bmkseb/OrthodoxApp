@@ -17,6 +17,7 @@ import {
   OLD_TESTAMENT_BOOKS,
   type BibleBook,
 } from '@/data/bibleCanon';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { scriptureLangQuery } from '@/hooks/use-scripture-lang';
 import { BorderRadius, Layout, Palette } from '@/constants/theme';
 
@@ -104,6 +105,12 @@ export default function CatalogScreen() {
   const { t } = useTranslation();
   const [activeLanguage, setActiveLanguage] = useState<LanguageTab>('english');
   const [query, setQuery] = useState('');
+  const { recentSearches, addRecentSearch } = useRecentSearches('catalog');
+
+  const handleSearchSubmit = (term: string) => {
+    setQuery(term);
+    void addRecentSearch(term);
+  };
 
   const filteredIds = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -141,7 +148,7 @@ export default function CatalogScreen() {
       : `${t('catalog.newTestament')} (${NEW_TESTAMENT_BOOKS.length})`;
 
   return (
-    <ScreenScrollView>
+    <ScreenScrollView includeFloatingChrome={false}>
       <OrthodoxPressable style={styles.topBar} onPress={() => router.back()}>
         <ThemedText type="seeAll">{t('settings.back')}</ThemedText>
       </OrthodoxPressable>
@@ -156,9 +163,10 @@ export default function CatalogScreen() {
       <View style={styles.searchWrap}>
         <SearchBar
           placeholder={t('catalog.searchPlaceholder')}
-          recentSearches={['Genesis', 'Matthew', 'Enoch']}
           value={query}
           onChangeText={setQuery}
+          onSearchSubmit={handleSearchSubmit}
+          recentSearches={recentSearches}
         />
       </View>
 
@@ -187,7 +195,14 @@ const styles = StyleSheet.create({
   groupWrap: { marginBottom: Layout.sectionGap },
   groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: Layout.headerContentGap },
   groupChevron: { color: Palette.gold, fontSize: 18 },
-  groupTitle: { fontSize: 18, fontWeight: '600', color: Palette.text, flex: 1 },
+  groupTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Palette.text,
+    flex: 1,
+    lineHeight: 24,
+    flexShrink: 1,
+  },
   stackedCard: {
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
@@ -195,8 +210,20 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.card,
     overflow: 'hidden',
   },
-  scriptureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  scriptureText: { fontSize: 16, color: Palette.text, flex: 1 },
-  rowChevron: { color: Palette.muted, fontSize: 18 },
+  scriptureRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    padding: 16,
+    gap: 8,
+  },
+  scriptureText: {
+    fontSize: 16,
+    color: Palette.text,
+    flex: 1,
+    flexShrink: 1,
+    lineHeight: 24,
+  },
+  rowChevron: { color: Palette.muted, fontSize: 18, marginTop: 2 },
   rowDivider: { height: 1, backgroundColor: Layout.cardBorder, marginHorizontal: 16 },
 });

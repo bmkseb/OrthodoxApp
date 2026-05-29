@@ -33,7 +33,7 @@ export default function ReadScreen() {
   const featuredWidth = width - Layout.pagePadding * 2;
 
   return (
-    <ScreenScrollView contentContainerStyle={styles.scroll}>
+    <ScreenScrollView>
       <View style={styles.topRow}>
         <View style={styles.pageTitleRow}>
           <View style={styles.pageIconRail}>
@@ -103,7 +103,6 @@ export default function ReadScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: Layout.sectionContentBottom },
   topRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

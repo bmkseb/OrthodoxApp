@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Animated, {
   Extrapolation,
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,8 +20,6 @@ import { FloatingBottom, getMiniPlayerBottom } from '@/constants/floating-bottom
 import { Palette, Space, Typography } from '@/constants/theme';
 import { useAudioPlayer } from '@/contexts/audio-player-context';
 
-const SLIDE_OFFSET = FloatingBottom.miniPlayerHeight + 24;
-
 export function FloatingMiniPlayer() {
   const insets = useSafeAreaInsets();
   const {
@@ -29,39 +29,62 @@ export function FloatingMiniPlayer() {
     isMiniPlayerVisible,
     expandProgress,
     openFullPlayer,
+    dismissMiniPlayer,
     playPause,
     previousTrack,
     nextTrack,
   } = useAudioPlayer();
-  const translateY = useSharedValue(SLIDE_OFFSET);
+
+  const bottom = getMiniPlayerBottom(insets);
+  // Slide down until the pill's top edge reaches the top of the navigation bar, then unmount.
+  const slideOffset = FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap;
+
+  const translateY = useSharedValue(slideOffset);
+
+  // Keep the last track mounted while it slides out so dismissal is animated.
+  const [renderTrack, setRenderTrack] = useState(currentTrack);
 
   useEffect(() => {
-    translateY.value = withSpring(isMiniPlayerVisible ? 0 : SLIDE_OFFSET, {
-      damping: 22,
-      stiffness: 280,
-      mass: 0.85,
+    if (currentTrack) {
+      setRenderTrack(currentTrack);
+    }
+  }, [currentTrack]);
+
+  useEffect(() => {
+    if (isMiniPlayerVisible) {
+      translateY.value = withSpring(0, { damping: 22, stiffness: 280, mass: 0.85 });
+      return;
+    }
+    // Slide straight out with no spring tail, then unmount as it leaves.
+    translateY.value = withTiming(slideOffset, { duration: 140 }, (finished) => {
+      if (finished && !currentTrack) {
+        runOnJS(setRenderTrack)(null);
+      }
     });
-  }, [isMiniPlayerVisible, translateY]);
+  }, [isMiniPlayerVisible, currentTrack, slideOffset, translateY]);
 
   const animatedHost = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
     opacity: interpolate(expandProgress.value, [0, 0.2], [1, 0], Extrapolation.CLAMP),
   }));
 
-  if (!currentTrack) return null;
+  if (!renderTrack) return null;
 
   const pct = Math.min(Math.max(progress, 0), 1) * 100;
-  const bottom = getMiniPlayerBottom(insets);
 
   return (
     <Animated.View
-      pointerEvents={isMiniPlayerVisible ? 'box-none' : 'none'}
+      pointerEvents={isMiniPlayerVisible && currentTrack ? 'box-none' : 'none'}
       style={[
         styles.host,
         { bottom, left: FloatingBottom.horizontalMargin, right: FloatingBottom.horizontalMargin },
         animatedHost,
       ]}>
-      <Pressable onPress={openFullPlayer} style={styles.pill} accessibilityRole="button">
+      <Pressable
+        onPress={openFullPlayer}
+        style={styles.pill}
+        accessibilityRole="button"
+        accessibilityLabel="Open full player">
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${pct}%` }]} />
         </View>
@@ -72,14 +95,14 @@ export function FloatingMiniPlayer() {
         <View style={styles.glass} />
 
         <View style={styles.row}>
-          <SacredImage uri={currentTrack.artworkUri} style={styles.artwork} />
+          <SacredImage uri={renderTrack.artworkUri} style={styles.artwork} />
 
           <View style={styles.meta}>
             <ThemedText style={styles.title} numberOfLines={1}>
-              {currentTrack.title}
+              {renderTrack.title}
             </ThemedText>
             <ThemedText style={styles.artist} numberOfLines={1}>
-              {currentTrack.artist}
+              {renderTrack.artist}
             </ThemedText>
           </View>
 
@@ -100,6 +123,17 @@ export function FloatingMiniPlayer() {
               <Icon name="skip-forward" size={18} color={Palette.gold} />
             </OrthodoxPressable>
           </View>
+
+          <OrthodoxPressable
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              dismissMiniPlayer();
+            }}
+            accessibilityLabel="Close player"
+            hitSlop={8}
+            style={styles.closeBtn}>
+            <Icon name="close" size={18} color={Palette.muted} />
+          </OrthodoxPressable>
         </View>
       </Pressable>
     </Animated.View>
@@ -109,8 +143,10 @@ export function FloatingMiniPlayer() {
 const styles = StyleSheet.create({
   host: {
     position: 'absolute',
-    zIndex: 100,
-    elevation: 100,
+    // Sit below the nav bar (zIndex 90) so the dismiss slide tucks behind it
+    // and disappears at the top edge of the navigation bar.
+    zIndex: 80,
+    elevation: 80,
   },
   pill: {
     height: FloatingBottom.miniPlayerHeight,
@@ -173,6 +209,9 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: Palette.muted,
     lineHeight: 16,
+  },
+  closeBtn: {
+    padding: 4,
   },
   controls: {
     flexDirection: 'row',

@@ -25,6 +25,7 @@ import { SearchBar } from '@/components/ui/search-bar';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SettingsNavButton } from '@/components/ui/settings-nav-button';
 import { ThemedText } from '@/components/themed-text';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import { Layout, Space, Typography } from '@/constants/theme';
 
@@ -33,7 +34,13 @@ const { width } = Dimensions.get('window');
 export default function LearnScreen() {
   const { t, mode } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
+  const { recentSearches, addRecentSearch } = useRecentSearches('learn');
   const [featuredIndex] = useState(0);
+
+  const handleSearchSubmit = (term: string) => {
+    setSearchQuery(term);
+    void addRecentSearch(term);
+  };
 
   const featured = getFeatured(featuredIndex);
   const featuredTitle = learnText(featured.titleEn, featured.titleAm, mode);
@@ -72,7 +79,7 @@ export default function LearnScreen() {
   const showLibrary = !searchQuery.trim();
 
   return (
-    <ScreenScrollView contentContainerStyle={styles.scroll}>
+    <ScreenScrollView>
       <View style={styles.pageHeader}>
         <View style={styles.pageTitleRow}>
           <View style={styles.pageIconRail}>
@@ -91,7 +98,8 @@ export default function LearnScreen() {
           placeholder={t('learn.searchLearn')}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          recentSearches={['Trinity', 'Eucharist', 'Mary', 'Cross', 'Fasting']}
+          onSearchSubmit={handleSearchSubmit}
+          recentSearches={recentSearches}
         />
       </View>
 
@@ -166,7 +174,6 @@ export default function LearnScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: Layout.sectionContentBottom },
   pageHeader: {
     flexDirection: 'row',
     alignItems: 'flex-end',

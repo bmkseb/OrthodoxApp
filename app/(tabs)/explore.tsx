@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 
 import { DailyRhythmRow } from '@/components/explore/daily-rhythm-row';
@@ -22,6 +22,7 @@ import { SacredPageHeader } from '@/components/ui/bilingual-header';
 import { SettingsNavButton } from '@/components/ui/settings-nav-button';
 import { SacredImagery } from '@/constants/explore-content';
 import { Layout, Palette, Space, Typography } from '@/constants/theme';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
@@ -57,16 +58,46 @@ function ProfileAvatar({ initial, accentColor }: { initial: string; accentColor:
 
 export default function ExploreScreen() {
   const { t, ethiopicStyle, mode } = useTranslation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const { recentSearches, addRecentSearch } = useRecentSearches('explore');
   const amharicText = mode === 'am' ? ethiopicStyle : undefined;
   const iconColor = useThemeColor({}, 'icon');
   const accentColor = useThemeColor({}, 'tint');
   // Restrained meta: max 2-3 tags only per spec
   const readingMeta = [t('explore.dailyGospel'), t('explore.bookMatthew'), t('explore.minRead')];
 
+  const q = searchQuery.trim().toLowerCase();
+  const hasSearch = q.length > 0;
+  const matches = (text: string) => !hasSearch || text.toLowerCase().includes(q);
+
+  const filteredHymns = useMemo(() => {
+    if (!hasSearch) return HYMNS;
+    return HYMNS.filter((h) => matches(h.title) || matches(h.artist));
+  }, [hasSearch, q]);
+
+  const filteredPrayers = useMemo(() => {
+    if (!hasSearch) return PRAYERS;
+    return PRAYERS.filter((p) => matches(t(`content.${p.key}`)));
+  }, [hasSearch, q, t]);
+
+  const filteredContinue = useMemo(() => {
+    if (!hasSearch) return CONTINUE_BOOKS;
+    return CONTINUE_BOOKS.filter((b) => {
+      const title = t(`content.${b.titleKey}`);
+      const sub = t(`content.${b.subKey}`);
+      return matches(title) || matches(sub);
+    });
+  }, [hasSearch, q, t]);
+
+  const handleSearchSubmit = (term: string) => {
+    setSearchQuery(term);
+    void addRecentSearch(term);
+  };
+
   return (
     <View style={styles.screen}>
       <ExploreAtmosphere />
-      <ScreenScrollView hideAtmosphere contentContainerStyle={styles.scroll} style={styles.scrollView}>
+      <ScreenScrollView hideAtmosphere style={styles.scrollView}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.pageTitleWrap}>
@@ -85,7 +116,13 @@ export default function ExploreScreen() {
 
         {/* Search */}
         <View style={styles.block}>
-          <SearchBar placeholder={t('common.searchScriptures')} recentSearches={['Matthew', 'Psalms']} />
+          <SearchBar
+            placeholder={t('common.searchScriptures')}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSearchSubmit={handleSearchSubmit}
+            recentSearches={recentSearches}
+          />
         </View>
 
         {/* Quick access */}
@@ -151,7 +188,7 @@ export default function ExploreScreen() {
         {/* Prayer */}
         <ExploreSectionFrame headerKey="prayer" icon="sparkle">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peekCarousel}>
-            {PRAYERS.map((prayer) => (
+            {filteredPrayers.map((prayer) => (
               <PrayerManuscriptCard
                 key={prayer.id}
                 title={t(`content.${prayer.key}`)}
@@ -166,7 +203,7 @@ export default function ExploreScreen() {
         {/* Hymns */}
         <ExploreSectionFrame headerKey="orthodoxHymns" icon="music">
           <View style={styles.hymnsSurface}>
-            {HYMNS.map((hymn) => (
+            {filteredHymns.map((hymn) => (
               <MediaListItem key={hymn.id} title={hymn.title} subtitle={hymn.artist} image={{ uri: hymn.image }} />
             ))}
           </View>
@@ -177,7 +214,7 @@ export default function ExploreScreen() {
         {/* Continue reading */}
         <ExploreSectionFrame title={t('explore.continueReading')} icon="book">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peekCarousel}>
-            {CONTINUE_BOOKS.map((book) => (
+            {filteredContinue.map((book) => (
               <ManuscriptBookCard
                 key={book.id}
                 title={t(`content.${book.titleKey}`)}
@@ -201,9 +238,6 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     backgroundColor: 'transparent',
-  },
-  scroll: {
-    paddingBottom: Layout.sectionContentBottom,
   },
   header: {
     flexDirection: 'row',

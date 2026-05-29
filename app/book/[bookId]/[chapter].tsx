@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ChapterNavBar } from '@/components/scripture/chapter-nav-bar';
+import { ScripturePageScroll } from '@/components/scripture/scripture-page-scroll';
 import { ScriptureBackBar } from '@/components/scripture/scripture-back-bar';
+import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
 import { VerseList } from '@/components/scripture/verse-list';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
-import { ThemedText } from '@/components/themed-text';
+import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
+import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
+import { ThemedView } from '@/components/themed-view';
 import { getBibleBook, getBookTitle } from '@/data/bibleCanon';
 import { useScriptureLang } from '@/hooks/use-scripture-lang';
 import { useTranslation } from '@/hooks/use-translation';
-import { fetchChapterVerses } from '@/lib/scripture';
-import { Layout, Palette } from '@/constants/theme';
+import { fetchBookChapters, fetchChapterVerses } from '@/lib/scripture';
+import { Layout, Palette, Spacing } from '@/constants/theme';
 import type { VerseRecord } from '@/types/scripture';
+
+const NAV_BAR_HEIGHT = 56;
 
 export default function ChapterReaderScreen() {
   const { bookId, chapter: chapterParam } = useLocalSearchParams<{
@@ -21,9 +28,11 @@ export default function ChapterReaderScreen() {
   }>();
   const lang = useScriptureLang();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const chapter = Number(chapterParam);
   const book = bookId ? getBibleBook(bookId) : undefined;
 
+  const [chapters, setChapters] = useState<number[]>([]);
   const [verses, setVerses] = useState<VerseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +42,11 @@ export default function ChapterReaderScreen() {
     setLoading(true);
     setError(null);
     try {
-      const rows = await fetchChapterVerses(bookId, chapter);
+      const [chapterList, rows] = await Promise.all([
+        fetchBookChapters(bookId),
+        fetchChapterVerses(bookId, chapter),
+      ]);
+      setChapters(chapterList);
       setVerses(rows);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('scripture.loadError'));
@@ -49,51 +62,84 @@ export default function ChapterReaderScreen() {
 
   if (!book || !Number.isFinite(chapter)) {
     return (
-      <ScreenScrollView>
-        <ScriptureBackBar />
-        <EmptyState title={t('scripture.chapterNotFound')} />
-      </ScreenScrollView>
+      <ThemedView style={styles.root}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + Spacing.md }]}>
+          <ScriptureBackBar />
+          <EmptyState title={t('scripture.chapterNotFound')} />
+        </ScrollView>
+      </ThemedView>
     );
   }
 
   const bookTitle = getBookTitle(book, lang);
+  const bottomInset = Math.max(insets.bottom, Spacing.md) + NAV_BAR_HEIGHT;
 
   return (
-    <ScreenScrollView>
-      <ScriptureBackBar />
-      <ThemedText type="muted" style={styles.eyebrow}>
-        {bookTitle}
-      </ThemedText>
-      <ThemedText style={styles.heading}>
-        {t('scripture.chapter')} {chapter}
-      </ThemedText>
-
-      {loading ? (
-        <ActivityIndicator color={Palette.gold} style={styles.spinner} />
-      ) : error ? (
-        <EmptyState title={error} suggestion={t('scripture.tryAgain')} />
-      ) : verses.length === 0 ? (
-        <EmptyState
-          title={t('scripture.noVersesTitle')}
-          suggestion={t('scripture.noChaptersIngest')}
+    <ThemedView style={styles.root}>
+      <SacredAtmosphere />
+      <ParchmentGrainOverlay />
+      <ScripturePageScroll
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        trackInsetTop={insets.top + Spacing.md}
+        trackInsetBottom={bottomInset}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={load} tintColor={Palette.gold} />
+        }
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + Spacing.md,
+            paddingBottom: bottomInset,
+          },
+        ]}>
+        <ScriptureBackBar />
+        <ScriptureBookHeader
+          title={bookTitle}
+          subtitle={`${t('scripture.chapter')} ${chapter}`}
         />
-      ) : (
-        <View style={styles.body}>
-          <VerseList verses={verses} lang={lang} />
-        </View>
-      )}
-    </ScreenScrollView>
+
+        {loading ? (
+          <ActivityIndicator color={Palette.gold} style={styles.spinner} />
+        ) : error ? (
+          <EmptyState title={error} suggestion={t('scripture.tryAgain')} />
+        ) : verses.length === 0 ? (
+          <EmptyState
+            title={t('scripture.noVersesTitle')}
+            suggestion={t('scripture.noChaptersIngest')}
+          />
+        ) : (
+          <View style={styles.body}>
+            <VerseList verses={verses} lang={lang} />
+          </View>
+        )}
+      </ScripturePageScroll>
+
+      <View style={styles.navSlot}>
+        <ChapterNavBar bookId={bookId} chapter={chapter} chapters={chapters} lang={lang} />
+      </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  eyebrow: { marginBottom: 4 },
-  heading: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Palette.text,
-    marginBottom: Layout.sectionGap,
+  root: {
+    flex: 1,
+    backgroundColor: Palette.background,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: Layout.pagePadding,
   },
   spinner: { marginTop: 32 },
-  body: { paddingBottom: Layout.sectionContentBottom },
+  body: { paddingBottom: Layout.headerContentGap },
+  navSlot: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
 });

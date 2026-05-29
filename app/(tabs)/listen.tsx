@@ -16,6 +16,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SettingsNavButton } from '@/components/ui/settings-nav-button';
 import { useAudioPlayer, type AudioTrack } from '@/contexts/audio-player-context';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import { resolvePlayerTrackCopy } from '@/lib/audio-track-display';
 import { SacredImagery } from '@/constants/sacred-imagery';
@@ -24,8 +25,6 @@ import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
 
 type ListenTab = 'hymns' | 'sermons' | 'melodies';
 const TAB_KEYS: ListenTab[] = ['hymns', 'sermons', 'melodies'];
-const RECENT_SEARCHES = ['Helena Alemu', 'Repentance', 'Holy Holy'];
-
 type Track = {
   id: string;
   titleKey?: TranslationKey;
@@ -125,6 +124,8 @@ function SegmentedTabs({ activeTab, onChange }: { activeTab: ListenTab; onChange
 export default function ListenScreen() {
   const { t, mode } = useTranslation();
   const [activeTab, setActiveTab] = useState<ListenTab>('hymns');
+  const [searchQuery, setSearchQuery] = useState('');
+  const { recentSearches, addRecentSearch } = useRecentSearches('listen');
   const { playTrack, isPlaying } = useAudioPlayer();
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = useFloatingBottomInset();
@@ -180,6 +181,21 @@ export default function ListenScreen() {
     [content.featured, t]
   );
 
+  const q = searchQuery.trim().toLowerCase();
+  const filteredTracks = useMemo(() => {
+    if (!q) return content.tracks;
+    return content.tracks.filter((track) => {
+      const title = resolveLabel(t, track.titleKey, track.title);
+      const artist = resolveLabel(t, track.artistKey, track.artist);
+      return title.toLowerCase().includes(q) || artist.toLowerCase().includes(q);
+    });
+  }, [content.tracks, q, t]);
+
+  const handleSearchSubmit = (term: string) => {
+    setSearchQuery(term);
+    void addRecentSearch(term);
+  };
+
   return (
     <ThemedView style={styles.root}>
       <SacredAtmosphere />
@@ -202,7 +218,13 @@ export default function ListenScreen() {
           <SettingsNavButton />
         </View>
         <View style={styles.searchWrap}>
-          <SearchBar placeholder={t('listen.searchPlaceholder')} recentSearches={RECENT_SEARCHES} />
+          <SearchBar
+            placeholder={t('listen.searchPlaceholder')}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSearchSubmit={handleSearchSubmit}
+            recentSearches={recentSearches}
+          />
         </View>
         <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
         <FeaturedHeroCard
@@ -213,7 +235,7 @@ export default function ListenScreen() {
         />
         <SectionHeader headerKey="featured" icon={content.sectionIcon} />
         <View style={styles.trackList}>
-          {content.tracks.map((track) => (
+          {filteredTracks.map((track) => (
             <MediaListItem
               key={track.id}
               title={resolveLabel(t, track.titleKey, track.title)}

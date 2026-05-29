@@ -98,6 +98,8 @@ const en = {
     noChaptersIngest: 'Add EXPO_PUBLIC_SUPABASE_* to .env and ingest verses, or try Genesis for a built-in sample.',
     noChaptersSample: 'No sample chapters for this book.',
     noVersesTitle: 'No verses in this chapter',
+    previousChapter: 'Previous',
+    nextChapter: 'Next',
   },
   settings: {
     title: 'Settings',

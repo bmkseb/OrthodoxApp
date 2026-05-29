@@ -10,6 +10,7 @@ import { BilingualHeader } from '@/components/ui/bilingual-header';
 import { SearchBar } from '@/components/ui/search-bar';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SettingsNavButton } from '@/components/ui/settings-nav-button';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import type { TranslationKey } from '@/lib/translations';
 import {
@@ -49,8 +50,26 @@ export default function CalendarScreen() {
   const [filter, setFilter] = useState<CalendarFilter>('all');
   const [sheetVisible, setSheetVisible] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const { recentSearches, addRecentSearch } = useRecentSearches('calendar');
 
   const upcomingFeasts = useMemo(() => getUpcomingMajorFeasts(5, now), [now]);
+
+  const q = searchQuery.trim().toLowerCase();
+  const filteredFeasts = useMemo(() => {
+    if (!q) return upcomingFeasts;
+    return upcomingFeasts.filter(
+      (feast) =>
+        feast.nameEn.toLowerCase().includes(q) ||
+        feast.nameGeez.includes(searchQuery.trim()) ||
+        feast.saint?.toLowerCase().includes(q),
+    );
+  }, [upcomingFeasts, q, searchQuery]);
+
+  const handleSearchSubmit = (term: string) => {
+    setSearchQuery(term);
+    void addRecentSearch(term);
+  };
   const monthLabel = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
   const sheetDay = selectedDay ?? today.day;
 
@@ -97,7 +116,13 @@ export default function CalendarScreen() {
           </View>
 
           <View style={styles.searchWrap}>
-            <SearchBar placeholder={t('calendar.searchPlaceholder')} recentSearches={['Feast', 'Lent']} />
+            <SearchBar
+              placeholder={t('calendar.searchPlaceholder')}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSearchSubmit={handleSearchSubmit}
+              recentSearches={recentSearches}
+            />
           </View>
 
           <ScrollView
@@ -136,7 +161,7 @@ export default function CalendarScreen() {
             <LegendItem label={t('calendar.today')} symbol="○" />
           </View>
 
-          <UpcomingFeasts feasts={upcomingFeasts} onPressFeast={handleFeastPress} />
+          <UpcomingFeasts feasts={filteredFeasts} onPressFeast={handleFeastPress} />
         </View>
       </ScreenScrollView>
 

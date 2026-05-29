@@ -98,6 +98,8 @@ const am = {
     noChaptersIngest: 'Supabase ያገናኙ እና አንቀፆችን ይጨምሩ፣ ወይም ለናሙና ዘፍጥረትን ይሞክሩ።',
     noChaptersSample: 'ለዚህ መጽሐፍ ናሙና የለም።',
     noVersesTitle: 'ቁጥር በዚህ ምዕራፍ የለም',
+    previousChapter: 'ቀዳማዊ',
+    nextChapter: 'ቀጣይ',
   },
   settings: {
     title: 'ቅንብሮች',
