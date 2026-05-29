@@ -79,7 +79,7 @@ export default function ExploreScreen() {
     <View style={styles.screen}>
       <ExploreAtmosphere />
       <ScreenScrollView hideAtmosphere style={styles.scrollView}>
-        <PageHeader title="Explore" />
+        <PageHeader title="Explore" geez="መርምር" />
 
         {/* Search */}
         <View style={styles.block}>

@@ -1,9 +1,9 @@
 import { BlurView } from 'expo-blur';
-import React, { useEffect, useMemo } from 'react';
+import * as Haptics from 'expo-haptics';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   Extrapolation,
   interpolate,
   runOnJS,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -36,11 +38,12 @@ import { formatPlaybackTime } from '@/lib/audio-utils';
 import { resolvePlayerCopyFromTrack } from '@/lib/audio-track-display';
 
 const DISMISS_DISTANCE = 110;
+const DISMISS_VELOCITY = 850;
+const FLING_VELOCITY = 900;
+const COLLAPSE_MS = 220;
 const ARTWORK_MAX_WIDTH = 320;
 const CALM_SPRING = { damping: 28, stiffness: 170, mass: 1 };
-const EXPAND_SPRING = { damping: 26, stiffness: 200, mass: 0.95 };
 
-/** Sacred vertical rhythm — single center axis */
 const V = {
   artworkToTitle: Space.s16,
   titleToProgress: Space.s24,
@@ -63,7 +66,7 @@ function staggerStyle(progress: import('react-native-reanimated').SharedValue<nu
 
 export function FullScreenPlayer() {
   const insets = useSafeAreaInsets();
-  const { width: screenW, height: screenH } = useWindowDimensions();
+  const { height: screenH } = useWindowDimensions();
   const { mode } = useTranslation();
   const {
     currentTrack,
@@ -81,7 +84,9 @@ export function FullScreenPlayer() {
   } = useAudioPlayer();
 
   const dragY = useSharedValue(0);
+  const scrollY = useSharedValue(0);
   const floatY = useSharedValue(0);
+  const isClosing = useRef(false);
 
   const copy = useMemo(
     () => (currentTrack ? resolvePlayerCopyFromTrack(mode, currentTrack) : null),
@@ -99,14 +104,54 @@ export function FullScreenPlayer() {
     return { miniTop };
   }, [insets, screenH]);
 
+  const resetDrag = useCallback(() => {
+    dragY.value = 0;
+    scrollY.value = 0;
+  }, [dragY, scrollY]);
+
   useEffect(() => {
-    if (!isFullPlayerOpen) return;
-    floatY.value = withRepeat(
-      withTiming(-5, { duration: 3200 }),
-      -1,
-      true
+    if (!isFullPlayerOpen) {
+      isClosing.current = false;
+      resetDrag();
+      return;
+    }
+
+    isClosing.current = false;
+    resetDrag();
+    floatY.value = withRepeat(withTiming(-5, { duration: 3200 }), -1, true);
+  }, [isFullPlayerOpen, floatY, resetDrag]);
+
+  const finishClose = useCallback(() => {
+    isClosing.current = false;
+    resetDrag();
+    closeFullPlayer();
+  }, [closeFullPlayer, resetDrag]);
+
+  const animateClose = useCallback(() => {
+    if (isClosing.current || !isFullPlayerOpen) return;
+    isClosing.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+
+    const timeout = setTimeout(finishClose, COLLAPSE_MS + 80);
+
+    expandProgress.value = withTiming(
+      0,
+      { duration: COLLAPSE_MS, easing: Easing.in(Easing.cubic) },
+      (finished) => {
+        if (finished) {
+          clearTimeout(timeout);
+          runOnJS(finishClose)();
+        }
+      }
     );
-  }, [isFullPlayerOpen, floatY]);
+    dragY.value = withTiming(0, { duration: COLLAPSE_MS, easing: Easing.in(Easing.cubic) });
+  }, [closeFullPlayer, dragY, expandProgress, finishClose, isFullPlayerOpen]);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   const backdropStyle = useAnimatedStyle(() => {
     const dragFade = interpolate(dragY.value, [0, DISMISS_DISTANCE], [1, 0.35], Extrapolation.CLAMP);
@@ -116,9 +161,13 @@ export function FullScreenPlayer() {
   });
 
   const sheetStyle = useAnimatedStyle(() => {
-    const p = expandProgress.value;
-    const baseY = interpolate(p, [0, 1], [miniLayout.miniTop - insets.top, 0], Extrapolation.CLAMP);
-    const scale = interpolate(p, [0, 1], [0.96, 1], Extrapolation.CLAMP);
+    const baseY = interpolate(
+      expandProgress.value,
+      [0, 1],
+      [miniLayout.miniTop - insets.top, 0],
+      Extrapolation.CLAMP
+    );
+    const scale = interpolate(expandProgress.value, [0, 1], [0.96, 1], Extrapolation.CLAMP);
     return {
       transform: [{ translateY: baseY + dragY.value }, { scale }],
     };
@@ -141,24 +190,37 @@ export function FullScreenPlayer() {
   const actionsStyle = useAnimatedStyle(() => staggerStyle(expandProgress, 0.52, 0.78));
   const tabsStyle = useAnimatedStyle(() => staggerStyle(expandProgress, 0.58, 0.85));
 
+  const scrollGesture = Gesture.Native();
+
   const panGesture = Gesture.Pan()
+    .simultaneousWithExternalGesture(scrollGesture)
+    .activeOffsetY(8)
+    .failOffsetX([-28, 28])
     .onUpdate((e) => {
-      if (e.translationY > 0) {
+      const atTop = scrollY.value <= 1;
+      const flingDown = e.velocityY > FLING_VELOCITY && e.translationY > 20;
+
+      if (e.translationY > 0 && (atTop || flingDown || dragY.value > 0)) {
         dragY.value = e.translationY;
-        expandProgress.value = Math.max(1 - e.translationY / (screenH * 0.42), 0);
       }
     })
     .onEnd((e) => {
-      if (e.translationY > DISMISS_DISTANCE || e.velocityY > 850) {
-        dragY.value = 0;
-        runOnJS(closeFullPlayer)();
+      const shouldDismiss =
+        e.translationY > DISMISS_DISTANCE ||
+        e.velocityY > DISMISS_VELOCITY ||
+        (e.velocityY > FLING_VELOCITY && e.translationY > 28);
+
+      if (shouldDismiss) {
+        runOnJS(animateClose)();
         return;
       }
-      dragY.value = withSpring(0, CALM_SPRING);
-      expandProgress.value = withSpring(1, EXPAND_SPRING);
+
+      if (dragY.value > 0) {
+        dragY.value = withSpring(0, CALM_SPRING);
+      }
     });
 
-  if (!currentTrack || !isFullPlayerOpen || !copy) return null;
+  if (!isFullPlayerOpen || !currentTrack || !copy) return null;
 
   const elapsed = progress * duration;
 
@@ -166,7 +228,7 @@ export function FullScreenPlayer() {
     <View style={styles.overlay} pointerEvents="box-none">
       <Pressable
         style={StyleSheet.absoluteFill}
-        onPress={closeFullPlayer}
+        onPress={animateClose}
         accessibilityLabel="Close player">
         <Animated.View style={[styles.backdrop, backdropStyle]} pointerEvents="none">
           <SacredImage
@@ -194,7 +256,7 @@ export function FullScreenPlayer() {
             <View style={styles.topBar}>
               <Text style={styles.nowPlaying}>Now Playing</Text>
               <OrthodoxPressable
-                onPress={closeFullPlayer}
+                onPress={animateClose}
                 accessibilityLabel="Close player"
                 hitSlop={14}
                 style={styles.dismissBtn}>
@@ -202,83 +264,92 @@ export function FullScreenPlayer() {
               </OrthodoxPressable>
             </View>
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              contentContainerStyle={styles.scrollContent}>
-              <Animated.View style={[styles.artworkColumn, artworkStyle]}>
-                <View style={styles.artworkGlow} pointerEvents="none" />
-                <View style={styles.artworkFrame}>
-                  <SacredImage
-                    uri={currentTrack.artworkUri}
-                    style={styles.artworkImage}
-                    contentFit="cover"
+            <GestureDetector gesture={scrollGesture}>
+              <Animated.ScrollView
+                onScroll={scrollHandler}
+                scrollEventThrottle={16}
+                showsVerticalScrollIndicator={false}
+                bounces
+                contentContainerStyle={styles.scrollContent}>
+                <Animated.View style={[styles.artworkColumn, artworkStyle]}>
+                  <View style={styles.artworkGlow} pointerEvents="none" />
+                  <View style={styles.artworkFrame}>
+                    <SacredImage
+                      uri={currentTrack.artworkUri}
+                      style={styles.artworkImage}
+                      contentFit="cover"
+                    />
+                  </View>
+                </Animated.View>
+
+                <Animated.View style={[styles.block, metaStyle, { marginTop: V.artworkToTitle }]}>
+                  <ThemedText style={styles.trackTitle} numberOfLines={2}>
+                    {copy.title}
+                  </ThemedText>
+                  <ThemedText style={styles.trackArtist} numberOfLines={1}>
+                    {copy.artist}
+                  </ThemedText>
+                  {showCategory ? (
+                    <Text style={styles.category}>{copy.categoryLabel}</Text>
+                  ) : null}
+                </Animated.View>
+
+                <Animated.View style={[styles.block, progressStyle, { marginTop: V.titleToProgress }]}>
+                  <GoldProgressSlider progress={progress} onSeek={seekTo} />
+                  <View style={styles.timeRow}>
+                    <Text style={styles.time}>{formatPlaybackTime(elapsed)}</Text>
+                    <Text style={styles.time}>{formatPlaybackTime(duration)}</Text>
+                  </View>
+                </Animated.View>
+
+                <Animated.View
+                  style={[styles.controlsRow, controlsStyle, { marginTop: V.progressToControls }]}>
+                  <OrthodoxPressable
+                    onPress={() => skipSeconds(-15)}
+                    style={styles.sideControl}
+                    accessibilityLabel="Rewind 15 seconds">
+                    <Icon name="rewind" size={20} color={Palette.mutedGold} />
+                  </OrthodoxPressable>
+                  <OrthodoxPressable
+                    onPress={previousTrack}
+                    style={styles.sideControl}
+                    accessibilityLabel="Previous">
+                    <Icon name="skip-back" size={24} color={Palette.gold} />
+                  </OrthodoxPressable>
+                  <OrthodoxPressable
+                    onPress={playPause}
+                    style={styles.playMain}
+                    accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
+                    <Icon name={isPlaying ? 'pause' : 'play'} size={28} color={Palette.background} />
+                  </OrthodoxPressable>
+                  <OrthodoxPressable onPress={nextTrack} style={styles.sideControl} accessibilityLabel="Next">
+                    <Icon name="skip-forward" size={24} color={Palette.gold} />
+                  </OrthodoxPressable>
+                  <OrthodoxPressable
+                    onPress={() => skipSeconds(15)}
+                    style={styles.sideControl}
+                    accessibilityLabel="Forward 15 seconds">
+                    <Icon name="forward" size={20} color={Palette.mutedGold} />
+                  </OrthodoxPressable>
+                </Animated.View>
+
+                <Animated.View
+                  style={[styles.secondaryRow, actionsStyle, { marginTop: V.controlsToActions }]}>
+                  <SecondaryAction icon="heart" label="Favorite" />
+                  <SecondaryAction icon="share" label="Share" />
+                  <SecondaryAction icon="list" label="Queue" />
+                  <SecondaryAction icon="bookmark" label="Save" />
+                </Animated.View>
+
+                <Animated.View style={[styles.tabsWrap, tabsStyle, { marginTop: V.actionsToTabs }]}>
+                  <PlayerDetailsTabs
+                    lyrics={`Sacred text for “${copy.title}” — manuscript lyrics and transliteration will appear here.`}
+                    about={`${copy.title} · ${copy.artist}\n\nA sacred recording from the Orthodox tradition, offered for prayer and contemplation.`}
+                    related="Explore related hymns, sermons, and melodies from the Listen library."
                   />
-                </View>
-              </Animated.View>
-
-              <Animated.View style={[styles.block, metaStyle, { marginTop: V.artworkToTitle }]}>
-                <ThemedText style={styles.trackTitle} numberOfLines={2}>
-                  {copy.title}
-                </ThemedText>
-                <ThemedText style={styles.trackArtist} numberOfLines={1}>
-                  {copy.artist}
-                </ThemedText>
-                {showCategory ? (
-                  <Text style={styles.category}>{copy.categoryLabel}</Text>
-                ) : null}
-              </Animated.View>
-
-              <Animated.View style={[styles.block, progressStyle, { marginTop: V.titleToProgress }]}>
-                <GoldProgressSlider progress={progress} onSeek={seekTo} />
-                <View style={styles.timeRow}>
-                  <Text style={styles.time}>{formatPlaybackTime(elapsed)}</Text>
-                  <Text style={styles.time}>{formatPlaybackTime(duration)}</Text>
-                </View>
-              </Animated.View>
-
-              <Animated.View style={[styles.controlsRow, controlsStyle, { marginTop: V.progressToControls }]}>
-                <OrthodoxPressable
-                  onPress={() => skipSeconds(-15)}
-                  style={styles.sideControl}
-                  accessibilityLabel="Rewind 15 seconds">
-                  <Icon name="rewind" size={20} color={Palette.mutedGold} />
-                </OrthodoxPressable>
-                <OrthodoxPressable onPress={previousTrack} style={styles.sideControl} accessibilityLabel="Previous">
-                  <Icon name="skip-back" size={24} color={Palette.gold} />
-                </OrthodoxPressable>
-                <OrthodoxPressable
-                  onPress={playPause}
-                  style={styles.playMain}
-                  accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
-                  <Icon name={isPlaying ? 'pause' : 'play'} size={28} color={Palette.background} />
-                </OrthodoxPressable>
-                <OrthodoxPressable onPress={nextTrack} style={styles.sideControl} accessibilityLabel="Next">
-                  <Icon name="skip-forward" size={24} color={Palette.gold} />
-                </OrthodoxPressable>
-                <OrthodoxPressable
-                  onPress={() => skipSeconds(15)}
-                  style={styles.sideControl}
-                  accessibilityLabel="Forward 15 seconds">
-                  <Icon name="forward" size={20} color={Palette.mutedGold} />
-                </OrthodoxPressable>
-              </Animated.View>
-
-              <Animated.View style={[styles.secondaryRow, actionsStyle, { marginTop: V.controlsToActions }]}>
-                <SecondaryAction icon="heart" label="Favorite" />
-                <SecondaryAction icon="share" label="Share" />
-                <SecondaryAction icon="list" label="Queue" />
-                <SecondaryAction icon="bookmark" label="Save" />
-              </Animated.View>
-
-              <Animated.View style={[styles.tabsWrap, tabsStyle, { marginTop: V.actionsToTabs }]}>
-                <PlayerDetailsTabs
-                  lyrics={`Sacred text for “${copy.title}” — manuscript lyrics and transliteration will appear here.`}
-                  about={`${copy.title} · ${copy.artist}\n\nA sacred recording from the Orthodox tradition, offered for prayer and contemplation.`}
-                  related="Explore related hymns, sermons, and melodies from the Listen library."
-                />
-              </Animated.View>
-            </ScrollView>
+                </Animated.View>
+              </Animated.ScrollView>
+            </GestureDetector>
           </View>
         </Animated.View>
       </GestureDetector>

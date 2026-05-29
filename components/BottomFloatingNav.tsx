@@ -1,7 +1,7 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useMemo } from 'react';
-import { Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -15,7 +15,6 @@ import { Palette } from '@/constants/theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { getTabLabel, type TabKey } from '@/lib/translations';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
 
 type TabIconName = Parameters<typeof IconSymbol>[0]['name'];
 
@@ -67,7 +66,7 @@ export function BottomFloatingNav({ state, navigation }: BottomTabBarProps) {
     <View
       pointerEvents="box-none"
       style={[styles.host, { bottom, left: FloatingBottom.horizontalMargin, right: FloatingBottom.horizontalMargin }]}>
-      <View style={styles.pill}>
+      <View style={styles.pill} pointerEvents="auto">
         {Platform.OS === 'ios' ? (
           <BlurView intensity={64} tint="dark" style={StyleSheet.absoluteFill} />
         ) : null}
@@ -83,9 +82,6 @@ export function BottomFloatingNav({ state, navigation }: BottomTabBarProps) {
             const color = focused ? Palette.gold : Palette.muted;
 
             const onPress = () => {
-              if (process.env.EXPO_OS === 'ios') {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }
               const event = navigation.emit({
                 type: 'tabPress',
                 target: route.key,
@@ -135,17 +131,21 @@ function TabItem({
   const iconWrapStyle = focused ? styles.iconGlow : undefined;
 
   return (
-    <OrthodoxPressable
+    <Pressable
       style={styles.tab}
       onPress={onPress}
       onPressIn={() => {
         scale.value = withSpring(0.92, { damping: 14, stiffness: 400 });
+        if (process.env.EXPO_OS === 'ios') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
       }}
       onPressOut={() => {
         scale.value = withSpring(1, SPRING);
       }}
       accessibilityRole="button"
-      accessibilityState={{ selected: focused }}>
+      accessibilityState={{ selected: focused }}
+      hitSlop={6}>
       <Animated.View style={[styles.tabInner, pressStyle]}>
         <View style={iconWrapStyle}>
           <IconSymbol name={iconName} size={24} color={color} />
@@ -154,15 +154,15 @@ function TabItem({
           {label}
         </Text>
       </Animated.View>
-    </OrthodoxPressable>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   host: {
     position: 'absolute',
-    zIndex: 90,
-    elevation: 90,
+    left: 0,
+    right: 0,
   },
   pill: {
     height: FloatingBottom.tabBarHeight,

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CalendarMonthGrid } from '@/components/calendar/calendar-month-grid';
@@ -6,6 +6,7 @@ import { SaintDetailSheet } from '@/components/calendar/saint-detail-sheet';
 import { UpcomingFeasts } from '@/components/calendar/upcoming-feasts';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { PageHeader } from '@/components/orthodox/PageHeader';
+import { GoldCrossSpinner } from '@/components/ui/gold-cross-spinner';
 import { SearchBar } from '@/components/ui/search-bar';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
@@ -47,6 +48,7 @@ export default function CalendarScreen() {
   const [selectedDay, setSelectedDay] = useState<number | null>(today.day);
   const [filter, setFilter] = useState<CalendarFilter>('all');
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [returningToCalendar, setReturningToCalendar] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { recentSearches, addRecentSearch } = useRecentSearches('calendar');
@@ -82,6 +84,20 @@ export default function CalendarScreen() {
     setSelectedDay(feast.date.getDate());
     setSheetVisible(true);
   }, []);
+
+  const handleCloseSheet = useCallback(() => {
+    setSheetVisible(false);
+  }, []);
+
+  const handleDismissStart = useCallback(() => {
+    setReturningToCalendar(true);
+  }, []);
+
+  useEffect(() => {
+    if (!returningToCalendar) return;
+    const timer = setTimeout(() => setReturningToCalendar(false), 320);
+    return () => clearTimeout(timer);
+  }, [returningToCalendar]);
 
   const goPrevMonth = useCallback(() => {
     if (viewMonth === 0) {
@@ -157,13 +173,20 @@ export default function CalendarScreen() {
         </View>
       </ScreenScrollView>
 
+      {returningToCalendar ? (
+        <View style={styles.returnOverlay} pointerEvents="none">
+          <GoldCrossSpinner />
+        </View>
+      ) : null}
+
       <SaintDetailSheet
         visible={sheetVisible}
         year={viewYear}
         month={viewMonth}
         day={sheetDay}
         bookmarked={bookmarked}
-        onClose={() => setSheetVisible(false)}
+        onDismissStart={handleDismissStart}
+        onClose={handleCloseSheet}
         onToggleBookmark={() => setBookmarked((b) => !b)}
       />
     </View>
@@ -189,6 +212,13 @@ function LegendItem({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  returnOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(16, 13, 10, 0.72)',
+    zIndex: 20,
+  },
   content: { paddingBottom: Layout.sectionContentBottom },
   searchWrap: { marginBottom: Layout.sectionHeaderBottom },
   filterScroll: { marginBottom: Layout.sectionHeaderBottom },
