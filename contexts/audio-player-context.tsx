@@ -53,7 +53,6 @@ type AudioPlayerContextValue = {
 };
 
 const EXPAND_SPRING = { damping: 22, stiffness: 220, mass: 0.9 };
-const COLLAPSE_SPRING = { damping: 26, stiffness: 300, mass: 0.85 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
 
@@ -65,7 +64,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [progress, setProgress] = useState(0.35);
   const [duration] = useState(225);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
-  const [isFullPlayerMounted, setIsFullPlayerMounted] = useState(false);
 
   const expandProgress = useSharedValue(0);
   const progressRef = useRef(progress);
@@ -96,34 +94,23 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const openFullPlayer = useCallback(() => {
     if (!currentTrack) return;
-    setIsFullPlayerMounted(true);
     setIsFullPlayerOpen(true);
     expandProgress.value = withSpring(1, EXPAND_SPRING);
   }, [currentTrack, expandProgress]);
 
-  const finishClose = useCallback(() => {
-    setIsFullPlayerOpen(false);
-    setIsFullPlayerMounted(false);
-  }, []);
-
   const closeFullPlayer = useCallback(() => {
-    expandProgress.value = withSpring(0, COLLAPSE_SPRING, (finished) => {
-      if (finished) runOnJS(finishClose)();
-    });
-  }, [expandProgress, finishClose]);
+    setIsFullPlayerOpen(false);
+    expandProgress.value = 0;
+  }, [expandProgress]);
 
   const dismissMiniPlayer = useCallback(() => {
-    if (isFullPlayerOpen) {
-      expandProgress.value = withSpring(0, COLLAPSE_SPRING, (finished) => {
-        if (finished) runOnJS(finishClose)();
-      });
-    }
+    closeFullPlayer();
     setIsPlaying(false);
     setCurrentTrack(null);
     setQueue([]);
     setQueueIndex(0);
     setProgress(0);
-  }, [isFullPlayerOpen, expandProgress, finishClose]);
+  }, [closeFullPlayer]);
 
   const playPause = useCallback(() => {
     setIsPlaying((p) => !p);

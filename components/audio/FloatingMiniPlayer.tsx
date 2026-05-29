@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Animated, {
-  Extrapolation,
-  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -27,7 +25,6 @@ export function FloatingMiniPlayer() {
     isPlaying,
     progress,
     isMiniPlayerVisible,
-    expandProgress,
     openFullPlayer,
     dismissMiniPlayer,
     playPause,
@@ -65,7 +62,6 @@ export function FloatingMiniPlayer() {
 
   const animatedHost = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
-    opacity: interpolate(expandProgress.value, [0, 0.2], [1, 0], Extrapolation.CLAMP),
   }));
 
   if (!renderTrack) return null;
