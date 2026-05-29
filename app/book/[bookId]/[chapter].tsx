@@ -14,6 +14,7 @@ import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
 import { getBibleBook, getBookTitle } from '@/data/bibleCanon';
 import { useScriptureLang } from '@/hooks/use-scripture-lang';
+import { recordReadingProgress } from '@/hooks/use-reading-progress';
 import { useTranslation } from '@/hooks/use-translation';
 import { fetchBookChapters, fetchChapterVerses } from '@/lib/scripture';
 import { Layout, Palette, Spacing } from '@/constants/theme';
@@ -59,6 +60,18 @@ export default function ChapterReaderScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Remember the reader's position so "Continue Reading" can resume here.
+  useEffect(() => {
+    if (!bookId || !book || !Number.isFinite(chapter)) return;
+    void recordReadingProgress({
+      bookId,
+      chapter,
+      totalChapters: chapters.length || chapter,
+      lang,
+      updatedAt: Date.now(),
+    });
+  }, [bookId, book, chapter, chapters.length, lang]);
 
   if (!book || !Number.isFinite(chapter)) {
     return (

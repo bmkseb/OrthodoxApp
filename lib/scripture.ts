@@ -1,4 +1,4 @@
-import type { ScriptureLang, ScriptureSampleFile, VerseRecord } from '@/types/scripture';
+import type { Footnote, ScriptureLang, ScriptureSampleFile, VerseRecord } from '@/types/scripture';
 
 import { getSupabase, isSupabaseConfigured } from './supabase';
 
@@ -21,6 +21,22 @@ export function pickVerseText(verse: VerseRecord, lang: ScriptureLang): string {
     verse.text_english?.trim() ||
     ''
   );
+}
+
+/** Parse the JSON-encoded footnotes for a verse (returns [] when absent or malformed). */
+export function parseFootnotes(verse: VerseRecord): Footnote[] {
+  if (!verse.footnote) return [];
+  try {
+    const parsed = JSON.parse(verse.footnote);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((f) => ({ ref: String(f?.ref ?? '').trim(), text: String(f?.text ?? '').trim() }))
+      .filter((f) => f.text.length > 0);
+  } catch {
+    // Legacy rows stored a plain string note.
+    const text = verse.footnote.trim();
+    return text ? [{ ref: '', text }] : [];
+  }
 }
 
 function uniqueSortedChapters(rows: { chapter: number }[]): number[] {
@@ -47,7 +63,7 @@ async function fetchVersesFromSupabase(bookId: string, chapter: number): Promise
 
   const { data, error } = await supabase
     .from('verses')
-    .select('verse_id, book_id, chapter, verse, text_amharic, text_geez, text_english')
+    .select('verse_id, book_id, chapter, verse, text_amharic, text_geez, text_english, footnote')
     .eq('book_id', bookId)
     .eq('chapter', chapter)
     .order('verse', { ascending: true });

@@ -14,7 +14,7 @@ import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
-import { FloatingBottom, getMiniPlayerBottom } from '@/constants/floating-bottom';
+import { FloatingBottom, getTabBarBottom } from '@/constants/floating-bottom';
 import { Palette, Space, Typography } from '@/constants/theme';
 import { useAudioPlayer } from '@/contexts/audio-player-context';
 
@@ -32,8 +32,9 @@ export function FloatingMiniPlayer() {
     nextTrack,
   } = useAudioPlayer();
 
-  const bottom = getMiniPlayerBottom(insets);
-  // Slide down until the pill's top edge reaches the top of the navigation bar, then unmount.
+  // The player is clipped to a container that ends at the top of the nav bar, so
+  // sliding the pill down makes it disappear exactly at the nav bar's top edge.
+  const navBarTop = getTabBarBottom(insets) + FloatingBottom.tabBarHeight;
   const slideOffset = FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap;
 
   const translateY = useSharedValue(slideOffset);
@@ -69,18 +70,22 @@ export function FloatingMiniPlayer() {
   const pct = Math.min(Math.max(progress, 0), 1) * 100;
 
   return (
-    <Animated.View
+    <View
       pointerEvents={isMiniPlayerVisible && currentTrack ? 'box-none' : 'none'}
       style={[
-        styles.host,
-        { bottom, left: FloatingBottom.horizontalMargin, right: FloatingBottom.horizontalMargin },
-        animatedHost,
+        styles.clip,
+        {
+          bottom: navBarTop,
+          left: FloatingBottom.horizontalMargin,
+          right: FloatingBottom.horizontalMargin,
+        },
       ]}>
-      <Pressable
-        onPress={openFullPlayer}
-        style={styles.pill}
-        accessibilityRole="button"
-        accessibilityLabel="Open full player">
+      <Animated.View style={[styles.slider, animatedHost]}>
+        <Pressable
+          onPress={openFullPlayer}
+          style={styles.pill}
+          accessibilityRole="button"
+          accessibilityLabel="Open full player">
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${pct}%` }]} />
         </View>
@@ -131,18 +136,25 @@ export function FloatingMiniPlayer() {
             <Icon name="close" size={18} color={Palette.muted} />
           </OrthodoxPressable>
         </View>
-      </Pressable>
-    </Animated.View>
+        </Pressable>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  host: {
+  clip: {
     position: 'absolute',
-    // Sit below the nav bar (zIndex 90) so the dismiss slide tucks behind it
-    // and disappears at the top edge of the navigation bar.
+    // Height covers the pill + its gap above the nav bar; bottom is pinned to the
+    // nav bar top and overflow is hidden so the pill vanishes at the nav bar's top edge.
+    height: FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap,
+    overflow: 'hidden',
     zIndex: 80,
     elevation: 80,
+  },
+  slider: {
+    height: FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap,
+    justifyContent: 'flex-start',
   },
   pill: {
     height: FloatingBottom.miniPlayerHeight,

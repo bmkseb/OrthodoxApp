@@ -11,6 +11,7 @@ const en = {
     prayer: 'Prayer',
     orthodoxHymns: 'Orthodox Hymns',
     continueReading: 'Continue Reading',
+    recentlyRead: 'Recently Read',
     featured: 'Featured',
     orthodoxCatalog: 'Orthodox Catalog',
     upcomingFeasts: 'Upcoming Feasts',

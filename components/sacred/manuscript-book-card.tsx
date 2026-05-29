@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ManuscriptCornerFrame } from '@/components/sacred/manuscript-corner-frame';
 import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
@@ -17,6 +18,9 @@ type ManuscriptBookCardProps = {
   imageUri: string;
   progress?: number;
   onPress?: () => void;
+  /** When provided, shows an X button at the top-right to dismiss the card. */
+  onRemove?: () => void;
+  removeLabel?: string;
 };
 
 export const ManuscriptBookCard = memo(function ManuscriptBookCard({
@@ -25,6 +29,8 @@ export const ManuscriptBookCard = memo(function ManuscriptBookCard({
   imageUri,
   progress = 0,
   onPress,
+  onRemove,
+  removeLabel,
 }: ManuscriptBookCardProps) {
   const showProgress = progress > 0;
 
@@ -57,6 +63,17 @@ export const ManuscriptBookCard = memo(function ManuscriptBookCard({
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.min(Math.max(progress, 0), 1) * 100}%` }]} />
             </View>
+          ) : null}
+
+          {onRemove ? (
+            <OrthodoxPressable
+              style={styles.removeBtn}
+              onPress={onRemove}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={removeLabel ?? 'Remove'}>
+              <Icon name="close" size={11} color={Palette.text} />
+            </OrthodoxPressable>
           ) : null}
         </View>
       </View>
@@ -123,5 +140,20 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     backgroundColor: ManuscriptTokens.progressGlow,
+  },
+  removeBtn: {
+    position: 'absolute',
+    top: Space.s8,
+    right: Space.s8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(12, 10, 8, 0.82)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.45)',
+    zIndex: 20,
+    elevation: 20,
   },
 });

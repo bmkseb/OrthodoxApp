@@ -11,6 +11,7 @@ const am = {
     prayer: 'ጸሎት',
     orthodoxHymns: 'መዝሙር',
     continueReading: 'ቀጥል ንባብ',
+    recentlyRead: 'በቅርብ የተነበበ',
     featured: 'ተወዳጅ',
     orthodoxCatalog: 'መጻሕፍት',
     upcomingFeasts: 'በዓላት',
