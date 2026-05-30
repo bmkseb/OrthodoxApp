@@ -81,6 +81,14 @@ export function PageHeader({ title, geez, onPressBell, onPressGlobe }: PageHeade
         <View style={styles.actions}>
           <OrthodoxPressable
             accessibilityRole="button"
+            accessibilityLabel="Saved verses and bookmarks"
+            onPress={() => router.push('/saved')}
+            style={styles.actionBtn}>
+            <Icon name="list" size={ICON_SIZE} color={Palette.gold} strokeWidth={ICON_STROKE} />
+          </OrthodoxPressable>
+
+          <OrthodoxPressable
+            accessibilityRole="button"
             accessibilityLabel={t('settings.notifications')}
             onPress={handleBell}
             style={styles.actionBtn}>

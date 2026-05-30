@@ -2,8 +2,9 @@ import { router } from 'expo-router';
 import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 
 import { PageHeader } from '@/components/orthodox/PageHeader';
-import { EditorialFeaturedCard } from '@/components/sacred/editorial-featured-card';
+import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
 import { HolyBibleHeroCard } from '@/components/sacred/holy-bible-hero-card';
+import { VerseOfTheDayCard } from '@/components/sacred/verse-of-the-day-card';
 import { ManuscriptBookCard } from '@/components/sacred/manuscript-book-card';
 import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
@@ -18,15 +19,50 @@ import { useTranslation } from '@/hooks/use-translation';
 const { width } = Dimensions.get('window');
 
 const CATALOG_PREVIEW = [
-  { id: 'c1', titleKey: 'horologium' as const, subKey: 'horologiumSub' as const, image: SacredImagery.readManuscript, route: '/horologium' },
-  { id: 'c2', titleKey: 'holyBible' as const, subKey: 'holyBibleSub' as const, image: SacredImagery.continueBible, route: '/catalog' },
-  { id: 'c3', titleKey: 'liturgy' as const, subKey: 'liturgySub' as const, image: SacredImagery.continueLiturgy, route: '/catalog' },
+  { id: 'c1', titleKey: 'horologium' as const, subKey: 'horologiumSub' as const, image: SacredImagery.readManuscript, route: '/horologium' as const },
+  { id: 'c2', titleKey: 'holyBible' as const, subKey: 'holyBibleSub' as const, image: SacredImagery.continueBible, route: '/catalog' as const },
+  { id: 'c3', titleKey: 'liturgy' as const, subKey: 'liturgySub' as const, image: SacredImagery.continueLiturgy, route: '/catalog' as const },
 ];
 
 export default function ReadScreen() {
   const { t } = useTranslation();
   const featuredWidth = width - Layout.pagePadding * 2;
   const { entries } = useReadingProgress();
+
+  const featuredItems: FeaturedItem[] = [
+    {
+      id: 'readings',
+      title: t('content.todaysReadings'),
+      subtitle: t('content.todaysReadingsSub'),
+      badgeLabel: t('calendar.today'),
+      imageUri: SacredImagery.continueBible,
+      onPress: () => router.push('/calendar'),
+    },
+    {
+      id: 'saint',
+      title: t('content.saintOfTheDay'),
+      subtitle: t('content.saintOfTheDaySub'),
+      badgeLabel: t('calendar.today'),
+      imageUri: SacredImagery.prayerOrthodox,
+      onPress: () => router.push('/calendar'),
+    },
+    {
+      id: 'feast',
+      title: t('content.feastFast'),
+      subtitle: t('content.feastFastSub'),
+      badgeLabel: t('calendar.today'),
+      imageUri: SacredImagery.continueLiturgy,
+      onPress: () => router.push('/calendar'),
+    },
+    {
+      id: 'prayer',
+      title: t('content.dailyPrayer'),
+      subtitle: t('content.dailyPrayerSub'),
+      badgeLabel: t('calendar.today'),
+      imageUri: SacredImagery.prayerDaily,
+      onPress: () => router.push('/horologium'),
+    },
+  ];
 
   const lastRead = entries[0];
   const lastReadBook = lastRead ? getBibleBook(lastRead.bookId) : undefined;
@@ -101,13 +137,14 @@ export default function ReadScreen() {
 
       <View style={styles.section}>
         <SectionHeader headerKey="featured" icon="sparkle" />
-        <EditorialFeaturedCard
-          title={t('common.lawOfKings')}
-          subtitle={t('common.lawOfKingsSub')}
-          badgeLabel={t('common.sacredManuscript')}
-          imageUri={SacredImagery.readFeatured}
-          style={{ width: featuredWidth }}
-        />
+        <FeaturedCarousel items={featuredItems} width={featuredWidth} autoRotateMs={3200} />
+      </View>
+
+      <SacredSectionDivider />
+
+      <View style={styles.section}>
+        <SectionHeader headerKey="content.verseOfTheDay" icon="book" />
+        <VerseOfTheDayCard width={featuredWidth} />
       </View>
 
       <SacredSectionDivider />

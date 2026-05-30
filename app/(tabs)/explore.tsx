@@ -1,78 +1,77 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { CategoryGrid, type Category } from '@/components/explore/category-grid';
+import { DiscoverCanon } from '@/components/explore/discover-canon';
 import { ExploreAtmosphere } from '@/components/explore/explore-atmosphere';
-import { ExploreQuickChips } from '@/components/explore/explore-quick-chips';
 import { ExploreSectionFrame } from '@/components/explore/explore-section-frame';
-import { TodaysDevotionGrid } from '@/components/explore/todays-devotion-grid';
-import { TodaysGospelCard } from '@/components/explore/todays-gospel-card';
-import { BilingualHeader } from '@/components/orthodox/BilingualHeader';
+import { PrayerStreakCard } from '@/components/explore/prayer-streak-card';
 import { PageHeader } from '@/components/orthodox/PageHeader';
-import { DevotionalProgressCard } from '@/components/sacred/devotional-progress-card';
 import { ManuscriptBookCard } from '@/components/sacred/manuscript-book-card';
-import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
 import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
-import { PrayerManuscriptCard } from '@/components/sacred/prayer-manuscript-card';
-import { ThemedText } from '@/components/themed-text';
+import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
 import { MediaListItem } from '@/components/ui/media-list-item';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
+import { ThemedText } from '@/components/themed-text';
 import { SacredImagery } from '@/constants/explore-content';
-import { Layout, Palette, Space, Typography } from '@/constants/theme';
+import { Layout, Palette, Space } from '@/constants/theme';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 
 const MUTED_GOLD = '#8A8070';
+const STREAK_DAYS = 14;
 
-const CONTINUE_BOOKS = [
-  { id: '1', titleKey: 'horologium' as const, subKey: 'horologiumSub' as const, image: SacredImagery.continueHorologium, progress: 0.35 },
-  { id: '2', titleKey: 'holyBible' as const, subKey: 'holyBibleSub' as const, image: SacredImagery.continueBible, progress: 0.62 },
-  { id: '3', titleKey: 'liturgy' as const, subKey: 'liturgySub' as const, image: SacredImagery.continueLiturgy, progress: 0.18 },
+const FEATURED_COLLECTIONS = [
+  { id: 'lent', title: 'Great Lent Essentials', subtitle: 'Fasting season', image: SacredImagery.reflection, route: '/calendar' as const },
+  { id: 'ethiopian', title: 'Ethiopian Saints', subtitle: 'Tewahedo', image: SacredImagery.continueLiturgy, route: '/calendar' as const },
+  { id: 'archangels', title: 'The Archangels', subtitle: 'Heavenly hosts', image: SacredImagery.prayerOrthodox, route: '/learn' as const },
+  { id: 'theotokos', title: 'Theotokos Collection', subtitle: 'St. Mary', image: SacredImagery.prayerMary, route: '/learn' as const },
+  { id: 'pascha', title: 'Pascha Collection', subtitle: 'Resurrection', image: SacredImagery.readingHero, route: '/calendar' as const },
+  { id: 'beginner', title: "Beginner's Orthodox Journey", subtitle: 'Start here', image: SacredImagery.readManuscript, route: '/learn' as const },
 ];
 
-const PRAYERS = [
-  { id: '1', key: 'dailyPrayer' as const, image: SacredImagery.prayerDaily },
-  { id: '2', key: 'praisesMary' as const, image: SacredImagery.prayerMary },
-  { id: '3', key: 'orthodoxPrayers' as const, image: SacredImagery.prayerOrthodox },
+const SAINT_COLLECTIONS = [
+  { id: 'week', title: 'Saint of the Week', subtitle: 'This week', image: SacredImagery.prayerMary },
+  { id: 'popular', title: 'Popular Saints', subtitle: 'Most loved', image: SacredImagery.prayerOrthodox },
+  { id: 'ethiopian', title: 'Ethiopian Saints', subtitle: 'Tewahedo', image: SacredImagery.continueLiturgy },
 ];
 
-const HYMNS = [
-  { id: '1', title: 'Covenant of Mercy', artist: 'Helena Alemu', image: SacredImagery.listenHymns },
-  { id: '2', title: 'Your Graciousness has Sustained Me', artist: 'Various Artists', image: SacredImagery.prayerMary },
+const PRAYER_LIBRARY = [
+  { id: 'morning', title: 'Morning Prayers', image: SacredImagery.prayerDaily },
+  { id: 'evening', title: 'Evening Prayers', image: SacredImagery.continueHorologium },
+  { id: 'before-communion', title: 'Before Communion', image: SacredImagery.prayerOrthodox },
+  { id: 'after-communion', title: 'After Communion', image: SacredImagery.prayerMary },
+  { id: 'fasting', title: 'Fasting Prayers', image: SacredImagery.reflection },
+];
+
+const TOP_HYMNS = [
+  { id: 'h1', title: 'Covenant of Mercy', artist: 'Helena Alemu', image: SacredImagery.listenHymns },
+  { id: 'h2', title: 'Your Graciousness has Sustained Me', artist: 'Various Artists', image: SacredImagery.prayerMary },
+  { id: 'h3', title: 'Blessed Art Thou, O Mary', artist: 'Tewahedo Choir', image: SacredImagery.listenMelodies },
 ];
 
 export default function ExploreScreen() {
-  const { t, ethiopicStyle, mode } = useTranslation();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const { recentSearches, addRecentSearch } = useRecentSearches('explore');
-  const amharicText = mode === 'am' ? ethiopicStyle : undefined;
 
-  const q = searchQuery.trim().toLowerCase();
-  const hasSearch = q.length > 0;
-  const matches = (text: string) => !hasSearch || text.toLowerCase().includes(q);
-
-  const filteredHymns = useMemo(() => {
-    if (!hasSearch) return HYMNS;
-    return HYMNS.filter((h) => matches(h.title) || matches(h.artist));
-  }, [hasSearch, q]);
-
-  const filteredPrayers = useMemo(() => {
-    if (!hasSearch) return PRAYERS;
-    return PRAYERS.filter((p) => matches(t(`content.${p.key}`)));
-  }, [hasSearch, q, t]);
-
-  const filteredContinue = useMemo(() => {
-    if (!hasSearch) return CONTINUE_BOOKS;
-    return CONTINUE_BOOKS.filter((b) => {
-      const title = t(`content.${b.titleKey}`);
-      const sub = t(`content.${b.subKey}`);
-      return matches(title) || matches(sub);
-    });
-  }, [hasSearch, q, t]);
+  const quickAccess: Category[] = [
+    { id: 'prayers', label: t('explore.catPrayers'), icon: 'sun', onPress: () => router.push('/horologium') },
+    { id: 'saints', label: t('explore.catSaints'), icon: 'church', onPress: () => router.push('/calendar') },
+    { id: 'hymns', label: t('explore.catHymns'), icon: 'music', onPress: () => router.push('/listen') },
+    { id: 'feasts', label: t('explore.catFeastsOnly'), icon: 'calendar', onPress: () => router.push('/calendar') },
+    { id: 'fasts', label: t('explore.catFasts'), icon: 'flame', onPress: () => router.push('/calendar') },
+    { id: 'search', label: t('explore.catScriptureSearch'), icon: 'search', onPress: () => router.push('/catalog') },
+  ];
 
   const handleSearchSubmit = (term: string) => {
     setSearchQuery(term);
     void addRecentSearch(term);
+    // Scripture is the only searchable corpus today; send the query to the catalog.
+    router.push('/catalog');
   };
 
   return (
@@ -81,10 +80,10 @@ export default function ExploreScreen() {
       <ScreenScrollView hideAtmosphere style={styles.scrollView}>
         <PageHeader title="Explore" geez="መርምር" />
 
-        {/* Search */}
+        {/* Search — top of the page */}
         <View style={styles.block}>
           <SearchBar
-            placeholder={t('common.searchScriptures')}
+            placeholder={t('explore.searchHub')}
             placeholderTextColor={MUTED_GOLD}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -93,84 +92,100 @@ export default function ExploreScreen() {
           />
         </View>
 
-        {/* Filter pills (Daily Reading / Prayer / Hymns) */}
-        <View style={styles.blockTight}>
-          <ExploreQuickChips />
-        </View>
-
-        {/* Greeting */}
-        <View style={styles.blockTight}>
-          <ThemedText style={[styles.greeting, amharicText]}>{t('greeting.hello', { name: 'Bamlak' })}</ThemedText>
-          <ThemedText style={[styles.greetingSub, amharicText]}>{t('greeting.continueToday')}</ThemedText>
-        </View>
-
-        {/* Devotional streak */}
-        <View style={styles.blockMedium}>
-          <DevotionalProgressCard streakDays={5} subtitle={t('common.devotionalRhythm')} />
-        </View>
-
-        {/* "ቃል | Logos" — single focused reading for today */}
-        <View style={styles.todaysBlock}>
-          <BilingualHeader amharic="ቃል" english="Logos" />
-          <Text style={styles.logosSubtitle} allowFontScaling={false}>
-            The Word for today
-          </Text>
-          <TodaysGospelCard
-            title="Book of Matthew"
-            subtitle="Chapter 7-10"
-            chipLabel={t('explore.dailyGospel').toUpperCase()}
-            minutesLabel="12 MIN"
-            progress={0.4}
-            imageUri={SacredImagery.readingHero}
+        {/* Prayer streak — personal hero */}
+        <View style={styles.streakBlock}>
+          <PrayerStreakCard
+            title={t('explore.streakTitle', { count: STREAK_DAYS })}
+            subtitle={t('explore.streakSubtitle')}
           />
         </View>
 
-        {/* "ቅዱስ | Today's Devotion" — three-card row (saint / lectionary / hymn) */}
-        <View style={styles.devotionBlock}>
-          <TodaysDevotionGrid />
-        </View>
-
-        <SacredSectionDivider />
-
-        {/* Prayer */}
-        <ExploreSectionFrame headerKey="prayer" icon="sparkle">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peekCarousel}>
-            {filteredPrayers.map((prayer) => (
-              <PrayerManuscriptCard
-                key={prayer.id}
-                title={t(`content.${prayer.key}`)}
-                imageUri={prayer.image}
-              />
-            ))}
-          </ScrollView>
+        {/* Quick access shortcut menu */}
+        <ExploreSectionFrame title={t('explore.quickAccess')} icon="sparkle">
+          <CategoryGrid items={quickAccess} columns={3} />
         </ExploreSectionFrame>
 
         <SacredSectionDivider />
 
-        {/* Hymns */}
-        <ExploreSectionFrame headerKey="orthodoxHymns" icon="music">
-          <View style={styles.hymnsSurface}>
-            {filteredHymns.map((hymn) => (
-              <MediaListItem key={hymn.id} title={hymn.title} subtitle={hymn.artist} image={{ uri: hymn.image }} />
+        {/* Prayer library — browse list */}
+        <ExploreSectionFrame title={t('explore.prayerLibrary')} icon="cross">
+          <View style={styles.listSurface}>
+            {PRAYER_LIBRARY.map((p) => (
+              <MediaListItem
+                key={p.id}
+                title={p.title}
+                subtitle={t('explore.catPrayers')}
+                image={{ uri: p.image }}
+                onPress={() => router.push('/horologium')}
+              />
             ))}
           </View>
         </ExploreSectionFrame>
 
         <SacredSectionDivider />
 
-        {/* Continue reading */}
-        <ExploreSectionFrame title={t('explore.continueReading')} icon="book">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peekCarousel}>
-            {filteredContinue.map((book) => (
+        {/* Featured collections */}
+        <ExploreSectionFrame title={t('explore.featuredCollections')} icon="scroll">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
+            {FEATURED_COLLECTIONS.map((c) => (
               <ManuscriptBookCard
-                key={book.id}
-                title={t(`content.${book.titleKey}`)}
-                subtitle={t(`content.${book.subKey}`)}
-                imageUri={book.image}
-                progress={book.progress}
+                key={c.id}
+                title={c.title}
+                subtitle={c.subtitle}
+                imageUri={c.image}
+                onPress={() => router.push(c.route)}
               />
             ))}
           </ScrollView>
+        </ExploreSectionFrame>
+
+        <SacredSectionDivider />
+
+        {/* Discover the Canon */}
+        <ExploreSectionFrame title={t('explore.discoverCanon')} icon="book">
+          <DiscoverCanon featuredLabel={t('explore.discoverCanon')} />
+        </ExploreSectionFrame>
+
+        <SacredSectionDivider />
+
+        {/* Explore saints */}
+        <ExploreSectionFrame title={t('explore.exploreSaints')} icon="church">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
+            {SAINT_COLLECTIONS.map((s) => (
+              <ManuscriptBookCard
+                key={s.id}
+                title={s.title}
+                subtitle={s.subtitle}
+                imageUri={s.image}
+                onPress={() => router.push('/calendar')}
+              />
+            ))}
+          </ScrollView>
+        </ExploreSectionFrame>
+
+        <SacredSectionDivider />
+
+        {/* Popular hymns — top 3, numbered, teaser into Listen */}
+        <ExploreSectionFrame
+          title={t('explore.popularHymns')}
+          icon="music"
+          onSeeAllPress={() => router.push('/listen')}>
+          <View style={styles.listSurface}>
+            {TOP_HYMNS.map((h, i) => (
+              <View key={h.id} style={[styles.hymnRow, i === TOP_HYMNS.length - 1 && styles.hymnRowLast]}>
+                <ThemedText style={styles.rank}>{i + 1}</ThemedText>
+                <Image source={{ uri: h.image }} style={styles.hymnThumb} contentFit="cover" cachePolicy="memory-disk" />
+                <View style={styles.hymnInfo}>
+                  <ThemedText style={styles.hymnTitle} numberOfLines={1}>
+                    {h.title}
+                  </ThemedText>
+                  <ThemedText type="muted" style={styles.hymnArtist} numberOfLines={1}>
+                    {h.artist}
+                  </ThemedText>
+                </View>
+              </View>
+            ))}
+          </View>
         </ExploreSectionFrame>
       </ScreenScrollView>
     </View>
@@ -186,44 +201,56 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  block: { marginBottom: Space.s12 },
-  blockTight: { marginBottom: Space.s8 },
-  blockMedium: { marginBottom: Space.s16 },
-  greeting: {
-    ...Typography.cardTitle,
-    color: Palette.text,
-  },
-  greetingSub: {
-    color: ManuscriptTokens.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: Space.s4,
-  },
-  todaysBlock: {
-    marginBottom: Layout.sectionContentBottom,
-  },
-  devotionBlock: {
-    marginBottom: Layout.sectionContentBottom,
-  },
-  logosSubtitle: {
-    marginTop: 4,
-    marginBottom: Space.s12,
-    fontSize: 13,
-    fontWeight: '400',
-    letterSpacing: 0.3,
-    color: MUTED_GOLD,
-  },
-  peekCarousel: {
+  block: { marginBottom: Space.s16 },
+  streakBlock: { marginBottom: Space.s24 },
+  rail: {
     gap: Layout.cardGap,
     paddingRight: Layout.pagePadding,
     marginRight: -Layout.pagePadding,
   },
-  hymnsSurface: {
+  listSurface: {
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: ManuscriptTokens.goldBorder,
     backgroundColor: Palette.surface,
-    paddingVertical: Space.s4,
-    paddingHorizontal: Space.s4,
+    paddingVertical: Space.s12,
+    paddingHorizontal: Space.s12,
+  },
+  hymnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.s16,
+    paddingVertical: Space.s12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(201, 147, 58, 0.14)',
+  },
+  hymnRowLast: {
+    borderBottomWidth: 0,
+  },
+  rank: {
+    width: 22,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '800',
+    color: Palette.gold,
+  },
+  hymnThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: Palette.card,
+  },
+  hymnInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  hymnTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Palette.text,
+  },
+  hymnArtist: {
+    fontSize: 13,
   },
 });

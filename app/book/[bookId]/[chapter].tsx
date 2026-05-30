@@ -107,7 +107,7 @@ export default function ChapterReaderScreen() {
             paddingBottom: bottomInset,
           },
         ]}>
-        <ScriptureBackBar />
+        <ScriptureBackBar bookmark={{ bookId, chapter, lang, bookTitle }} />
         <ScriptureBookHeader
           title={bookTitle}
           subtitle={`${t('scripture.chapter')} ${chapter}`}
@@ -124,7 +124,13 @@ export default function ChapterReaderScreen() {
           />
         ) : (
           <View style={styles.body}>
-            <VerseList verses={verses} lang={lang} />
+            <VerseList
+              verses={verses}
+              lang={lang}
+              bookId={bookId}
+              chapter={chapter}
+              bookTitle={bookTitle}
+            />
           </View>
         )}
       </ScripturePageScroll>
