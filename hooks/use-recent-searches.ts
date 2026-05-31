@@ -41,5 +41,16 @@ export function useRecentSearches(screenKey: string, maxItems = 8) {
     [storageKey, maxItems],
   );
 
-  return { recentSearches, addRecentSearch, ready };
+  const removeRecentSearch = useCallback(
+    async (term: string) => {
+      setRecentSearches((prev) => {
+        const next = prev.filter((x) => x !== term);
+        void AsyncStorage.setItem(storageKey, JSON.stringify(next));
+        return next;
+      });
+    },
+    [storageKey],
+  );
+
+  return { recentSearches, addRecentSearch, removeRecentSearch, ready };
 }

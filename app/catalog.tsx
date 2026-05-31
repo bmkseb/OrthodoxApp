@@ -110,7 +110,7 @@ export default function CatalogScreen() {
   const { t } = useTranslation();
   const { q } = useLocalSearchParams<{ q?: string }>();
   const [activeLanguage, setActiveLanguage] = useState<LanguageTab>('english');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(typeof q === 'string' ? q : '');
   const { recentSearches, addRecentSearch } = useRecentSearches('catalog');
   const [verseHits, setVerseHits] = useState<Awaited<ReturnType<typeof searchVerses>>>([]);
   const [verseSearchLoading, setVerseSearchLoading] = useState(false);
@@ -144,6 +144,11 @@ export default function CatalogScreen() {
       active = false;
     };
   }, [debouncedQuery, activeLanguage]);
+
+  // Sync the search field when arriving with a query (e.g. from the Read page).
+  useEffect(() => {
+    if (typeof q === 'string') setQuery(q);
+  }, [q]);
 
   const handleSearchSubmit = (term: string) => {
     setQuery(term);
@@ -224,7 +229,7 @@ export default function CatalogScreen() {
       </ThemedText>
 
       <CollapsibleGroup title={otTitle} rows={oldTestament} defaultOpen />
-      <CollapsibleGroup title={ntTitle} rows={newTestament} />
+      <CollapsibleGroup title={ntTitle} rows={newTestament} defaultOpen={!!query.trim()} />
     </ScreenScrollView>
   );
 }

@@ -1,8 +1,11 @@
 import React, { type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Layout } from '@/constants/theme';
+
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 const SHELF_BG = '#1C1008';
 const WOOD_LIGHT = '#2C1A0E';
@@ -20,7 +23,7 @@ function WoodGrainOverlay() {
           style={[
             styles.grainLine,
             {
-              left: (index / GRAIN_LINES) * 100 + '%',
+              left: `${(index / GRAIN_LINES) * 100}%`,
               opacity: index % 2 === 0 ? 0.07 : 0.04,
             },
           ]}
@@ -40,13 +43,14 @@ type BookshelfSectionProps = {
 /** Warm wooden shelf backdrop for portrait book cards on the Read screen. */
 export function BookshelfSection({ children, horizontal = false, scrollProps }: BookshelfSectionProps) {
   const content = horizontal ? (
-    <ScrollView
+    <AnimatedScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      scrollEventThrottle={16}
       contentContainerStyle={styles.rail}
       {...scrollProps}>
       {children}
-    </ScrollView>
+    </AnimatedScrollView>
   ) : (
     children
   );

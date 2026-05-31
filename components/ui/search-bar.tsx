@@ -14,6 +14,8 @@ type SearchBarProps = {
   onSearchSubmit?: (term: string) => void;
   recentSearches?: string[];
   onRecentPress?: (term: string) => void;
+  /** When provided, each recent chip shows a small × to delete that term. */
+  onRemoveRecent?: (term: string) => void;
   /** Override the placeholder text colour. Defaults to `Palette.muted`. */
   placeholderTextColor?: string;
 };
@@ -25,6 +27,7 @@ export function SearchBar({
   onSearchSubmit,
   recentSearches,
   onRecentPress,
+  onRemoveRecent,
   placeholderTextColor = Palette.muted,
 }: SearchBarProps) {
   const [internalValue, setInternalValue] = useState('');
@@ -78,14 +81,26 @@ export function SearchBar({
       {showRecent ? (
         <View style={styles.recentRow}>
           {recentSearches!.map((term) => (
-            <OrthodoxPressable
-              key={term}
-              style={styles.recentChip}
-              onPress={() => applyTerm(term)}>
-              <ThemedText type="muted" style={styles.recentText}>
-                {term}
-              </ThemedText>
-            </OrthodoxPressable>
+            <View key={term} style={styles.recentChip}>
+              <OrthodoxPressable
+                style={styles.recentChipLabel}
+                onPress={() => applyTerm(term)}
+                accessibilityRole="button"
+                accessibilityLabel={`Search ${term}`}>
+                <ThemedText type="muted" style={styles.recentText}>
+                  {term}
+                </ThemedText>
+              </OrthodoxPressable>
+              {onRemoveRecent ? (
+                <OrthodoxPressable
+                  hitSlop={8}
+                  onPress={() => onRemoveRecent(term)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${term} from recent searches`}>
+                  <Icon name="close" size={12} color={Palette.muted} />
+                </OrthodoxPressable>
+              ) : null}
+            </View>
           ))}
         </View>
       ) : null}
@@ -132,12 +147,18 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm - 2,
   },
   recentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs + 1,
     paddingHorizontal: Spacing.sm + 2,
     paddingVertical: Spacing.xs + 1,
     borderRadius: BorderRadius.full,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Layout.cardBorder,
     backgroundColor: 'rgba(30, 26, 20, 0.6)',
+  },
+  recentChipLabel: {
+    flexShrink: 1,
   },
   recentText: {
     fontSize: 11,

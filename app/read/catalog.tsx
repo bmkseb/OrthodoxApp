@@ -15,6 +15,13 @@ const ITEMS: {
   route: Href;
 }[] = [
   {
+    id: 'bible',
+    title: 'Holy Bible',
+    subtitle: '81 Books · EOTC Canon',
+    geez: 'መጽሐፍ ቅዱስ',
+    route: '/catalog',
+  },
+  {
     id: 'horologium',
     title: "Matshafa Se'atat",
     subtitle: 'Book of Hours · 7 Canonical Prayers',
@@ -22,16 +29,16 @@ const ITEMS: {
     route: '/horologium',
   },
   {
-    id: 'bible',
-    title: 'Holy Bible',
-    subtitle: '81 Books · EOTC Canon',
-    geez: 'መጽሐፍ ቅዱስ',
+    id: 'liturgy',
+    title: 'The Liturgy',
+    subtitle: 'Kidase · The Divine Liturgy',
+    geez: 'ቅዳሴ',
     route: '/catalog',
   },
-];
+] as const;
 
 export default function CatalogScreen() {
-  const { t } = useTranslation();
+  const { t, mode } = useTranslation();
 
   return (
     <ScreenScrollView includeFloatingChrome={false}>
@@ -47,7 +54,9 @@ export default function CatalogScreen() {
       </OrthodoxPressable>
 
       <ThemedText style={styles.pageTitle}>Orthodox Catalog</ThemedText>
-      <ThemedText style={styles.pageGeez}>ዝርዝረ መጻሕፍት</ThemedText>
+      {mode !== 'en' ? (
+        <ThemedText style={styles.pageGeez}>ዝርዝረ መጻሕፍት</ThemedText>
+      ) : null}
       <ThemedText type="muted" style={styles.description}>
         The sacred texts of the Ethiopian Orthodox Tewahedo Church.
       </ThemedText>
@@ -59,7 +68,9 @@ export default function CatalogScreen() {
           onPress={() => router.push(item.route)}
           accessibilityRole="button">
           <View style={styles.rowText}>
-            <ThemedText style={styles.rowGeez}>{item.geez}</ThemedText>
+            {mode !== 'en' ? (
+              <ThemedText style={styles.rowGeez}>{item.geez}</ThemedText>
+            ) : null}
             <ThemedText style={styles.rowTitle}>{item.title}</ThemedText>
             <ThemedText type="muted" style={styles.rowSubtitle}>{item.subtitle}</ThemedText>
           </View>

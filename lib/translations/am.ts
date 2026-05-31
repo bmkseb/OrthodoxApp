@@ -167,6 +167,7 @@ const am = {
     holyBibleSub: 'መጽሐፈ ቅዱሳን',
     liturgy: 'ቅዳሴ',
     liturgySub: 'ኪዳን',
+    startReadingPrompt: 'መጽሐፍ ቅዱስዎን ይክፈቱ፤ እዚህ ይጀምሩ',
   },
   explore: {
     chipDailyReading: 'የዕለት ንባብ',

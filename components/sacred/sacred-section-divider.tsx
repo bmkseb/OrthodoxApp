@@ -44,8 +44,8 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Space.s24,
-    marginBottom: Space.s24,
+    marginTop: Space.s12,
+    marginBottom: Space.s12,
     gap: Space.s12,
   },
   wrapCompact: {

@@ -14,10 +14,12 @@ import {
 } from '@/hooks/use-bookmarks';
 import { removeSavedVerse, useSavedVerses } from '@/hooks/use-saved-verses';
 import { scriptureLangQuery } from '@/hooks/use-scripture-lang';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function SavedScreen() {
   const { saved } = useSavedVerses();
   const { bookmarks } = useBookmarks();
+  const { mode } = useTranslation();
 
   const isEmpty = saved.length === 0 && bookmarks.length === 0;
 
@@ -30,7 +32,9 @@ export default function SavedScreen() {
       </View>
 
       <ThemedText style={styles.pageTitle}>Saved & Highlights</ThemedText>
-      <ThemedText style={styles.pageGeez}>ምልክት የተደረገባቸው</ThemedText>
+      {mode !== 'en' ? (
+        <ThemedText style={styles.pageGeez}>ምልክት የተደረገባቸው</ThemedText>
+      ) : null}
       <ThemedText type="muted" style={styles.description}>
         Bookmarked pages, highlighted verses, and your notes.
       </ThemedText>

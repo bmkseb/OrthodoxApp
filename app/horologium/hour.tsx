@@ -11,6 +11,7 @@ import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
 import { getHourById } from '@/data/horologium';
 import { fetchChapterVerses } from '@/lib/scripture';
 import { useScriptureLang } from '@/hooks/use-scripture-lang';
+import { useTranslation } from '@/hooks/use-translation';
 import { pickVerseText } from '@/lib/scripture';
 import type { VerseRecord } from '@/types/scripture';
 
@@ -51,6 +52,7 @@ function PsalmItem({ num, note }: { num: number; note: string }) {
 export default function HourDetailScreen() {
   const { hour: hourId } = useLocalSearchParams<{ hour: string }>();
   const lang = useScriptureLang();
+  const { mode } = useTranslation();
   const hour = hourId ? getHourById(hourId) : undefined;
 
   const [verses, setVerses] = useState<VerseRecord[]>([]);
@@ -79,7 +81,7 @@ export default function HourDetailScreen() {
       <ScriptureBackBar />
       <ScriptureBookHeader
         title={hour.nameEnglish}
-        subtitle={`${hour.nameGeez} · ${hour.timeLabel}`}
+        subtitle={mode === 'en' ? hour.timeLabel : `${hour.nameGeez} · ${hour.timeLabel}`}
       />
 
       {/* Intention */}

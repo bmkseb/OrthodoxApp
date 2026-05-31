@@ -96,10 +96,7 @@ export default function ExploreScreen() {
   return (
     <View style={styles.screen}>
       <ExploreAtmosphere />
-      <ScreenScrollView
-        hideAtmosphere
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}>
+      <ScreenScrollView hideAtmosphere style={styles.scrollView}>
         <PageHeader title="Explore" geez="መርምር" />
 
         {/* Search — top of the page */}
@@ -245,8 +242,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  // Clear the floating mini player + tab bar so the last cards stay scrollable.
-  scrollContent: { paddingBottom: 240 },
   block: { marginBottom: Space.s16 },
   streakBlock: { marginBottom: Space.s12 },
   quickGrid: {
