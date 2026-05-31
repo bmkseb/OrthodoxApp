@@ -16,14 +16,24 @@ import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
 import { FloatingBottom, getTabBarBottom } from '@/constants/floating-bottom';
 import { Palette, Space, Typography } from '@/constants/theme';
-import { useAudioPlayer } from '@/contexts/audio-player-context';
+import {
+  useActiveTrack,
+  useAudioPlayer,
+  useProgress,
+} from '@/contexts/audio-player-context';
+import { resolvePlayerCopyFromTrack } from '@/lib/audio-track-display';
+import { useTranslation } from '@/hooks/use-translation';
 
 export function FloatingMiniPlayer() {
   const insets = useSafeAreaInsets();
+  const { mode } = useTranslation();
+  const activeTrack = useActiveTrack();
+  const { position, duration } = useProgress(250);
+  const progress = duration > 0 ? position / duration : 0;
+
   const {
     currentTrack,
     isPlaying,
-    progress,
     isMiniPlayerVisible,
     openFullPlayer,
     dismissMiniPlayer,
@@ -31,6 +41,17 @@ export function FloatingMiniPlayer() {
     previousTrack,
     nextTrack,
   } = useAudioPlayer();
+
+  const displayTrack = currentTrack ?? (activeTrack
+    ? {
+        id: String(activeTrack.id),
+        title: activeTrack.title ?? 'Unknown',
+        artist: activeTrack.artist ?? '',
+        artworkUri: typeof activeTrack.artwork === 'string' ? activeTrack.artwork : '',
+      }
+    : null);
+
+  const copy = displayTrack ? resolvePlayerCopyFromTrack(mode, displayTrack) : null;
 
   // The player is clipped to a container that ends at the top of the nav bar, so
   // sliding the pill down makes it disappear exactly at the nav bar's top edge.
@@ -40,13 +61,13 @@ export function FloatingMiniPlayer() {
   const translateY = useSharedValue(slideOffset);
 
   // Keep the last track mounted while it slides out so dismissal is animated.
-  const [renderTrack, setRenderTrack] = useState(currentTrack);
+  const [renderTrack, setRenderTrack] = useState(displayTrack);
 
   useEffect(() => {
-    if (currentTrack) {
-      setRenderTrack(currentTrack);
+    if (displayTrack) {
+      setRenderTrack(displayTrack);
     }
-  }, [currentTrack]);
+  }, [displayTrack]);
 
   useEffect(() => {
     if (isMiniPlayerVisible) {
@@ -55,11 +76,11 @@ export function FloatingMiniPlayer() {
     }
     // Slide straight out with no spring tail, then unmount as it leaves.
     translateY.value = withTiming(slideOffset, { duration: 140 }, (finished) => {
-      if (finished && !currentTrack) {
+      if (finished && !displayTrack) {
         runOnJS(setRenderTrack)(null);
       }
     });
-  }, [isMiniPlayerVisible, currentTrack, slideOffset, translateY]);
+  }, [isMiniPlayerVisible, displayTrack, slideOffset, translateY]);
 
   const animatedHost = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -71,7 +92,7 @@ export function FloatingMiniPlayer() {
 
   return (
     <View
-      pointerEvents={isMiniPlayerVisible && currentTrack ? 'box-none' : 'none'}
+      pointerEvents={isMiniPlayerVisible && displayTrack ? 'box-none' : 'none'}
       style={[
         styles.clip,
         {
@@ -100,10 +121,10 @@ export function FloatingMiniPlayer() {
 
           <View style={styles.meta}>
             <ThemedText style={styles.title} numberOfLines={1}>
-              {renderTrack.title}
+              {copy?.title ?? renderTrack.title}
             </ThemedText>
             <ThemedText style={styles.artist} numberOfLines={1}>
-              {renderTrack.artist}
+              {copy?.artist ?? renderTrack.artist}
             </ThemedText>
           </View>
 

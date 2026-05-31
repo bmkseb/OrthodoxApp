@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { ScriptureBackBar } from '@/components/scripture/scripture-back-bar';
@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { Layout, Palette, Spacing } from '@/constants/theme';
+import { parseScrollTarget, useScrollToTarget } from '@/hooks/use-scroll-to-target';
 import { fetchPassagesBySlug, type DoctrinePassage } from '@/lib/doctrine';
 
 /**
@@ -83,11 +84,32 @@ function PassageBlock({ block }: { block: Block }) {
 }
 
 export default function DoctrineLessonScreen() {
-  const { slug, title } = useLocalSearchParams<{ slug: string; title?: string }>();
+  const { slug, title, passage: passageParam } = useLocalSearchParams<{
+    slug: string;
+    title?: string;
+    passage?: string;
+  }>();
+  const scrollRef = useRef<ScrollView>(null);
+  const contentRef = useRef<View>(null);
+  const scrollToPassage = parseScrollTarget(passageParam);
 
   const [passages, setPassages] = useState<DoctrinePassage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [highlightPassage, setHighlightPassage] = useState<number | undefined>(scrollToPassage);
+
+  const contentReady = !loading && passages.length > 0;
+  const { registerTargetRef } = useScrollToTarget(
+    scrollRef,
+    contentRef,
+    scrollToPassage,
+    contentReady,
+    56
+  );
+
+  useEffect(() => {
+    setHighlightPassage(scrollToPassage);
+  }, [scrollToPassage, slug]);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -108,30 +130,40 @@ export default function DoctrineLessonScreen() {
     void load();
   }, [load]);
 
-  const blocks = useMemo(() => passages.map((p) => parsePassage(p.content)), [passages]);
-
   const heading = title?.trim() || 'Lesson';
 
   return (
-    <ScreenScrollView includeFloatingChrome={false}>
-      <ScriptureBackBar />
-      <ScriptureBookHeader title={heading} subtitle="Doctrine" />
+    <ScreenScrollView ref={scrollRef} includeFloatingChrome={false}>
+      <View ref={contentRef} collapsable={false}>
+        <ScriptureBackBar />
+        <ScriptureBookHeader title={heading} subtitle="Doctrine" />
 
-      {loading ? (
-        <ActivityIndicator color={Palette.gold} style={styles.spinner} />
-      ) : error ? (
-        <EmptyState title="Couldn’t load this lesson" suggestion="Pull back and try again" />
-      ) : blocks.length === 0 ? (
-        <EmptyState title="No passages yet" suggestion="This lesson has no content available" />
-      ) : (
-        <View style={styles.reading}>
-          {blocks.map((block, i) => (
-            <PassageBlock key={i} block={block} />
-          ))}
-        </View>
-      )}
+        {loading ? (
+          <ActivityIndicator color={Palette.gold} style={styles.spinner} />
+        ) : error ? (
+          <EmptyState title="Couldn’t load this lesson" suggestion="Pull back and try again" />
+        ) : passages.length === 0 ? (
+          <EmptyState title="No passages yet" suggestion="This lesson has no content available" />
+        ) : (
+          <View style={styles.reading}>
+            {passages.map((passage) => {
+              const block = parsePassage(passage.content);
+              const isFocused = highlightPassage === passage.passageNumber;
+              return (
+                <View
+                  key={passage.passageNumber}
+                  ref={(node) => registerTargetRef(passage.passageNumber, node)}
+                  collapsable={false}
+                  style={[styles.passageWrap, isFocused && styles.passageFocused]}>
+                  <PassageBlock block={block} />
+                </View>
+              );
+            })}
+          </View>
+        )}
 
-      <View style={styles.footerSpace} />
+        <View style={styles.footerSpace} />
+      </View>
     </ScreenScrollView>
   );
 }
@@ -139,6 +171,18 @@ export default function DoctrineLessonScreen() {
 const styles = StyleSheet.create({
   spinner: { marginVertical: Spacing.xl },
   reading: {},
+  passageWrap: {
+    marginBottom: Spacing.xs,
+  },
+  passageFocused: {
+    backgroundColor: 'rgba(201, 147, 58, 0.12)',
+    borderRadius: 8,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    marginHorizontal: -Spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.45)',
+  },
   header: {
     fontSize: 19,
     fontWeight: '700',

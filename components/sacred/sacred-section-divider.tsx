@@ -8,9 +8,12 @@ const LINE_EDGE = 'transparent';
 const LINE_MID = 'rgba(201, 147, 58, 0.24)';
 
 /** Ceremonial section break — fading gold hairlines, centered Ethiopian cross (✛). */
-export function SacredSectionDivider() {
+export function SacredSectionDivider({ compact = false }: { compact?: boolean }) {
   return (
-    <View style={styles.wrap} pointerEvents="none" accessibilityElementsHidden>
+    <View
+      style={[styles.wrap, compact && styles.wrapCompact]}
+      pointerEvents="none"
+      accessibilityElementsHidden>
       <View style={styles.lineSlot}>
         <LinearGradient
           colors={[LINE_EDGE, 'rgba(201, 147, 58, 0.1)', LINE_MID, 'rgba(201, 147, 58, 0.1)', LINE_EDGE]}
@@ -44,6 +47,10 @@ const styles = StyleSheet.create({
     marginTop: Space.s12,
     marginBottom: Space.s12,
     gap: Space.s12,
+  },
+  wrapCompact: {
+    marginTop: Space.s12,
+    marginBottom: Space.s12,
   },
   lineSlot: {
     flex: 1,

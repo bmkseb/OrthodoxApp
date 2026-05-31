@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 13,
-    color: Palette.textMuted,
+    color: Palette.muted,
     marginBottom: Spacing.xs,
   },
   timeActive: {

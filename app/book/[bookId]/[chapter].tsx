@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type Animated from 'react-native-reanimated';
 
 import { ChapterNavBar } from '@/components/scripture/chapter-nav-bar';
 import { ScripturePageScroll } from '@/components/scripture/scripture-page-scroll';
@@ -17,26 +18,45 @@ import { useScriptureLang } from '@/hooks/use-scripture-lang';
 import { recordReadingProgress } from '@/hooks/use-reading-progress';
 import { useTranslation } from '@/hooks/use-translation';
 import { fetchBookChapters, fetchChapterVerses } from '@/lib/scripture';
+import { parseScrollTarget, useScrollToTarget } from '@/hooks/use-scroll-to-target';
 import { Layout, Palette, Spacing } from '@/constants/theme';
 import type { VerseRecord } from '@/types/scripture';
 
 const NAV_BAR_HEIGHT = 56;
 
 export default function ChapterReaderScreen() {
-  const { bookId, chapter: chapterParam } = useLocalSearchParams<{
+  const { bookId, chapter: chapterParam, verse: verseParam } = useLocalSearchParams<{
     bookId: string;
     chapter: string;
+    verse?: string;
   }>();
   const lang = useScriptureLang();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const chapter = Number(chapterParam);
+  const scrollToVerse = parseScrollTarget(verseParam);
+  const scrollRef = useRef<Animated.ScrollView>(null);
+  const contentRef = useRef<View>(null);
   const book = bookId ? getBibleBook(bookId) : undefined;
 
   const [chapters, setChapters] = useState<number[]>([]);
   const [verses, setVerses] = useState<VerseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [highlightVerse, setHighlightVerse] = useState<number | undefined>(scrollToVerse);
+
+  const contentReady = !loading && verses.length > 0;
+  const { registerTargetRef } = useScrollToTarget(
+    scrollRef,
+    contentRef,
+    scrollToVerse,
+    contentReady,
+    64
+  );
+
+  useEffect(() => {
+    setHighlightVerse(scrollToVerse);
+  }, [scrollToVerse, bookId, chapter]);
 
   const load = useCallback(async () => {
     if (!bookId || !Number.isFinite(chapter)) return;
@@ -93,6 +113,7 @@ export default function ChapterReaderScreen() {
       <SacredAtmosphere />
       <ParchmentGrainOverlay />
       <ScripturePageScroll
+        ref={scrollRef}
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
         trackInsetTop={insets.top + Spacing.md}
@@ -107,32 +128,36 @@ export default function ChapterReaderScreen() {
             paddingBottom: bottomInset,
           },
         ]}>
-        <ScriptureBackBar bookmark={{ bookId, chapter, lang, bookTitle }} />
-        <ScriptureBookHeader
-          title={bookTitle}
-          subtitle={`${t('scripture.chapter')} ${chapter}`}
-        />
-
-        {loading ? (
-          <ActivityIndicator color={Palette.gold} style={styles.spinner} />
-        ) : error ? (
-          <EmptyState title={error} suggestion={t('scripture.tryAgain')} />
-        ) : verses.length === 0 ? (
-          <EmptyState
-            title={t('scripture.noVersesTitle')}
-            suggestion={t('scripture.noChaptersIngest')}
+        <View ref={contentRef} collapsable={false}>
+          <ScriptureBackBar bookmark={{ bookId, chapter, lang, bookTitle }} />
+          <ScriptureBookHeader
+            title={bookTitle}
+            subtitle={`${t('scripture.chapter')} ${chapter}`}
           />
-        ) : (
-          <View style={styles.body}>
-            <VerseList
-              verses={verses}
-              lang={lang}
-              bookId={bookId}
-              chapter={chapter}
-              bookTitle={bookTitle}
+
+          {loading ? (
+            <ActivityIndicator color={Palette.gold} style={styles.spinner} />
+          ) : error ? (
+            <EmptyState title={error} suggestion={t('scripture.tryAgain')} />
+          ) : verses.length === 0 ? (
+            <EmptyState
+              title={t('scripture.noVersesTitle')}
+              suggestion={t('scripture.noChaptersIngest')}
             />
-          </View>
-        )}
+          ) : (
+            <View style={styles.body}>
+              <VerseList
+                verses={verses}
+                lang={lang}
+                bookId={bookId}
+                chapter={chapter}
+                bookTitle={bookTitle}
+                scrollToVerse={highlightVerse}
+                registerVerseRef={registerTargetRef}
+              />
+            </View>
+          )}
+        </View>
       </ScripturePageScroll>
 
       <View style={styles.navSlot}>

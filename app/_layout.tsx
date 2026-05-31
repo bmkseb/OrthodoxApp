@@ -48,6 +48,10 @@ export default function RootLayout() {
                     name="catalog"
                     options={{ headerShown: false, animation: 'slide_from_bottom' }}
                   />
+                  <Stack.Screen
+                    name="read/catalog"
+                    options={{ headerShown: false, animation: 'slide_from_bottom' }}
+                  />
                   <Stack.Screen name="book/[bookId]" options={{ headerShown: false }} />
                   <Stack.Screen
                     name="learn/[slug]"

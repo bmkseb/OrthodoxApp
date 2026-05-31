@@ -17,6 +17,33 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+type TopicRowEntry = {
+  topic: LearnTopic;
+  depth: number;
+  isLast: boolean;
+};
+
+/** Flatten nested topics into render rows while preserving depth for indentation. */
+function flattenTopics(topics: LearnTopic[], depth = 0): TopicRowEntry[] {
+  const rows: TopicRowEntry[] = [];
+  topics.forEach((topic, index) => {
+    const children = topic.children ?? [];
+    rows.push({ topic, depth, isLast: index === topics.length - 1 && children.length === 0 });
+    if (children.length > 0) {
+      rows.push(...flattenTopics(children, depth + 1));
+    }
+  });
+  return rows;
+}
+
+function countLessons(topics: LearnTopic[]): number {
+  return topics.reduce((total, topic) => {
+    const hasExplicitCount = topic.passageCount !== undefined;
+    if (!hasExplicitCount || (topic.passageCount ?? 0) > 0) total += 1;
+    return total + countLessons(topic.children ?? []);
+  }, 0);
+}
+
 type LearnCollectionCardProps = {
   collection: LearnCollection;
   defaultExpanded?: boolean;
@@ -33,7 +60,8 @@ export function LearnCollectionCard({
 
   const title = learnText(collection.titleEn, collection.titleAm, mode);
   const description = learnText(collection.descriptionEn, collection.descriptionAm, mode);
-  const topicCount = collection.topics.length;
+  const topicRows = flattenTopics(collection.topics);
+  const topicCount = countLessons(collection.topics);
 
   const toggle = useCallback(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -71,16 +99,26 @@ export function LearnCollectionCard({
           <View style={styles.panelDivider}>
             <Text style={styles.panelCross}>☩</Text>
           </View>
-          {collection.topics.map((topic, index) => (
-            <LearnTopicRow
-              key={topic.id}
-              title={learnText(topic.titleEn, topic.titleAm, mode)}
-              readMin={topic.readMin}
-              levelLabel={topic.level ? levelLabel(topic.level, mode) : undefined}
-              isLast={index === collection.topics.length - 1}
-              onPress={() => onTopicPress?.(topic, collection)}
-            />
-          ))}
+          {topicRows.map(({ topic, depth, isLast }, index) => {
+            const hasContent = (topic.passageCount ?? 1) > 0;
+            const isSectionHeader = !hasContent && (topic.children?.length ?? 0) > 0;
+            return (
+              <LearnTopicRow
+                key={`${topic.id}-${depth}`}
+                title={learnText(topic.titleEn, topic.titleAm, mode)}
+                readMin={topic.readMin}
+                levelLabel={topic.level ? levelLabel(topic.level, mode) : undefined}
+                depth={depth}
+                isSectionHeader={isSectionHeader}
+                isLast={index === topicRows.length - 1}
+                onPress={
+                  hasContent
+                    ? () => onTopicPress?.(topic, collection)
+                    : undefined
+                }
+              />
+            );
+          })}
         </View>
       ) : null}
     </View>

@@ -26,7 +26,7 @@ const MUTED_GOLD = '#8A8070';
 const STREAK_DAYS = 14;
 
 // Two-column Quick Access grid sizing.
-const QUICK_GAP = 16;
+const QUICK_GAP = 10;
 const QUICK_CARD_WIDTH =
   (Dimensions.get('window').width - Layout.pagePadding * 2 - QUICK_GAP) / 2;
 
@@ -78,14 +78,19 @@ export default function ExploreScreen() {
     { id: 'hymns', title: t('explore.catHymns'), subtitle: 'Sacred melodies', icon: 'music', onPress: () => router.push('/listen') },
     { id: 'feasts', title: t('explore.catFeastsOnly'), subtitle: 'Calendar and fasts', icon: 'calendar', onPress: () => router.push('/calendar') },
     { id: 'fasts', title: t('explore.catFasts'), subtitle: 'Fasting seasons', icon: 'flame', onPress: () => router.push('/calendar') },
-    { id: 'search', title: t('explore.catScriptureSearch'), subtitle: 'Find passages', icon: 'search', onPress: () => router.push('/catalog') },
+    {
+      id: 'search',
+      title: t('explore.catScripture'),
+      subtitle: t('explore.catScriptureSearchSub'),
+      icon: 'search',
+      onPress: () => router.push('/read/catalog'),
+    },
   ];
 
   const handleSearchSubmit = (term: string) => {
     setSearchQuery(term);
     void addRecentSearch(term);
-    // Scripture is the only searchable corpus today; send the query to the catalog.
-    router.push('/catalog');
+    router.push(`/catalog?q=${encodeURIComponent(term)}`);
   };
 
   return (
@@ -115,7 +120,7 @@ export default function ExploreScreen() {
         </View>
 
         {/* Quick access shortcut menu */}
-        <ExploreSectionFrame title={t('explore.quickAccess')} icon="sparkle">
+        <ExploreSectionFrame title={t('explore.quickAccess')} icon="sparkle" compact>
           <View style={styles.quickGrid}>
             {quickAccess.map((item) => (
               <OrthodoxPressable
@@ -125,10 +130,10 @@ export default function ExploreScreen() {
                 accessibilityLabel={item.title}
                 style={styles.quickCard}>
                 <View style={styles.quickIcon}>
-                  <Icon name={item.icon} size={24} color={Palette.gold} />
+                  <Icon name={item.icon} size={20} color={Palette.gold} />
                 </View>
                 <View style={styles.quickTextBlock}>
-                  <ThemedText style={styles.quickTitle} numberOfLines={1}>
+                  <ThemedText style={styles.quickTitle} numberOfLines={2}>
                     {item.title}
                   </ThemedText>
                   <ThemedText style={styles.quickSubtitle} numberOfLines={1}>
@@ -140,10 +145,10 @@ export default function ExploreScreen() {
           </View>
         </ExploreSectionFrame>
 
-        <SacredSectionDivider />
+        <SacredSectionDivider compact />
 
         {/* Prayer library — browse list */}
-        <ExploreSectionFrame title={t('explore.prayerLibrary')} icon="cross">
+        <ExploreSectionFrame title={t('explore.prayerLibrary')} icon="cross" compact>
           <View style={styles.listSurface}>
             {PRAYER_LIBRARY.map((p) => (
               <MediaListItem
@@ -157,10 +162,10 @@ export default function ExploreScreen() {
           </View>
         </ExploreSectionFrame>
 
-        <SacredSectionDivider />
+        <SacredSectionDivider compact />
 
         {/* Featured collections */}
-        <ExploreSectionFrame title={t('explore.featuredCollections')} icon="scroll">
+        <ExploreSectionFrame title={t('explore.featuredCollections')} icon="scroll" compact>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
             {FEATURED_COLLECTIONS.map((c) => (
               <ManuscriptBookCard
@@ -174,17 +179,17 @@ export default function ExploreScreen() {
           </ScrollView>
         </ExploreSectionFrame>
 
-        <SacredSectionDivider />
+        <SacredSectionDivider compact />
 
         {/* Discover the Canon */}
-        <ExploreSectionFrame title={t('explore.discoverCanon')} icon="book">
+        <ExploreSectionFrame title={t('explore.discoverCanon')} icon="book" compact>
           <DiscoverCanon featuredLabel={t('explore.discoverCanon')} />
         </ExploreSectionFrame>
 
-        <SacredSectionDivider />
+        <SacredSectionDivider compact />
 
         {/* Explore saints */}
-        <ExploreSectionFrame title={t('explore.exploreSaints')} icon="church">
+        <ExploreSectionFrame title={t('explore.exploreSaints')} icon="church" compact>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
             {SAINT_COLLECTIONS.map((s) => (
               <ManuscriptBookCard
@@ -198,12 +203,13 @@ export default function ExploreScreen() {
           </ScrollView>
         </ExploreSectionFrame>
 
-        <SacredSectionDivider />
+        <SacredSectionDivider compact />
 
         {/* Popular hymns — top 3, numbered, teaser into Listen */}
         <ExploreSectionFrame
           title={t('explore.popularHymns')}
           icon="music"
+          compact
           onSeeAllPress={() => router.push('/listen')}>
           <View style={styles.listSurface}>
             {TOP_HYMNS.map((h, i) => (
@@ -237,7 +243,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   block: { marginBottom: Space.s16 },
-  streakBlock: { marginBottom: Space.s24 },
+  streakBlock: { marginBottom: Space.s12 },
   quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -245,34 +251,39 @@ const styles = StyleSheet.create({
   },
   quickCard: {
     width: QUICK_CARD_WIDTH,
-    minHeight: 116,
-    borderRadius: 22,
+    minHeight: 80,
+    borderRadius: 18,
     backgroundColor: Palette.surfaceWarm,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(201, 147, 58, 0.18)',
-    padding: Space.s16,
-    justifyContent: 'space-between',
+    paddingHorizontal: Space.s12,
+    paddingVertical: Space.s8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.s8,
   },
   quickIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(201, 147, 58, 0.1)',
+    flexShrink: 0,
   },
   quickTextBlock: {
-    marginTop: Space.s12,
-    gap: 2,
+    flex: 1,
+    minWidth: 0,
+    gap: 1,
   },
   quickTitle: {
-    fontSize: 16,
+    fontSize: 14.5,
     fontWeight: '700',
     color: Palette.text,
     letterSpacing: -0.2,
   },
   quickSubtitle: {
-    fontSize: 12.5,
+    fontSize: 11,
     color: MUTED_GOLD,
   },
   rail: {

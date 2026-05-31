@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { ContentSearchResults } from '@/components/search/content-search-results';
 import { BilingualHeader } from '@/components/ui/bilingual-header';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
@@ -18,7 +19,9 @@ import {
   type BibleBook,
 } from '@/data/bibleCanon';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
-import { scriptureLangQuery } from '@/hooks/use-scripture-lang';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { scriptureChapterRoute, scriptureLangQuery } from '@/hooks/use-scripture-lang';
+import { searchVerses } from '@/lib/scripture';
 import { BorderRadius, Layout, Palette } from '@/constants/theme';
 
 type LanguageTab = 'english' | 'amharic' | 'geez';
@@ -107,6 +110,38 @@ export default function CatalogScreen() {
   const [activeLanguage, setActiveLanguage] = useState<LanguageTab>('english');
   const [query, setQuery] = useState(typeof q === 'string' ? q : '');
   const { recentSearches, addRecentSearch } = useRecentSearches('catalog');
+  const [verseHits, setVerseHits] = useState<Awaited<ReturnType<typeof searchVerses>>>([]);
+  const [verseSearchLoading, setVerseSearchLoading] = useState(false);
+  const debouncedQuery = useDebouncedValue(query.trim(), 350);
+
+  useEffect(() => {
+    if (typeof q === 'string' && q.trim()) setQuery(q);
+  }, [q]);
+
+  useEffect(() => {
+    if (!debouncedQuery) {
+      setVerseHits([]);
+      setVerseSearchLoading(false);
+      return;
+    }
+
+    let active = true;
+    setVerseSearchLoading(true);
+    searchVerses(debouncedQuery, activeLanguage)
+      .then((hits) => {
+        if (active) setVerseHits(hits);
+      })
+      .catch(() => {
+        if (active) setVerseHits([]);
+      })
+      .finally(() => {
+        if (active) setVerseSearchLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedQuery, activeLanguage]);
 
   // Sync the search field when arriving with a query (e.g. from the Read page).
   useEffect(() => {
@@ -175,6 +210,20 @@ export default function CatalogScreen() {
           recentSearches={recentSearches}
         />
       </View>
+
+      {debouncedQuery ? (
+        <ContentSearchResults
+          heading="In Scripture"
+          hits={verseHits.map((hit) => ({
+            id: `${hit.bookId}-${hit.chapter}-${hit.verse}`,
+            title: hit.reference,
+            snippet: hit.snippet,
+            onPress: () => router.push(scriptureChapterRoute(hit.bookId, hit.chapter, activeLanguage, hit.verse)),
+          }))}
+          loading={verseSearchLoading}
+          emptyLabel={!verseSearchLoading ? 'No verses found for this search.' : undefined}
+        />
+      ) : null}
 
       <ThemedText type="muted" style={styles.canonCount}>
         {BIBLE_CANON_81.length} {t('catalog.booksInCanon')}

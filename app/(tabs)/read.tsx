@@ -1,13 +1,15 @@
 import { router } from 'expo-router';
-import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { useEffect, useState } from 'react';
+import { Dimensions, StyleSheet, View } from 'react-native';
 
 import { PageHeader } from '@/components/orthodox/PageHeader';
+import { BookshelfBookCard } from '@/components/read/bookshelf-book-card';
+import { BookshelfSection } from '@/components/read/bookshelf-section';
 import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
 import { HolyBibleHeroCard } from '@/components/sacred/holy-bible-hero-card';
-import { VerseOfTheDayCard } from '@/components/sacred/verse-of-the-day-card';
-import { ManuscriptBookCard } from '@/components/sacred/manuscript-book-card';
 import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
+import { VerseOfTheDayCard } from '@/components/sacred/verse-of-the-day-card';
+import { ContentSearchResults } from '@/components/search/content-search-results';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import {
   HorizontalScrollIndicator,
@@ -16,17 +18,24 @@ import {
 import { SearchBar } from '@/components/ui/search-bar';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SacredImagery } from '@/constants/sacred-imagery';
-import { Layout, Space, Spacing } from '@/constants/theme';
+import { Layout } from '@/constants/theme';
 import { getBibleBook, getBookTitle } from '@/data/bibleCanon';
-import { useReadingProgress, removeReadingProgress } from '@/hooks/use-reading-progress';
-import { scriptureLangQuery } from '@/hooks/use-scripture-lang';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { removeReadingProgress, useReadingProgress } from '@/hooks/use-reading-progress';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
+import { scriptureChapterRoute } from '@/hooks/use-scripture-lang';
 import { useTranslation } from '@/hooks/use-translation';
-
-const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
-const MUTED_GOLD = '#8A8070';
+import {
+  resolveReadHeaderRoute,
+  searchReadContent,
+  searchReadHeaders,
+  type ReadSearchContentHit,
+  type ReadSearchHeaderHit,
+} from '@/lib/read-search';
 
 const { width } = Dimensions.get('window');
 
+// Holy Bible listed first in the Orthodox Catalog preview.
 const CATALOG_PREVIEW = [
   { id: 'c2', titleKey: 'holyBible' as const, subKey: 'holyBibleSub' as const, image: SacredImagery.continueBible, route: '/catalog' as const },
   { id: 'c1', titleKey: 'horologium' as const, subKey: 'horologiumSub' as const, image: SacredImagery.readManuscript, route: '/horologium' as const },
@@ -37,6 +46,15 @@ export default function ReadScreen() {
   const { t } = useTranslation();
   const featuredWidth = width - Layout.pagePadding * 2;
   const { entries } = useReadingProgress();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const { recentSearches, addRecentSearch } = useRecentSearches('read');
+  const [headerHits, setHeaderHits] = useState<ReadSearchHeaderHit[]>([]);
+  const [contentHits, setContentHits] = useState<ReadSearchContentHit[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const debouncedQuery = useDebouncedValue(searchQuery.trim(), 350);
+  const readLang = entries[0]?.lang ?? 'english';
+
   const {
     values: catalogScroll,
     scrollHandler: catalogScrollHandler,
@@ -49,6 +67,40 @@ export default function ReadScreen() {
     onLayout: continueScrollLayout,
     onContentSizeChange: continueContentSizeChange,
   } = useHorizontalScrollIndicator();
+
+  useEffect(() => {
+    if (!debouncedQuery) {
+      setHeaderHits([]);
+      setContentHits([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    setHeaderHits(searchReadHeaders(debouncedQuery, readLang));
+
+    let active = true;
+    setSearchLoading(true);
+    searchReadContent(debouncedQuery, readLang)
+      .then((hits) => {
+        if (active) setContentHits(hits);
+      })
+      .catch(() => {
+        if (active) setContentHits([]);
+      })
+      .finally(() => {
+        if (active) setSearchLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedQuery, readLang]);
+
+  const handleSearchSubmit = (term: string) => {
+    setSearchQuery(term);
+    void addRecentSearch(term);
+  };
+
   const featuredItems: FeaturedItem[] = [
     {
       id: 'readings',
@@ -88,12 +140,65 @@ export default function ReadScreen() {
     <ScreenScrollView>
       <PageHeader title="Read" geez="መጽሐፍ" />
 
-      <View style={styles.searchBlock}>
+      <View style={styles.searchWrap}>
         <SearchBar
-          placeholder={t('catalog.searchPlaceholder')}
-          placeholderTextColor={MUTED_GOLD}
+          placeholder="Search books, chapters, prayers, and Scripture..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSearchSubmit={handleSearchSubmit}
+          recentSearches={recentSearches}
         />
       </View>
+
+      {debouncedQuery ? (
+        <>
+          <ContentSearchResults
+            heading="Books & sections"
+            hits={headerHits.map((hit) => {
+              const route = resolveReadHeaderRoute(hit.id, readLang);
+              return {
+                id: hit.id,
+                title: hit.title,
+                subtitle: hit.subtitle,
+                isHeader: true,
+                onPress: () => {
+                  if (!route) return;
+                  if (route.params) {
+                    router.push({ pathname: route.pathname as never, params: route.params });
+                  } else {
+                    router.push(route.pathname as never);
+                  }
+                },
+              };
+            })}
+            emptyLabel={undefined}
+          />
+          <ContentSearchResults
+            heading="In text"
+            hits={contentHits.map((hit) => ({
+              id: hit.id,
+              title: hit.title,
+              subtitle: hit.subtitle,
+              snippet: hit.snippet,
+              onPress: () => {
+                if (hit.horologiumHourId) {
+                  router.push(`/horologium/${hit.horologiumHourId}` as never);
+                  return;
+                }
+                if (hit.bookId && hit.chapter) {
+                  router.push(scriptureChapterRoute(hit.bookId, hit.chapter, readLang, hit.verse));
+                }
+              },
+            }))}
+            loading={searchLoading}
+            emptyLabel={
+              headerHits.length === 0 && contentHits.length === 0 && !searchLoading
+                ? 'No results found on Read.'
+                : undefined
+            }
+          />
+        </>
+      ) : null}
 
       <View style={styles.section}>
         <SectionHeader headerKey="content.verseOfTheDay" icon="book" />
@@ -115,16 +220,15 @@ export default function ReadScreen() {
           icon="scroll"
           onSeeAllPress={() => router.push('/read/catalog')}
         />
-        <AnimatedScrollView
+        <BookshelfSection
           horizontal
-          showsHorizontalScrollIndicator={false}
-          onScroll={catalogScrollHandler}
-          onLayout={catalogScrollLayout}
-          onContentSizeChange={catalogContentSizeChange}
-          scrollEventThrottle={16}
-          contentContainerStyle={styles.horizontalRail}>
+          scrollProps={{
+            onScroll: catalogScrollHandler,
+            onLayout: catalogScrollLayout,
+            onContentSizeChange: catalogContentSizeChange,
+          }}>
           {CATALOG_PREVIEW.map((book) => (
-            <ManuscriptBookCard
+            <BookshelfBookCard
               key={book.id}
               title={t(`content.${book.titleKey}`)}
               subtitle={t(`content.${book.subKey}`)}
@@ -132,87 +236,75 @@ export default function ReadScreen() {
               onPress={() => router.push(book.route)}
             />
           ))}
-        </AnimatedScrollView>
+        </BookshelfSection>
         <View style={styles.railHint}>
           <HorizontalScrollIndicator values={catalogScroll} />
         </View>
       </View>
 
+      <SacredSectionDivider />
+
       {entries.length > 0 ? (
-        <>
-          <SacredSectionDivider />
-
-          <View style={styles.section}>
-            <SectionHeader headerKey="continueReading" icon="book" />
-            <AnimatedScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              onScroll={continueScrollHandler}
-              onLayout={continueScrollLayout}
-              onContentSizeChange={continueContentSizeChange}
-              scrollEventThrottle={16}
-              contentContainerStyle={styles.horizontalRail}>
-              {entries.map((entry) => {
-                const book = getBibleBook(entry.bookId);
-                const title = book ? getBookTitle(book, entry.lang) : t('content.holyBible');
-                const progress =
-                  entry.totalChapters > 0 ? entry.chapter / entry.totalChapters : 0;
-                return (
-                  <ManuscriptBookCard
-                    key={entry.bookId}
-                    title={title}
-                    subtitle={`${t('scripture.chapter')} ${entry.chapter}`}
-                    imageUri={SacredImagery.continueBible}
-                    progress={progress}
-                    onPress={() =>
-                      router.push(
-                        `/book/${entry.bookId}/${entry.chapter}${scriptureLangQuery(entry.lang)}`
-                      )
-                    }
-                    onRemove={() => void removeReadingProgress(entry.bookId)}
-                    removeLabel={`Remove ${title}`}
-                  />
-                );
-              })}
-            </AnimatedScrollView>
-            {entries.length > 2 ? (
-              <View style={styles.railHint}>
-                <HorizontalScrollIndicator values={continueScroll} />
-              </View>
-            ) : null}
-          </View>
-        </>
+        <View style={styles.section}>
+          <SectionHeader headerKey="continueReading" icon="book" />
+          <BookshelfSection
+            horizontal
+            scrollProps={{
+              onScroll: continueScrollHandler,
+              onLayout: continueScrollLayout,
+              onContentSizeChange: continueContentSizeChange,
+            }}>
+            {entries.map((entry) => {
+              const book = getBibleBook(entry.bookId);
+              const title = book ? getBookTitle(book, entry.lang) : t('content.holyBible');
+              const progress = entry.totalChapters > 0 ? entry.chapter / entry.totalChapters : 0;
+              return (
+                <BookshelfBookCard
+                  key={entry.bookId}
+                  title={title}
+                  subtitle={`${t('scripture.chapter')} ${entry.chapter}`}
+                  imageUri={SacredImagery.continueBible}
+                  progress={progress}
+                  onPress={() =>
+                    router.push(scriptureChapterRoute(entry.bookId, entry.chapter, entry.lang))
+                  }
+                  onRemove={() => void removeReadingProgress(entry.bookId)}
+                  removeLabel={`Remove ${title}`}
+                />
+              );
+            })}
+          </BookshelfSection>
+          {entries.length > 2 ? (
+            <View style={styles.railHint}>
+              <HorizontalScrollIndicator values={continueScroll} />
+            </View>
+          ) : null}
+        </View>
       ) : (
-        <>
-          <SacredSectionDivider />
-
-          <View style={styles.section}>
-            <HolyBibleHeroCard
-              title={t('content.holyBible')}
-              subtitle={t('content.startReadingPrompt')}
-              imageUri={SacredImagery.continueBible}
-              width={featuredWidth}
-              onPress={() => router.push('/catalog')}
-            />
-          </View>
-        </>
+        <View style={styles.section}>
+          <SectionHeader headerKey="continueReading" icon="book" />
+          <HolyBibleHeroCard
+            title={t('content.holyBible')}
+            subtitle={t('content.startReadingPrompt')}
+            imageUri={SacredImagery.continueBible}
+            width={featuredWidth}
+            onPress={() => router.push('/catalog')}
+          />
+        </View>
       )}
     </ScreenScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  searchBlock: {
-    marginBottom: Space.s16,
+  searchWrap: {
+    marginBottom: Layout.sectionContentBottom,
   },
   section: {
-    marginBottom: Space.s12,
-  },
-  horizontalRail: {
-    gap: Layout.cardGap,
-    paddingRight: Layout.pagePadding,
+    marginBottom: Layout.sectionContentBottom,
   },
   railHint: {
-    marginTop: Spacing.sm,
+    marginTop: 8,
+    alignItems: 'center',
   },
 });

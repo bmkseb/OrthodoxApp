@@ -1,12 +1,19 @@
-import { router } from 'expo-router';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { router, type Href } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/hooks/use-translation';
 
-const ITEMS = [
+const ITEMS: {
+  id: string;
+  title: string;
+  subtitle: string;
+  geez: string;
+  route: Href;
+}[] = [
   {
     id: 'bible',
     title: 'Holy Bible',
@@ -31,15 +38,20 @@ const ITEMS = [
 ] as const;
 
 export default function CatalogScreen() {
-  const { mode } = useTranslation();
+  const { t, mode } = useTranslation();
 
   return (
-    <ScreenScrollView>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} accessibilityRole="button">
-          <ThemedText type="seeAll">← Back</ThemedText>
-        </TouchableOpacity>
-      </View>
+    <ScreenScrollView includeFloatingChrome={false}>
+      <OrthodoxPressable
+        style={styles.topBar}
+        onPress={() => {
+          if (router.canGoBack()) router.back();
+          else router.push('/(tabs)/read');
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={t('settings.back')}>
+        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
+      </OrthodoxPressable>
 
       <ThemedText style={styles.pageTitle}>Orthodox Catalog</ThemedText>
       {mode !== 'en' ? (
@@ -50,7 +62,7 @@ export default function CatalogScreen() {
       </ThemedText>
 
       {ITEMS.map((item) => (
-        <TouchableOpacity
+        <OrthodoxPressable
           key={item.id}
           style={styles.row}
           onPress={() => router.push(item.route)}
@@ -63,7 +75,7 @@ export default function CatalogScreen() {
             <ThemedText type="muted" style={styles.rowSubtitle}>{item.subtitle}</ThemedText>
           </View>
           <ThemedText style={styles.arrow}>›</ThemedText>
-        </TouchableOpacity>
+        </OrthodoxPressable>
       ))}
     </ScreenScrollView>
   );

@@ -1,5 +1,10 @@
-import React from 'react';
-import { RefreshControl, StyleSheet, type ScrollViewProps } from 'react-native';
+import React, { forwardRef } from 'react';
+import {
+  RefreshControl,
+  StyleSheet,
+  type ScrollView as RNScrollView,
+  type ScrollViewProps,
+} from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,21 +26,21 @@ type ScreenScrollViewProps = ScrollViewProps & {
   includeFloatingChrome?: boolean;
   /** Skip default SacredAtmosphere (e.g. Explore uses its own). */
   hideAtmosphere?: boolean;
-  /** Imperative ref to the underlying scroll view (e.g. for scroll-to-section). */
-  scrollRef?: React.Ref<any>;
 };
 
-export function ScreenScrollView({
-  children,
-  contentContainerStyle,
-  refreshing,
-  onRefresh,
-  includeFloatingChrome = true,
-  hideAtmosphere = false,
-  style,
-  scrollRef,
-  ...props
-}: ScreenScrollViewProps) {
+export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(function ScreenScrollView(
+  {
+    children,
+    contentContainerStyle,
+    refreshing,
+    onRefresh,
+    includeFloatingChrome = true,
+    hideAtmosphere = false,
+    style,
+    ...props
+  },
+  ref
+) {
   const insets = useSafeAreaInsets();
   const floatingInset = useFloatingBottomInset();
   const bottomPadding = includeFloatingChrome
@@ -49,7 +54,7 @@ export function ScreenScrollView({
       {hideAtmosphere ? null : <SacredAtmosphere />}
       <ParchmentGrainOverlay />
       <AnimatedScrollView
-        ref={scrollRef}
+        ref={ref as React.Ref<React.ComponentRef<typeof AnimatedScrollView>>}
         style={styles.scroll}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
@@ -80,7 +85,7 @@ export function ScreenScrollView({
       />
     </ThemedView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   screen: {

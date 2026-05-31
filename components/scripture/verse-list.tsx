@@ -28,6 +28,10 @@ type VerseListProps = {
   bookId: string;
   chapter: number;
   bookTitle: string;
+  /** Scroll target from deep links (search results, bookmarks). */
+  scrollToVerse?: number;
+  /** Attach a native ref for each verse row (used for scroll-to-verse). */
+  registerVerseRef?: (verse: number, node: View | null) => void;
 };
 
 /** Renders verse text, turning inline † markers into styled superscript daggers. */
@@ -51,7 +55,15 @@ function VerseText({ text }: { text: string }) {
   );
 }
 
-export function VerseList({ verses, lang, bookId, chapter, bookTitle }: VerseListProps) {
+export function VerseList({
+  verses,
+  lang,
+  bookId,
+  chapter,
+  bookTitle,
+  scrollToVerse,
+  registerVerseRef,
+}: VerseListProps) {
   const savedMap = useSavedVerseMap();
   const [selected, setSelected] = useState<VerseRecord | null>(null);
 
@@ -84,38 +96,44 @@ export function VerseList({ verses, lang, bookId, chapter, bookTitle }: VerseLis
         const id = makeVerseId(bookId, chapter, verse.verse);
         const saved = savedMap[id];
         const isSelected = selected?.verse === verse.verse;
+        const isFocused = scrollToVerse === verse.verse;
         return (
-          <Pressable
+          <View
             key={verse.verse}
-            style={styles.row}
-            delayLongPress={250}
-            onLongPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-              setSelected(verse);
-            }}
-            accessibilityRole="button"
-            accessibilityHint="Press and hold to highlight or save this verse"
-            accessibilityLabel={`${bookTitle} ${chapter}:${verse.verse}`}>
-            <ThemedText style={styles.verseNum}>{verse.verse}</ThemedText>
-            <View style={styles.verseBody}>
-              <View
-                style={[
-                  styles.highlightWrap,
-                  saved?.color ? { backgroundColor: saved.color } : null,
-                  isSelected && styles.verseSelected,
-                ]}>
-                <VerseText text={pickVerseText(verse, lang)} />
-              </View>
-              {saved?.note ? (
-                <View style={styles.noteRow}>
-                  <Icon name="bookmark" size={12} color={Palette.gold} />
-                  <ThemedText style={styles.noteText} numberOfLines={2}>
-                    {saved.note}
-                  </ThemedText>
+            ref={(node) => registerVerseRef?.(verse.verse, node)}
+            collapsable={false}>
+            <Pressable
+              style={styles.row}
+              delayLongPress={250}
+              onLongPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                setSelected(verse);
+              }}
+              accessibilityRole="button"
+              accessibilityHint="Press and hold to highlight or save this verse"
+              accessibilityLabel={`${bookTitle} ${chapter}:${verse.verse}`}>
+              <ThemedText style={styles.verseNum}>{verse.verse}</ThemedText>
+              <View style={styles.verseBody}>
+                <View
+                  style={[
+                    styles.highlightWrap,
+                    saved?.color ? { backgroundColor: saved.color } : null,
+                    isSelected && styles.verseSelected,
+                    isFocused && styles.verseFocused,
+                  ]}>
+                  <VerseText text={pickVerseText(verse, lang)} />
                 </View>
-              ) : null}
-            </View>
-          </Pressable>
+                {saved?.note ? (
+                  <View style={styles.noteRow}>
+                    <Icon name="bookmark" size={12} color={Palette.gold} />
+                    <ThemedText style={styles.noteText} numberOfLines={2}>
+                      {saved.note}
+                    </ThemedText>
+                  </View>
+                ) : null}
+              </View>
+            </Pressable>
+          </View>
         );
       })}
 
@@ -183,6 +201,11 @@ const styles = StyleSheet.create({
     borderStyle: 'dotted',
     borderColor: Palette.gold,
     paddingBottom: 2,
+  },
+  verseFocused: {
+    backgroundColor: 'rgba(201, 147, 58, 0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.45)',
   },
   verseText: {
     fontSize: 17,
