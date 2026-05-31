@@ -15,3 +15,21 @@ export function useScriptureLang(): ScriptureLang {
 export function scriptureLangQuery(lang: ScriptureLang): string {
   return `?lang=${lang}`;
 }
+
+/** Build a typed chapter route, optionally jumping to a specific verse. */
+export function scriptureChapterRoute(
+  bookId: string,
+  chapter: number,
+  lang: ScriptureLang,
+  verse?: number
+) {
+  return {
+    pathname: '/book/[bookId]/[chapter]' as const,
+    params: {
+      bookId,
+      chapter: String(chapter),
+      lang,
+      ...(verse && Number.isFinite(verse) ? { verse: String(verse) } : {}),
+    },
+  };
+}

@@ -1,4 +1,5 @@
 import { getSupabase } from './supabase';
+import { buildSearchSnippet } from './search-snippets';
 
 /**
  * Doctrine content system powering the Learn section.
@@ -19,6 +20,7 @@ export type DoctrineSubtopic = {
   sortOrder: number;
   parentSubtopicId: string | null;
   passageCount: number;
+  children: DoctrineSubtopic[];
 };
 
 export type DoctrineTopic = {
@@ -40,6 +42,7 @@ export type DoctrineSearchResult = {
   subtopicSlug: string;
   passageNumber: number;
   content: string;
+  snippet: string;
 };
 
 type SubtopicRow = {
@@ -75,6 +78,48 @@ type SearchRow = {
     | null;
 };
 
+type FlatSubtopic = Omit<DoctrineSubtopic, 'children'>;
+
+/** Build a nested tree and drop branches with no readable content. */
+function buildSubtopicTree(flat: FlatSubtopic[]): DoctrineSubtopic[] {
+  const nodes = new Map<string, DoctrineSubtopic>();
+  for (const item of flat) {
+    nodes.set(item.id, { ...item, children: [] });
+  }
+
+  const roots: DoctrineSubtopic[] = [];
+  for (const node of nodes.values()) {
+    if (node.parentSubtopicId && nodes.has(node.parentSubtopicId)) {
+      nodes.get(node.parentSubtopicId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const prune = (node: DoctrineSubtopic): DoctrineSubtopic | null => {
+    node.children = node.children
+      .map(prune)
+      .filter((child): child is DoctrineSubtopic => child != null)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    if (node.passageCount === 0 && node.children.length === 0) return null;
+    return node;
+  };
+
+  return roots
+    .map(prune)
+    .filter((node): node is DoctrineSubtopic => node != null)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/** Count subtopics that actually have passage content (for the collection badge). */
+export function countDoctrineLessons(subtopics: DoctrineSubtopic[]): number {
+  return subtopics.reduce(
+    (total, sub) => total + (sub.passageCount > 0 ? 1 : 0) + countDoctrineLessons(sub.children),
+    0
+  );
+}
+
 /**
  * All topics with their nested subtopics, ordered for display. Only subtopics
  * that actually have passages are returned (placeholder rows are hidden), and
@@ -97,35 +142,38 @@ export async function fetchDoctrineOutline(): Promise<DoctrineTopic[]> {
   // Before the reorganization migration runs the title_am column won't exist
   // (Postgres error 42703). Retry without it so the page still shows content.
   if (error?.code === '42703') {
-    ({ data, error } = await supabase
+    const fallback = await supabase
       .from('doctrine_topics')
       .select(withoutAmharic)
-      .order('sort_order', { ascending: true }));
+      .order('sort_order', { ascending: true });
+    data = fallback.data as typeof data;
+    error = fallback.error;
   }
 
   if (error) throw error;
 
   const rows = (data ?? []) as TopicRow[];
   return rows
-    .map((topic) => ({
-      id: String(topic.id),
-      title: topic.title,
-      titleAm: topic.title_am ?? null,
-      slug: topic.slug,
-      sortOrder: topic.sort_order ?? 0,
-      subtopics: (topic.doctrine_subtopics ?? [])
-        .map((s) => ({
-          id: String(s.id),
-          title: s.title,
-          titleAm: s.title_am ?? null,
-          slug: s.slug,
-          sortOrder: s.sort_order ?? 0,
-          parentSubtopicId: s.parent_subtopic_id != null ? String(s.parent_subtopic_id) : null,
-          passageCount: s.doctrine_passages?.[0]?.count ?? 0,
-        }))
-        .filter((s) => s.passageCount > 0)
-        .sort((a, b) => a.sortOrder - b.sortOrder),
-    }))
+    .map((topic) => {
+      const flat: FlatSubtopic[] = (topic.doctrine_subtopics ?? []).map((s) => ({
+        id: String(s.id),
+        title: s.title,
+        titleAm: s.title_am ?? null,
+        slug: s.slug,
+        sortOrder: s.sort_order ?? 0,
+        parentSubtopicId: s.parent_subtopic_id != null ? String(s.parent_subtopic_id) : null,
+        passageCount: s.doctrine_passages?.[0]?.count ?? 0,
+      }));
+
+      return {
+        id: String(topic.id),
+        title: topic.title,
+        titleAm: topic.title_am ?? null,
+        slug: topic.slug,
+        sortOrder: topic.sort_order ?? 0,
+        subtopics: buildSubtopicTree(flat),
+      };
+    })
     .filter((topic) => topic.subtopics.length > 0);
 }
 
@@ -160,10 +208,23 @@ export async function searchDoctrinePassages(term: string): Promise<DoctrineSear
     .textSearch('content', term, { type: 'plain', config: 'english' })
     .limit(20);
 
-  if (error) throw error;
+  let rows = data;
+  let queryError = error;
 
-  const rows = (data ?? []) as SearchRow[];
-  return rows.map((r) => {
+  if (queryError) {
+    const fallback = await supabase
+      .from('doctrine_passages')
+      .select('passage_number, content, doctrine_subtopics!inner ( title, slug )')
+      .ilike('content', `%${term.trim()}%`)
+      .limit(20);
+    rows = fallback.data;
+    queryError = fallback.error;
+  }
+
+  if (queryError) throw queryError;
+
+  const resultRows = (rows ?? []) as SearchRow[];
+  return resultRows.map((r) => {
     const sub = Array.isArray(r.doctrine_subtopics)
       ? r.doctrine_subtopics[0]
       : r.doctrine_subtopics;
@@ -172,6 +233,7 @@ export async function searchDoctrinePassages(term: string): Promise<DoctrineSear
       subtopicSlug: sub?.slug ?? '',
       passageNumber: r.passage_number,
       content: r.content,
+      snippet: buildSearchSnippet(r.content, term),
     };
   });
 }

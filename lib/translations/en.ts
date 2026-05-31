@@ -220,6 +220,7 @@ const en = {
     catFeastsOnly: 'Feasts',
     catFasts: 'Fasts',
     catScriptureSearch: 'Scripture Search',
+    catScriptureSearchSub: 'Browse & search',
   },
 } as const;
 

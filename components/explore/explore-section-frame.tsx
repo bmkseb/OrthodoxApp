@@ -13,6 +13,8 @@ type ExploreSectionFrameProps = {
   icon?: IconName;
   onSeeAllPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  /** Tighter vertical rhythm for dense Explore layouts. */
+  compact?: boolean;
 };
 
 export function ExploreSectionFrame({
@@ -22,9 +24,10 @@ export function ExploreSectionFrame({
   icon,
   onSeeAllPress,
   style,
+  compact = false,
 }: ExploreSectionFrameProps) {
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, compact && styles.containerCompact, style]}>
       {(headerKey || title) && (
         <SectionHeader
           headerKey={headerKey}
@@ -41,5 +44,8 @@ export function ExploreSectionFrame({
 const styles = StyleSheet.create({
   container: {
     marginBottom: Layout.sectionContentBottom,
+  },
+  containerCompact: {
+    marginBottom: Layout.sectionContentBottom / 2,
   },
 });

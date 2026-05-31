@@ -1,6 +1,5 @@
-import React from 'react';
-import { RefreshControl, StyleSheet, type ScrollViewProps } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import React, { forwardRef } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
@@ -19,16 +18,19 @@ type ScreenScrollViewProps = ScrollViewProps & {
   hideAtmosphere?: boolean;
 };
 
-export function ScreenScrollView({
-  children,
-  contentContainerStyle,
-  refreshing,
-  onRefresh,
-  includeFloatingChrome = true,
-  hideAtmosphere = false,
-  style,
-  ...props
-}: ScreenScrollViewProps) {
+export const ScreenScrollView = forwardRef<ScrollView, ScreenScrollViewProps>(function ScreenScrollView(
+  {
+    children,
+    contentContainerStyle,
+    refreshing,
+    onRefresh,
+    includeFloatingChrome = true,
+    hideAtmosphere = false,
+    style,
+    ...props
+  },
+  ref
+) {
   const insets = useSafeAreaInsets();
   const floatingInset = useFloatingBottomInset();
   const bottomPadding = includeFloatingChrome
@@ -40,6 +42,7 @@ export function ScreenScrollView({
       {hideAtmosphere ? null : <SacredAtmosphere />}
       <ParchmentGrainOverlay />
       <ScrollView
+        ref={ref}
         style={styles.scroll}
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
@@ -61,7 +64,7 @@ export function ScreenScrollView({
       </ScrollView>
     </ThemedView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   screen: {

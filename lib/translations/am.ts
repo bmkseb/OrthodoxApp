@@ -220,6 +220,7 @@ const am = {
     catFeastsOnly: 'በዓላት',
     catFasts: 'ጾም',
     catScriptureSearch: 'የቅዱሳት መጻሕፍት ፍለጋ',
+    catScriptureSearchSub: 'ይፈልጉ እና ያስሱ',
   },
 };
 

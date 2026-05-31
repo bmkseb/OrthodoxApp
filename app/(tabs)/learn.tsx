@@ -6,7 +6,6 @@ import { DidYouKnow } from '@/components/learn/did-you-know';
 import { LearnCollectionCard } from '@/components/learn/learn-collection-card';
 import { LearnFeaturedHero } from '@/components/learn/learn-featured-hero';
 import { LearnRecentStrip } from '@/components/learn/learn-recent-strip';
-import { LearnSearchResults } from '@/components/learn/learn-search-results';
 import { LearnTeachingCard } from '@/components/learn/learn-teaching-card';
 import {
   LearnTopicFilters,
@@ -23,11 +22,19 @@ import {
   LEARN_SAVED_IDS,
   findTopicById,
   getFeatured,
-  searchLearnLibrary,
   type LearnCollection,
   type LearnTopic,
 } from '@/data/learnLibrary';
-import { fetchDoctrineOutline } from '@/lib/doctrine';
+import { ContentSearchResults } from '@/components/search/content-search-results';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { resolveLearnTopic, searchLearnHeaders, findFirstLesson } from '@/lib/learn-search';
+import {
+  countDoctrineLessons,
+  fetchDoctrineOutline,
+  searchDoctrinePassages,
+  type DoctrineSearchResult,
+  type DoctrineSubtopic,
+} from '@/lib/doctrine';
 import { learnText } from '@/lib/learn-i18n';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
@@ -40,6 +47,17 @@ const MUTED_GOLD = '#8A8070';
 
 const { width } = Dimensions.get('window');
 
+function mapDoctrineSubtopic(sub: DoctrineSubtopic): LearnTopic {
+  return {
+    id: sub.slug,
+    slug: sub.slug,
+    titleEn: sub.title,
+    titleAm: sub.titleAm ?? '',
+    passageCount: sub.passageCount,
+    children: sub.children.map(mapDoctrineSubtopic),
+  };
+}
+
 export default function LearnScreen() {
   const { t, mode } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,6 +65,8 @@ export default function LearnScreen() {
   const { recentSearches, addRecentSearch } = useRecentSearches('learn');
   const [featuredIndex] = useState(0);
   const [doctrineCollections, setDoctrineCollections] = useState<LearnCollection[]>([]);
+  const [passageHits, setPassageHits] = useState<DoctrineSearchResult[]>([]);
+  const [passageSearchLoading, setPassageSearchLoading] = useState(false);
 
   // Load the doctrine outline from Supabase; subtopics become the lesson cards.
   // Falls back silently to the bundled library when unavailable/offline.
@@ -57,23 +77,21 @@ export default function LearnScreen() {
         if (!active) return;
         const mapped: LearnCollection[] = topics
           .filter((topic) => topic.subtopics.length > 0)
-          .map((topic) => ({
-            id: topic.slug,
-            titleEn: topic.title,
-            // Amharic shown beside English in bilingual mode; '' => English only.
-            titleAm: topic.titleAm ?? '',
-            subtitleEn: '',
-            subtitleAm: '',
-            descriptionEn: `${topic.subtopics.length} lessons`,
-            descriptionAm: `${topic.subtopics.length} ትምህርቶች`,
-            icon: 'book',
-            topics: topic.subtopics.map((sub) => ({
-              id: sub.slug,
-              slug: sub.slug,
-              titleEn: sub.title,
-              titleAm: sub.titleAm ?? '',
-            })),
-          }));
+          .map((topic) => {
+            const topicsTree = topic.subtopics.map(mapDoctrineSubtopic);
+            const lessonCount = countDoctrineLessons(topic.subtopics);
+            return {
+              id: topic.slug,
+              titleEn: topic.title,
+              titleAm: topic.titleAm ?? '',
+              subtitleEn: '',
+              subtitleAm: '',
+              descriptionEn: `${lessonCount} lessons`,
+              descriptionAm: `${lessonCount} ትምህርቶች`,
+              icon: 'book',
+              topics: topicsTree,
+            };
+          });
         setDoctrineCollections(mapped);
       })
       .catch(() => {
@@ -87,9 +105,11 @@ export default function LearnScreen() {
   const collectionsToRender =
     doctrineCollections.length > 0 ? doctrineCollections : LEARN_COLLECTIONS;
 
-  const openLesson = (topic: LearnTopic) => {
+  const openLesson = (topic: LearnTopic, passageNumber?: number) => {
     const slug = topic.slug ?? topic.id;
-    router.push(`/learn/${slug}?title=${encodeURIComponent(topic.titleEn)}`);
+    const params = new URLSearchParams({ title: topic.titleEn });
+    if (passageNumber) params.set('passage', String(passageNumber));
+    router.push(`/learn/${slug}?${params.toString()}`);
   };
 
   const handleSearchSubmit = (term: string) => {
@@ -104,11 +124,37 @@ export default function LearnScreen() {
   // The free-text search wins; an active topic filter acts as a quick-pick
   // for the same search input, so changing one clears the other.
   const effectiveQuery = searchQuery.trim() || topicFilter || '';
+  const debouncedQuery = useDebouncedValue(effectiveQuery, 350);
 
-  const searchGroups = useMemo(
-    () => (effectiveQuery ? searchLearnLibrary(effectiveQuery) : []),
-    [effectiveQuery]
-  );
+  useEffect(() => {
+    if (!debouncedQuery.trim()) {
+      setPassageHits([]);
+      setPassageSearchLoading(false);
+      return;
+    }
+
+    let active = true;
+    setPassageSearchLoading(true);
+    searchDoctrinePassages(debouncedQuery)
+      .then((hits) => {
+        if (active) setPassageHits(hits);
+      })
+      .catch(() => {
+        if (active) setPassageHits([]);
+      })
+      .finally(() => {
+        if (active) setPassageSearchLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedQuery]);
+
+  const searchHeaders = useMemo(() => {
+    if (!effectiveQuery) return [];
+    return searchLearnHeaders(collectionsToRender, effectiveQuery, mode);
+  }, [effectiveQuery, collectionsToRender, mode]);
 
   const recentItems = useMemo(
     () =>
@@ -243,7 +289,54 @@ export default function LearnScreen() {
           ) : null}
         </>
       ) : (
-        <LearnSearchResults groups={searchGroups} />
+        <>
+          <ContentSearchResults
+            heading="Topics & lessons"
+            hits={searchHeaders.map((hit) => ({
+              id: hit.id,
+              title: hit.title,
+              subtitle: hit.subtitle,
+              isHeader: true,
+              onPress: () => {
+                const target = resolveLearnTopic(hit.topic);
+                if (target.slug && target.slug !== hit.collection.id) {
+                  openLesson(target);
+                  return;
+                }
+                const first = findFirstLesson(hit.collection);
+                if (first) openLesson(first);
+              },
+            }))}
+            emptyLabel={undefined}
+          />
+          <ContentSearchResults
+            heading="In teachings"
+            hits={passageHits.map((hit) => ({
+              id: `${hit.subtopicSlug}-${hit.passageNumber}`,
+              title: hit.subtopic,
+              subtitle: `Passage ${hit.passageNumber}`,
+              snippet: hit.snippet,
+              onPress: () =>
+                openLesson(
+                  {
+                    id: hit.subtopicSlug,
+                    slug: hit.subtopicSlug,
+                    titleEn: hit.subtopic,
+                    titleAm: '',
+                  },
+                  hit.passageNumber
+                ),
+            }))}
+            loading={passageSearchLoading}
+            emptyLabel={
+              searchHeaders.length === 0 &&
+              passageHits.length === 0 &&
+              !passageSearchLoading
+                ? t('learn.noResults')
+                : undefined
+            }
+          />
+        </>
       )}
     </ScreenScrollView>
   );

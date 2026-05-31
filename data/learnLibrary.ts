@@ -10,6 +10,9 @@ export type LearnTopic = {
   level?: TopicLevel;
   /** Kebab-case doctrine subtopic slug (present when sourced from Supabase). */
   slug?: string;
+  /** When zero, the row is a section header (children hold the lessons). */
+  passageCount?: number;
+  children?: LearnTopic[];
 };
 
 export type LearnCollection = {

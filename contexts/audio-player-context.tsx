@@ -8,19 +8,23 @@ import React, {
   useState,
 } from 'react';
 import {
-  runOnJS,
   useSharedValue,
   withSpring,
   type SharedValue,
 } from 'react-native-reanimated';
 
 import type { TranslationKey } from '@/lib/translations';
+import { getTrackPlayerModule, isTrackPlayerNativeAvailable } from '@/lib/track-player/native-client';
+import { setupTrackPlayer } from '@/lib/track-player/setup';
+import { toTrackPlayerItem } from '@/lib/track-player/tracks';
 
 export type AudioTrack = {
   id: string;
   title: string;
   artist: string;
   artworkUri: string;
+  /** Remote or local audio URL. Falls back to demo streams when omitted. */
+  url?: string;
   category?: string;
   categoryLabel?: string;
   titleKey?: TranslationKey;
@@ -30,8 +34,6 @@ export type AudioTrack = {
 type AudioPlayerContextValue = {
   currentTrack: AudioTrack | null;
   isPlaying: boolean;
-  progress: number;
-  duration: number;
   isFullPlayerOpen: boolean;
   isMiniPlayerVisible: boolean;
   expandProgress: SharedValue<number>;
@@ -53,43 +55,105 @@ type AudioPlayerContextValue = {
 };
 
 const EXPAND_SPRING = { damping: 22, stiffness: 220, mass: 0.9 };
+const HAS_TRACK_PLAYER = isTrackPlayerNativeAvailable();
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null);
-  const [queue, setQueue] = useState<AudioTrack[]>([]);
-  const [queueIndex, setQueueIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0.35);
-  const [duration] = useState(225);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
+  const [playerReady, setPlayerReady] = useState(!HAS_TRACK_PLAYER);
 
   const expandProgress = useSharedValue(0);
-  const progressRef = useRef(progress);
-  progressRef.current = progress;
+  const trackMetaRef = useRef<Map<string, AudioTrack>>(new Map());
 
   const isMiniPlayerVisible = currentTrack != null && !isFullPlayerOpen;
 
-  const applyTrack = useCallback((track: AudioTrack, autoPlay: boolean) => {
-    setCurrentTrack(track);
-    setIsPlaying(autoPlay);
-    setProgress(0.08);
+  useEffect(() => {
+    if (!HAS_TRACK_PLAYER) return;
+    setupTrackPlayer()
+      .then(() => setPlayerReady(true))
+      .catch(() => setPlayerReady(false));
   }, []);
+
+  useEffect(() => {
+    if (!HAS_TRACK_PLAYER || !playerReady) return;
+    const mod = getTrackPlayerModule();
+    if (!mod) return;
+
+    const TrackPlayer = mod.default;
+    const { Event, State } = mod;
+
+    const sub = TrackPlayer.addEventListener(Event.PlaybackState, async () => {
+      const { state } = await TrackPlayer.getPlaybackState();
+      setIsPlaying(state === State.Playing || state === State.Buffering);
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, [playerReady]);
+
+  const syncActiveTrack = useCallback(async () => {
+    if (!HAS_TRACK_PLAYER || !playerReady) return;
+    const mod = getTrackPlayerModule();
+    if (!mod) return;
+
+    const TrackPlayer = mod.default;
+    const index = await TrackPlayer.getActiveTrackIndex();
+    if (index == null || index < 0) {
+      setCurrentTrack(null);
+      return;
+    }
+    const active = await TrackPlayer.getActiveTrack();
+    if (!active?.id) {
+      setCurrentTrack(null);
+      return;
+    }
+    const meta = trackMetaRef.current.get(String(active.id));
+    if (meta) {
+      setCurrentTrack(meta);
+      return;
+    }
+    setCurrentTrack({
+      id: String(active.id),
+      title: active.title ?? 'Unknown',
+      artist: active.artist ?? '',
+      artworkUri: typeof active.artwork === 'string' ? active.artwork : '',
+    });
+  }, [playerReady]);
 
   const playTrack = useCallback(
     (track: AudioTrack, options?: { autoPlay?: boolean; queue?: AudioTrack[] }) => {
       const autoPlay = options?.autoPlay ?? true;
       const nextQueue = options?.queue?.length ? options.queue : [track];
-      const index = Math.max(
-        0,
-        nextQueue.findIndex((item) => item.id === track.id)
-      );
-      setQueue(nextQueue);
-      setQueueIndex(index);
-      applyTrack(nextQueue[index] ?? track, autoPlay);
+      const index = Math.max(0, nextQueue.findIndex((item) => item.id === track.id));
+
+      for (const item of nextQueue) {
+        trackMetaRef.current.set(item.id, item);
+      }
+
+      const selected = nextQueue[index] ?? track;
+      setCurrentTrack(selected);
+      setIsPlaying(autoPlay);
+
+      if (!HAS_TRACK_PLAYER || !playerReady) return;
+
+      void (async () => {
+        const mod = getTrackPlayerModule();
+        if (!mod) return;
+        const TrackPlayer = mod.default;
+
+        await TrackPlayer.reset();
+        await TrackPlayer.add(nextQueue.map((item, i) => toTrackPlayerItem(item, i)));
+        if (index > 0) await TrackPlayer.skip(index);
+        if (autoPlay) await TrackPlayer.play();
+        else await TrackPlayer.pause();
+        await syncActiveTrack();
+      })();
     },
-    [applyTrack]
+    [playerReady, syncActiveTrack]
   );
 
   const openFullPlayer = useCallback(() => {
@@ -107,65 +171,105 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     closeFullPlayer();
     setIsPlaying(false);
     setCurrentTrack(null);
-    setQueue([]);
-    setQueueIndex(0);
-    setProgress(0);
-  }, [closeFullPlayer]);
+    trackMetaRef.current.clear();
+    if (HAS_TRACK_PLAYER && playerReady) {
+      const mod = getTrackPlayerModule();
+      if (mod) void mod.default.reset();
+    }
+  }, [closeFullPlayer, playerReady]);
 
   const playPause = useCallback(() => {
-    setIsPlaying((p) => !p);
-  }, []);
+    if (!HAS_TRACK_PLAYER || !playerReady) {
+      setIsPlaying((p) => !p);
+      return;
+    }
+    void (async () => {
+      const mod = getTrackPlayerModule();
+      if (!mod) return;
+      const TrackPlayer = mod.default;
+      const { State } = mod;
 
-  const seekTo = useCallback((value: number) => {
-    setProgress(Math.min(Math.max(value, 0), 1));
-  }, []);
+      const { state } = await TrackPlayer.getPlaybackState();
+      if (state === State.Playing || state === State.Buffering) {
+        await TrackPlayer.pause();
+        setIsPlaying(false);
+      } else {
+        await TrackPlayer.play();
+        setIsPlaying(true);
+      }
+    })();
+  }, [playerReady]);
+
+  const seekTo = useCallback(
+    (value: number) => {
+      if (!HAS_TRACK_PLAYER || !playerReady) return;
+      void (async () => {
+        const mod = getTrackPlayerModule();
+        if (!mod) return;
+        const TrackPlayer = mod.default;
+
+        const duration = await TrackPlayer.getDuration();
+        if (!Number.isFinite(duration) || duration <= 0) return;
+        const clamped = Math.min(Math.max(value, 0), 1);
+        await TrackPlayer.seekTo(clamped * duration);
+      })();
+    },
+    [playerReady]
+  );
 
   const skipSeconds = useCallback(
     (delta: number) => {
-      const next = progressRef.current + delta / duration;
-      setProgress(Math.min(Math.max(next, 0), 1));
+      if (!HAS_TRACK_PLAYER || !playerReady) return;
+      void (async () => {
+        const mod = getTrackPlayerModule();
+        if (!mod) return;
+        const TrackPlayer = mod.default;
+
+        const progress = await TrackPlayer.getProgress();
+        const next = Math.min(Math.max(progress.position + delta, 0), progress.duration || 0);
+        await TrackPlayer.seekTo(next);
+      })();
     },
-    [duration]
+    [playerReady]
   );
 
   const nextTrack = useCallback(() => {
-    if (queue.length < 2) return;
-    const nextIndex = (queueIndex + 1) % queue.length;
-    setQueueIndex(nextIndex);
-    applyTrack(queue[nextIndex], true);
-  }, [queue, queueIndex, applyTrack]);
+    if (!HAS_TRACK_PLAYER || !playerReady) return;
+    void (async () => {
+      const mod = getTrackPlayerModule();
+      if (!mod) return;
+      const TrackPlayer = mod.default;
+
+      await TrackPlayer.skipToNext();
+      await syncActiveTrack();
+      await TrackPlayer.play();
+      setIsPlaying(true);
+    })();
+  }, [playerReady, syncActiveTrack]);
 
   const previousTrack = useCallback(() => {
-    if (progressRef.current > 0.05) {
-      setProgress(0);
-      return;
-    }
-    if (queue.length < 2) return;
-    const prevIndex = (queueIndex - 1 + queue.length) % queue.length;
-    setQueueIndex(prevIndex);
-    applyTrack(queue[prevIndex], true);
-  }, [queue, queueIndex, applyTrack]);
+    if (!HAS_TRACK_PLAYER || !playerReady) return;
+    void (async () => {
+      const mod = getTrackPlayerModule();
+      if (!mod) return;
+      const TrackPlayer = mod.default;
 
-  useEffect(() => {
-    if (!isPlaying || !currentTrack) return;
-    const timer = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 1) {
-          setIsPlaying(false);
-          return 1;
-        }
-        return p + 1 / duration / 10;
-      });
-    }, 100);
-    return () => clearInterval(timer);
-  }, [isPlaying, currentTrack, duration]);
+      const progress = await TrackPlayer.getProgress();
+      if (progress.position > 3) {
+        await TrackPlayer.seekTo(0);
+        return;
+      }
+      await TrackPlayer.skipToPrevious();
+      await syncActiveTrack();
+      await TrackPlayer.play();
+      setIsPlaying(true);
+    })();
+  }, [playerReady, syncActiveTrack]);
 
   const value = useMemo(
     () => ({
       currentTrack,
       isPlaying,
-      progress,
-      duration,
       isFullPlayerOpen,
       isMiniPlayerVisible,
       expandProgress,
@@ -185,8 +289,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     [
       currentTrack,
       isPlaying,
-      progress,
-      duration,
       isFullPlayerOpen,
       isMiniPlayerVisible,
       expandProgress,
@@ -217,3 +319,6 @@ export function usePlayback() {
 }
 
 export type PlaybackTrack = AudioTrack;
+
+/** Re-export TrackPlayer hooks for UI components (scrubber, play state, metadata). */
+export { useActiveTrack, usePlaybackState, useProgress } from '@/lib/track-player/hooks';

@@ -32,10 +32,15 @@ import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
 import { FloatingBottom, getMiniPlayerBottom } from '@/constants/floating-bottom';
 import { Opacity, Palette, Space } from '@/constants/theme';
-import { useAudioPlayer } from '@/contexts/audio-player-context';
+import {
+  useActiveTrack,
+  useAudioPlayer,
+  useProgress,
+} from '@/contexts/audio-player-context';
 import { useTranslation } from '@/hooks/use-translation';
 import { formatPlaybackTime } from '@/lib/audio-utils';
 import { resolvePlayerCopyFromTrack } from '@/lib/audio-track-display';
+import { State } from 'react-native-track-player';
 
 const DISMISS_DISTANCE = 110;
 const DISMISS_VELOCITY = 850;
@@ -68,11 +73,13 @@ export function FullScreenPlayer() {
   const insets = useSafeAreaInsets();
   const { height: screenH } = useWindowDimensions();
   const { mode } = useTranslation();
+  const { position, duration } = useProgress(250);
+  const activeTrack = useActiveTrack();
+  const progress = duration > 0 ? position / duration : 0;
+
   const {
     currentTrack,
     isPlaying,
-    progress,
-    duration,
     isFullPlayerOpen,
     expandProgress,
     closeFullPlayer,
@@ -83,14 +90,25 @@ export function FullScreenPlayer() {
     skipSeconds,
   } = useAudioPlayer();
 
+  const trackForDisplay =
+    currentTrack ??
+    (activeTrack
+      ? {
+          id: String(activeTrack.id),
+          title: activeTrack.title ?? 'Unknown',
+          artist: activeTrack.artist ?? '',
+          artworkUri: typeof activeTrack.artwork === 'string' ? activeTrack.artwork : '',
+        }
+      : null);
+
   const dragY = useSharedValue(0);
   const scrollY = useSharedValue(0);
   const floatY = useSharedValue(0);
   const isClosing = useRef(false);
 
   const copy = useMemo(
-    () => (currentTrack ? resolvePlayerCopyFromTrack(mode, currentTrack) : null),
-    [currentTrack, mode]
+    () => (trackForDisplay ? resolvePlayerCopyFromTrack(mode, trackForDisplay) : null),
+    [trackForDisplay, mode]
   );
 
   const showCategory =
@@ -220,9 +238,10 @@ export function FullScreenPlayer() {
       }
     });
 
-  if (!isFullPlayerOpen || !currentTrack || !copy) return null;
+  if (!isFullPlayerOpen || !trackForDisplay || !copy) return null;
 
-  const elapsed = progress * duration;
+  const elapsed = position;
+  const totalDuration = duration;
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
@@ -232,7 +251,7 @@ export function FullScreenPlayer() {
         accessibilityLabel="Close player">
         <Animated.View style={[styles.backdrop, backdropStyle]} pointerEvents="none">
           <SacredImage
-            uri={currentTrack.artworkUri}
+            uri={trackForDisplay.artworkUri}
             style={styles.backdropArt}
             contentFit="cover"
           />
@@ -275,7 +294,7 @@ export function FullScreenPlayer() {
                   <View style={styles.artworkGlow} pointerEvents="none" />
                   <View style={styles.artworkFrame}>
                     <SacredImage
-                      uri={currentTrack.artworkUri}
+                      uri={trackForDisplay.artworkUri}
                       style={styles.artworkImage}
                       contentFit="cover"
                     />
@@ -298,7 +317,7 @@ export function FullScreenPlayer() {
                   <GoldProgressSlider progress={progress} onSeek={seekTo} />
                   <View style={styles.timeRow}>
                     <Text style={styles.time}>{formatPlaybackTime(elapsed)}</Text>
-                    <Text style={styles.time}>{formatPlaybackTime(duration)}</Text>
+                    <Text style={styles.time}>{formatPlaybackTime(totalDuration)}</Text>
                   </View>
                 </Animated.View>
 
