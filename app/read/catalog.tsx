@@ -22,6 +22,13 @@ const ITEMS: {
     route: '/catalog',
   },
   {
+    id: 'daily-prayer',
+    title: 'Daily Prayer',
+    subtitle: 'YeZewitir Tselot · Everyday Prayers',
+    geez: 'የዘወትር ጸሎት',
+    route: '/prayer/daily-prayer' as Href,
+  },
+  {
     id: 'horologium',
     title: "Matshafa Se'atat",
     subtitle: 'Book of Hours · 7 Canonical Prayers',

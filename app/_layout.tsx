@@ -54,7 +54,15 @@ export default function RootLayout() {
                   />
                   <Stack.Screen name="book/[bookId]" options={{ headerShown: false }} />
                   <Stack.Screen
+                    name="learn/catalog"
+                    options={{ headerShown: false, animation: 'slide_from_bottom' }}
+                  />
+                  <Stack.Screen
                     name="learn/[slug]"
+                    options={{ headerShown: false, animation: 'slide_from_bottom' }}
+                  />
+                  <Stack.Screen
+                    name="prayer/[slug]"
                     options={{ headerShown: false, animation: 'slide_from_bottom' }}
                   />
                   <Stack.Screen

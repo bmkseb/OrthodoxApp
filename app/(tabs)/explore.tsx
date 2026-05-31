@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/orthodox/PageHeader';
 import { ManuscriptBookCard } from '@/components/sacred/manuscript-book-card';
 import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
 import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
+import { VerseOfTheDayCard } from '@/components/sacred/verse-of-the-day-card';
 import { MediaListItem } from '@/components/ui/media-list-item';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
@@ -73,7 +74,7 @@ export default function ExploreScreen() {
   const { recentSearches, addRecentSearch } = useRecentSearches('explore');
 
   const quickAccess: QuickAccessItem[] = [
-    { id: 'prayers', title: t('explore.catPrayers'), subtitle: 'Daily offices', icon: 'sun', onPress: () => router.push('/horologium') },
+    { id: 'prayers', title: t('explore.catPrayers'), subtitle: 'Daily offices', icon: 'sun', onPress: () => router.push('/prayer/daily-prayer' as never) },
     { id: 'saints', title: t('explore.catSaints'), subtitle: 'Lives and feasts', icon: 'church', onPress: () => router.push('/calendar') },
     { id: 'hymns', title: t('explore.catHymns'), subtitle: 'Sacred melodies', icon: 'music', onPress: () => router.push('/listen') },
     { id: 'feasts', title: t('explore.catFeastsOnly'), subtitle: 'Calendar and fasts', icon: 'calendar', onPress: () => router.push('/calendar') },
@@ -119,6 +120,11 @@ export default function ExploreScreen() {
           />
         </View>
 
+        {/* Verse of the day — daily scripture ritual */}
+        <ExploreSectionFrame title="Verse of the Day" icon="book" compact>
+          <VerseOfTheDayCard />
+        </ExploreSectionFrame>
+
         {/* Quick access shortcut menu */}
         <ExploreSectionFrame title={t('explore.quickAccess')} icon="sparkle" compact>
           <View style={styles.quickGrid}>
@@ -156,7 +162,7 @@ export default function ExploreScreen() {
                 title={p.title}
                 subtitle={t('explore.catPrayers')}
                 image={{ uri: p.image }}
-                onPress={() => router.push('/horologium')}
+                onPress={() => router.push('/prayer/daily-prayer' as never)}
               />
             ))}
           </View>

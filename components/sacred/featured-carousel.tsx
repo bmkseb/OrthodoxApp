@@ -25,12 +25,14 @@ type FeaturedCarouselProps = {
   width: number;
   /** Auto-advance interval in ms. */
   autoRotateMs?: number;
+  /** Overrides the default featured card height for a more compact slot. */
+  cardHeight?: number;
 };
 
 // How long after a user interaction before auto-rotation resumes.
 const RESUME_DELAY_MS = 2000;
 
-export function FeaturedCarousel({ items, width, autoRotateMs = 5000 }: FeaturedCarouselProps) {
+export function FeaturedCarousel({ items, width, autoRotateMs = 5000, cardHeight }: FeaturedCarouselProps) {
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const indexRef = useRef(0);
@@ -104,6 +106,7 @@ export function FeaturedCarousel({ items, width, autoRotateMs = 5000 }: Featured
               subtitle={item.subtitle}
               badgeLabel={item.badgeLabel}
               imageUri={item.imageUri}
+              height={cardHeight}
               onPress={item.onPress}
               style={{ width }}
             />

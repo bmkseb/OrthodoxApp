@@ -9,9 +9,9 @@ import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
 import { Layout, Overlays, Palette, Space, Typography } from '@/constants/theme';
 
-const BOOK_WIDTH = 110;
-const BOOK_HEIGHT = 165;
-const SPINE_WIDTH = 7;
+const BOOK_WIDTH = 96;
+const BOOK_HEIGHT = 142;
+const SPINE_WIDTH = 6;
 const CORNER_RADIUS = 4;
 
 type BookshelfBookCardProps = {
@@ -63,7 +63,7 @@ export const BookshelfBookCard = memo(function BookshelfBookCard({
             locations={[0, 0.55, 1]}
             style={styles.gradient}>
             <Text style={styles.cross}>☩</Text>
-            <ThemedText style={styles.title} numberOfLines={3}>
+            <ThemedText style={styles.title} numberOfLines={2}>
               {title}
             </ThemedText>
             {subtitle ? (

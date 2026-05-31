@@ -1,5 +1,6 @@
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -8,14 +9,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BilingualHeader } from '@/components/orthodox/BilingualHeader';
 import { PageHeader } from '@/components/orthodox/PageHeader';
+import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
-import { FeaturedHeroCard } from '@/components/ui/featured-hero-card';
-import { MediaListItem } from '@/components/ui/media-list-item';
 import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
 import { SearchBar } from '@/components/ui/search-bar';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SoftRailCard } from '@/components/ui/soft-rail-card';
 import { useAudioPlayer, type AudioTrack } from '@/contexts/audio-player-context';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
@@ -33,6 +34,8 @@ const MUTED_GOLD = '#8A8070';
 const PILL_SPRING = { damping: 18, stiffness: 240, mass: 0.6 } as const;
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
+const { width: WINDOW_WIDTH } = Dimensions.get('window');
 
 type Track = {
   id: string;
@@ -81,6 +84,16 @@ const TAB_CONTENT: Record<
     ],
   },
 };
+
+/** Hymns Catalog rail — browse mezmur by mood/season, plus chants and the office. */
+const LISTEN_COLLECTIONS: { id: string; title: string; subtitle: string; image: string; tab?: ListenTab; route?: string }[] = [
+  { id: 'repentance', title: 'Repentance Mezmur', subtitle: 'ንስሐ መዝሙር', image: SacredImagery.prayerMary, tab: 'hymns' },
+  { id: 'joyous', title: 'Joyous Mezmur', subtitle: 'ደስታ መዝሙር', image: SacredImagery.listenHymns, tab: 'hymns' },
+  { id: 'praise', title: 'Praise Mezmur', subtitle: 'ምስጋና መዝሙር', image: SacredImagery.listenMelodies, tab: 'hymns' },
+  { id: 'yared', title: 'Yared Chants', subtitle: 'ዜማ · Zema', image: SacredImagery.readManuscript, tab: 'melodies' },
+  { id: 'sermons', title: 'Sermons', subtitle: 'ስብከት · Teachings', image: SacredImagery.listenSermons, tab: 'sermons' },
+  { id: 'office', title: 'Prayer Office', subtitle: "ሰዓታት · Se'atat", image: SacredImagery.readManuscript, route: '/horologium' },
+];
 
 function resolveLabel(t: (k: TranslationKey) => string, key?: TranslationKey, fallback?: string) {
   return key ? t(key) : (fallback ?? '');
@@ -176,12 +189,13 @@ export default function ListenScreen() {
   const [activeTab, setActiveTab] = useState<ListenTab>('hymns');
   const [searchQuery, setSearchQuery] = useState('');
   const { recentSearches, addRecentSearch } = useRecentSearches('listen');
-  const { playTrack, isPlaying } = useAudioPlayer();
+  const { playTrack, openFullPlayer } = useAudioPlayer();
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = useFloatingBottomInset();
   const { values: scrollIndicator, scrollHandler } = useScrollIndicator();
   const content = TAB_CONTENT[activeTab];
   const categoryLabel = getCategoryLabel(activeTab, t, mode);
+  const featuredWidth = WINDOW_WIDTH - Layout.pagePadding * 2;
 
   const toPlaybackTrack = useCallback(
     (track: Track): AudioTrack => {
@@ -227,9 +241,21 @@ export default function ListenScreen() {
     [buildQueue, playTrack, toPlaybackTrack]
   );
 
-  const featuredTitle = useMemo(
-    () => resolveLabel(t, content.featured.titleKey, content.featured.title),
-    [content.featured, t]
+  // Auto-rotating featured carousel skims across all three categories.
+  const featuredItems = useMemo<FeaturedItem[]>(
+    () =>
+      TAB_KEYS.map((tab) => {
+        const f = TAB_CONTENT[tab].featured;
+        return {
+          id: tab,
+          title: resolveLabel(t, f.titleKey, f.title),
+          subtitle: resolveLabel(t, f.subtitleKey, f.subtitle),
+          badgeLabel: getListenTabLabel(t, mode, tab),
+          imageUri: f.image,
+          onPress: () => setActiveTab(tab),
+        };
+      }),
+    [t, mode]
   );
 
   const q = searchQuery.trim().toLowerCase();
@@ -275,29 +301,54 @@ export default function ListenScreen() {
           />
         </View>
         <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
-        <FeaturedHeroCard
-          title={featuredTitle}
-          subtitle={resolveLabel(t, content.featured.subtitleKey, content.featured.subtitle)}
-          imageSource={{ uri: content.featured.image }}
-          isPlayingWarm={isPlaying}
-          // TODO: Replace with properly licensed Ethiopian Orthodox imagery
-          // (Lalibela rock-hewn churches, Yared chant manuscripts, debtera with sistrum).
-          // The Yared melodies card was previously falling back to a Taj Mahal stock photo.
-          placeholder={activeTab === 'melodies' ? 'liturgy' : undefined}
-        />
-        <View style={styles.featuredHeader}>
-          <BilingualHeader amharic="ተወዳጅ" english="Featured" />
+
+        {/* Continue listening — horizontal rail of the active category */}
+        {filteredTracks.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeader title="Continue Listening" icon="music" onSeeAllPress={openFullPlayer} />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.rail}>
+              {filteredTracks.map((track) => (
+                <SoftRailCard
+                  key={track.id}
+                  title={resolveLabel(t, track.titleKey, track.title)}
+                  subtitle={resolveLabel(t, track.artistKey, track.artist)}
+                  onPress={() => playFromTrack(track)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {/* Featured — auto-rotating across categories */}
+        <View style={styles.section}>
+          <SectionHeader title="Featured" icon="sparkle" />
+          <FeaturedCarousel
+            items={featuredItems}
+            width={featuredWidth}
+            autoRotateMs={3200}
+            cardHeight={176}
+          />
         </View>
-        <View style={styles.trackList}>
-          {filteredTracks.map((track) => (
-            <MediaListItem
-              key={track.id}
-              title={resolveLabel(t, track.titleKey, track.title)}
-              subtitle={resolveLabel(t, track.artistKey, track.artist)}
-              image={{ uri: track.image }}
-              onPress={() => playFromTrack(track)}
-            />
-          ))}
+
+        {/* Catalog — browse the wider audio library */}
+        <View style={styles.section}>
+          <SectionHeader title="Hymns Catalog" icon="scroll" onSeeAllPress={() => setActiveTab('hymns')} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
+            {LISTEN_COLLECTIONS.map((c) => (
+              <SoftRailCard
+                key={c.id}
+                title={c.title}
+                subtitle={c.subtitle}
+                onPress={() => {
+                  if (c.tab) setActiveTab(c.tab);
+                  else if (c.route) router.push(c.route as never);
+                }}
+              />
+            ))}
+          </ScrollView>
         </View>
       </AnimatedScrollView>
 
@@ -347,8 +398,10 @@ const styles = StyleSheet.create({
   },
   segmentLabelActive: { color: '#000000', fontWeight: '600' },
   segmentLabelInactive: { color: MUTED_GOLD, fontWeight: '500' },
-  featuredHeader: {
-    marginBottom: Space.s8,
+  section: { marginBottom: Layout.sectionContentBottom },
+  rail: {
+    gap: Layout.cardGap,
+    paddingRight: Layout.pagePadding,
+    marginRight: -Layout.pagePadding,
   },
-  trackList: { paddingBottom: Space.s4 },
 });

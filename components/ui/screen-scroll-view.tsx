@@ -6,7 +6,7 @@ import {
   type ScrollViewProps,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import Animated from 'react-native-reanimated';
+import Animated, { runOnJS, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
@@ -26,6 +26,8 @@ type ScreenScrollViewProps = ScrollViewProps & {
   includeFloatingChrome?: boolean;
   /** Skip default SacredAtmosphere (e.g. Explore uses its own). */
   hideAtmosphere?: boolean;
+  /** Reports furthest scroll fraction (0..1), quantized to 5% steps. */
+  onScrollProgress?: (fraction: number) => void;
 };
 
 export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(function ScreenScrollView(
@@ -36,6 +38,7 @@ export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(
     onRefresh,
     includeFloatingChrome = true,
     hideAtmosphere = false,
+    onScrollProgress,
     style,
     ...props
   },
@@ -48,6 +51,20 @@ export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(
     : insets.bottom + Spacing.xl;
   const topPadding = insets.top + Spacing.md;
   const { values, scrollHandler } = useScrollIndicator();
+
+  // Derive a quantized read-progress fraction off the indicator's shared values
+  // so callers can persist reading progress without owning the scroll handler.
+  const lastReported = useSharedValue(-1);
+  useDerivedValue(() => {
+    if (!onScrollProgress) return;
+    const max = Math.max(values.contentHeight.value - values.layoutHeight.value, 1);
+    const fraction = Math.min(Math.max(values.scrollY.value / max, 0), 1);
+    const stepped = Math.round(fraction * 20) / 20;
+    if (stepped !== lastReported.value) {
+      lastReported.value = stepped;
+      runOnJS(onScrollProgress)(stepped);
+    }
+  });
 
   return (
     <ThemedView style={[styles.screen, style]} pointerEvents="box-none">

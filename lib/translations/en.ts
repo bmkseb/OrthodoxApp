@@ -150,7 +150,7 @@ const en = {
     orthodoxPrayers: 'Orthodox Prayers',
     morningPrayer: 'Morning Prayer',
     dailyPrayer: 'Daily Prayer',
-    dailyPrayerSub: 'Horologium',
+    dailyPrayerSub: 'YeZewitir Tselot',
     verseOfTheDay: 'Verse of the Day',
     todaysReadings: "Today's Readings",
     todaysReadingsSub: 'Daily lectionary',

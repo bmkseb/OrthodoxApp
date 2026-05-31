@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 
@@ -7,8 +7,6 @@ import { BookshelfBookCard } from '@/components/read/bookshelf-book-card';
 import { BookshelfSection } from '@/components/read/bookshelf-section';
 import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
 import { HolyBibleHeroCard } from '@/components/sacred/holy-bible-hero-card';
-import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
-import { VerseOfTheDayCard } from '@/components/sacred/verse-of-the-day-card';
 import { ContentSearchResults } from '@/components/search/content-search-results';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import {
@@ -37,9 +35,10 @@ const { width } = Dimensions.get('window');
 
 // Holy Bible listed first in the Orthodox Catalog preview.
 const CATALOG_PREVIEW = [
-  { id: 'c2', titleKey: 'holyBible' as const, subKey: 'holyBibleSub' as const, image: SacredImagery.continueBible, route: '/catalog' as const },
-  { id: 'c1', titleKey: 'horologium' as const, subKey: 'horologiumSub' as const, image: SacredImagery.readManuscript, route: '/horologium' as const },
-  { id: 'c3', titleKey: 'liturgy' as const, subKey: 'liturgySub' as const, image: SacredImagery.continueLiturgy, route: '/catalog' as const },
+  { id: 'c2', titleKey: 'holyBible' as const, subKey: 'holyBibleSub' as const, image: SacredImagery.continueBible, route: '/catalog' as Href },
+  { id: 'c4', titleKey: 'dailyPrayer' as const, subKey: 'dailyPrayerSub' as const, image: SacredImagery.prayerDaily, route: '/prayer/daily-prayer' as Href },
+  { id: 'c1', titleKey: 'horologium' as const, subKey: 'horologiumSub' as const, image: SacredImagery.readManuscript, route: '/horologium' as Href },
+  { id: 'c3', titleKey: 'liturgy' as const, subKey: 'liturgySub' as const, image: SacredImagery.continueLiturgy, route: '/catalog' as Href },
 ];
 
 export default function ReadScreen() {
@@ -132,7 +131,7 @@ export default function ReadScreen() {
       subtitle: t('content.dailyPrayerSub'),
       badgeLabel: t('calendar.today'),
       imageUri: SacredImagery.prayerDaily,
-      onPress: () => router.push('/horologium'),
+      onPress: () => router.push('/prayer/daily-prayer' as never),
     },
   ];
 
@@ -200,50 +199,7 @@ export default function ReadScreen() {
         </>
       ) : null}
 
-      <View style={styles.section}>
-        <SectionHeader headerKey="content.verseOfTheDay" icon="book" />
-        <VerseOfTheDayCard width={featuredWidth} />
-      </View>
-
-      <SacredSectionDivider />
-
-      <View style={styles.section}>
-        <SectionHeader headerKey="featured" icon="sparkle" />
-        <FeaturedCarousel items={featuredItems} width={featuredWidth} autoRotateMs={3200} />
-      </View>
-
-      <SacredSectionDivider />
-
-      <View style={styles.section}>
-        <SectionHeader
-          headerKey="orthodoxCatalog"
-          icon="scroll"
-          onSeeAllPress={() => router.push('/read/catalog')}
-        />
-        <BookshelfSection
-          horizontal
-          scrollProps={{
-            onScroll: catalogScrollHandler,
-            onLayout: catalogScrollLayout,
-            onContentSizeChange: catalogContentSizeChange,
-          }}>
-          {CATALOG_PREVIEW.map((book) => (
-            <BookshelfBookCard
-              key={book.id}
-              title={t(`content.${book.titleKey}`)}
-              subtitle={t(`content.${book.subKey}`)}
-              imageUri={book.image}
-              onPress={() => router.push(book.route)}
-            />
-          ))}
-        </BookshelfSection>
-        <View style={styles.railHint}>
-          <HorizontalScrollIndicator values={catalogScroll} />
-        </View>
-      </View>
-
-      <SacredSectionDivider />
-
+      {/* Continue reading — pick up where you left off */}
       {entries.length > 0 ? (
         <View style={styles.section}>
           <SectionHeader headerKey="continueReading" icon="book" />
@@ -292,6 +248,41 @@ export default function ReadScreen() {
           />
         </View>
       )}
+
+      {/* Featured — daily discovery */}
+      <View style={styles.section}>
+        <SectionHeader headerKey="featured" icon="sparkle" />
+        <FeaturedCarousel items={featuredItems} width={featuredWidth} autoRotateMs={3200} cardHeight={176} />
+      </View>
+
+      {/* Orthodox catalog — browse the library */}
+      <View style={styles.section}>
+        <SectionHeader
+          headerKey="orthodoxCatalog"
+          icon="scroll"
+          onSeeAllPress={() => router.push('/read/catalog')}
+        />
+        <BookshelfSection
+          horizontal
+          scrollProps={{
+            onScroll: catalogScrollHandler,
+            onLayout: catalogScrollLayout,
+            onContentSizeChange: catalogContentSizeChange,
+          }}>
+          {CATALOG_PREVIEW.map((book) => (
+            <BookshelfBookCard
+              key={book.id}
+              title={t(`content.${book.titleKey}`)}
+              subtitle={t(`content.${book.subKey}`)}
+              imageUri={book.image}
+              onPress={() => router.push(book.route)}
+            />
+          ))}
+        </BookshelfSection>
+        <View style={styles.railHint}>
+          <HorizontalScrollIndicator values={catalogScroll} />
+        </View>
+      </View>
     </ScreenScrollView>
   );
 }

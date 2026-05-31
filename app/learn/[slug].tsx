@@ -8,15 +8,23 @@ import { ScriptureBookHeader } from '@/components/scripture/scripture-book-heade
 import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { Palette, Spacing } from '@/constants/theme';
+import {
+  getLearningProgress,
+  recordLearningProgress,
+} from '@/hooks/use-learning-progress';
 import { parseScrollTarget, useScrollToTarget } from '@/hooks/use-scroll-to-target';
 import { fetchPassagesBySlug, type DoctrinePassage } from '@/lib/doctrine';
 
 export default function DoctrineLessonScreen() {
-  const { slug, title, passage: passageParam } = useLocalSearchParams<{
+  const { slug, title, series, passage: passageParam } = useLocalSearchParams<{
     slug: string;
     title?: string;
+    series?: string;
     passage?: string;
   }>();
+  const slugStr = Array.isArray(slug) ? slug[0] : (slug ?? '');
+  const seriesStr = (Array.isArray(series) ? series[0] : series) || undefined;
+  const maxProgressRef = useRef(0);
   const scrollRef = useRef<ScrollView>(null);
   const contentRef = useRef<View>(null);
   const scrollToPassage = parseScrollTarget(passageParam);
@@ -60,8 +68,46 @@ export default function DoctrineLessonScreen() {
 
   const heading = title?.trim() || 'Lesson';
 
+  // Seed the furthest-read marker from any prior visit so progress never resets.
+  useEffect(() => {
+    maxProgressRef.current = getLearningProgress(slugStr)?.progress ?? 0;
+  }, [slugStr]);
+
+  // Add the lesson to Continue Learning as soon as it opens with content.
+  useEffect(() => {
+    if (!slugStr || !contentReady) return;
+    void recordLearningProgress({
+      slug: slugStr,
+      title: heading,
+      subtitle: seriesStr,
+      progress: maxProgressRef.current,
+      updatedAt: Date.now(),
+    });
+  }, [slugStr, contentReady, heading, seriesStr]);
+
+  const handleScrollProgress = useCallback((fraction: number) => {
+    if (fraction > maxProgressRef.current) maxProgressRef.current = fraction;
+  }, []);
+
+  // Persist the furthest point reached when leaving the lesson.
+  useEffect(() => {
+    return () => {
+      if (!slugStr) return;
+      void recordLearningProgress({
+        slug: slugStr,
+        title: heading,
+        subtitle: seriesStr,
+        progress: maxProgressRef.current,
+        updatedAt: Date.now(),
+      });
+    };
+  }, [slugStr, heading, seriesStr]);
+
   return (
-    <ScreenScrollView ref={scrollRef} includeFloatingChrome={false}>
+    <ScreenScrollView
+      ref={scrollRef}
+      includeFloatingChrome={false}
+      onScrollProgress={handleScrollProgress}>
       <View ref={contentRef} collapsable={false}>
         <ScriptureBackBar />
         <ScriptureBookHeader title={heading} subtitle="Doctrine" />

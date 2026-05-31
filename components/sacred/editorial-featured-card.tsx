@@ -15,6 +15,8 @@ type EditorialFeaturedCardProps = {
   badgeLabel?: string;
   category?: string;
   imageUri?: string;
+  /** Overrides the default card height (232) for a more compact featured slot. */
+  height?: number;
   onPress?: () => void;
   style?: { width?: number; marginBottom?: number };
 };
@@ -25,13 +27,14 @@ export const EditorialFeaturedCard = memo(function EditorialFeaturedCard({
   badgeLabel,
   category,
   imageUri = SacredImagery.readFeatured,
+  height,
   onPress,
   style,
 }: EditorialFeaturedCardProps) {
   const label = badgeLabel ?? category ?? 'Sacred Text';
 
   const content = (
-    <View style={[styles.card, style]}>
+    <View style={[styles.card, height != null && { height }, style]}>
       <View style={styles.bgLayer}>
         <Image source={{ uri: imageUri }} style={styles.bgImage} contentFit="cover" cachePolicy="memory-disk" />
         {Platform.OS === 'ios' ? (

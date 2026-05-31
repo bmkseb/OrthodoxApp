@@ -6,7 +6,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 1,
-    "title_geez": "ኦሪት ዘፍጥረት"
+    "title_geez": "ኦሪት ዘፍጥረት",
+    "source_type": "webbe",
+    "webbe_code": "GEN",
+    "english_available": true
   },
   {
     "book_id": "exodus",
@@ -15,7 +18,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 2,
-    "title_geez": "ኦሪት ዘፀአት"
+    "title_geez": "ኦሪት ዘፀአት",
+    "source_type": "webbe",
+    "webbe_code": "EXO",
+    "english_available": true
   },
   {
     "book_id": "leviticus",
@@ -24,7 +30,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 3,
-    "title_geez": "ኦሪት ዘሌዋውያን"
+    "title_geez": "ኦሪት ዘሌዋውያን",
+    "source_type": "webbe",
+    "webbe_code": "LEV",
+    "english_available": true
   },
   {
     "book_id": "numbers",
@@ -33,7 +42,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 4,
-    "title_geez": "ኦሪት ዘኁልቁ"
+    "title_geez": "ኦሪት ዘኁልቁ",
+    "source_type": "webbe",
+    "webbe_code": "NUM",
+    "english_available": true
   },
   {
     "book_id": "deuteronomy",
@@ -42,7 +54,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 5,
-    "title_geez": "ኦሪት ዘዳግም"
+    "title_geez": "ኦሪት ዘዳግም",
+    "source_type": "webbe",
+    "webbe_code": "DEU",
+    "english_available": true
   },
   {
     "book_id": "joshua",
@@ -51,7 +66,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 6,
-    "title_geez": "ኢያሱ"
+    "title_geez": "ኢያሱ",
+    "source_type": "webbe",
+    "webbe_code": "JOS",
+    "english_available": true
   },
   {
     "book_id": "judges",
@@ -60,7 +78,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 7,
-    "title_geez": "መጽሐፈ መሳፍንት"
+    "title_geez": "መጽሐፈ መሳፍንት",
+    "source_type": "webbe",
+    "webbe_code": "JDG",
+    "english_available": true
   },
   {
     "book_id": "ruth",
@@ -69,7 +90,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 8,
-    "title_geez": "ሩት"
+    "title_geez": "ሩት",
+    "source_type": "webbe",
+    "webbe_code": "RUT",
+    "english_available": true
   },
   {
     "book_id": "samuel",
@@ -78,7 +102,13 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 9,
-    "title_geez": "መጽሐፈ ሳሙኤል"
+    "title_geez": "መጽሐፈ ሳሙኤል",
+    "source_type": "webbe",
+    "webbe_codes": [
+      "1SA",
+      "2SA"
+    ],
+    "english_available": true
   },
   {
     "book_id": "kings",
@@ -87,7 +117,13 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 10,
-    "title_geez": "መጽሐፈ ነገሥት"
+    "title_geez": "መጽሐፈ ነገሥት",
+    "source_type": "webbe",
+    "webbe_codes": [
+      "1KI",
+      "2KI"
+    ],
+    "english_available": true
   },
   {
     "book_id": "1_chronicles",
@@ -96,7 +132,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 11,
-    "title_geez": "መጽሐፈ ዜና መዋዕል ቀዳማዊ"
+    "title_geez": "መጽሐፈ ዜና መዋዕል ቀዳማዊ",
+    "source_type": "webbe",
+    "webbe_code": "1CH",
+    "english_available": true
   },
   {
     "book_id": "2_chronicles",
@@ -105,7 +144,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 12,
-    "title_geez": "መጽሐፈ ዜና መዋዕል ካልአዊ (ጸሎተ ምናሴ)"
+    "title_geez": "መጽሐፈ ዜና መዋዕል ካልአዊ (ጸሎተ ምናሴ)",
+    "source_type": "webbe",
+    "webbe_code": "2CH",
+    "english_available": true
   },
   {
     "book_id": "jubilees",
@@ -114,7 +156,11 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 13,
-    "title_geez": "መጽሐፈ ኩፋሌ"
+    "title_geez": "መጽሐፈ ኩፋሌ",
+    "source_type": "sacred_texts",
+    "english_available": true,
+    "source_url": "https://sacred-texts.com/bib/jub/index.htm",
+    "english_notes": "R.H. Charles translation (1902), public domain"
   },
   {
     "book_id": "enoch",
@@ -123,7 +169,11 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 14,
-    "title_geez": "መጽሐፈ ሔኖክ"
+    "title_geez": "መጽሐፈ ሔኖክ",
+    "source_type": "sacred_texts",
+    "english_available": true,
+    "source_url": "https://sacred-texts.com/bib/boe/index.htm",
+    "english_notes": "R.H. Charles translation (1917), public domain"
   },
   {
     "book_id": "ezra_nehemiah",
@@ -132,7 +182,13 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 15,
-    "title_geez": "ዕዝራ ወነህምያ"
+    "title_geez": "ዕዝራ ወነህምያ",
+    "source_type": "webbe",
+    "webbe_codes": [
+      "EZR",
+      "NEH"
+    ],
+    "english_available": true
   },
   {
     "book_id": "ezra_sutu_el",
@@ -141,7 +197,14 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 16,
-    "title_geez": "ዕዝራ ሱቱኤል"
+    "title_geez": "ዕዝራ ሱቱኤል",
+    "source_type": "webbe",
+    "webbe_codes": [
+      "1ES",
+      "2ES"
+    ],
+    "english_available": true,
+    "english_notes": "1 Esdras + 2 Esdras (= Ezra Sutuel)"
   },
   {
     "book_id": "tobit",
@@ -150,7 +213,10 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 17,
-    "title_geez": "ጦቢት"
+    "title_geez": "ጦቢት",
+    "source_type": "webbe",
+    "webbe_code": "TOB",
+    "english_available": true
   },
   {
     "book_id": "judith",
@@ -159,7 +225,10 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 18,
-    "title_geez": "ዮዲት"
+    "title_geez": "ዮዲት",
+    "source_type": "webbe",
+    "webbe_code": "JDT",
+    "english_available": true
   },
   {
     "book_id": "esther",
@@ -168,7 +237,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 19,
-    "title_geez": "አስቴር"
+    "title_geez": "አስቴር",
+    "source_type": "webbe",
+    "webbe_code": "EST",
+    "english_available": true
   },
   {
     "book_id": "meqabyan_1",
@@ -177,7 +249,10 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 20,
-    "title_geez": "መቃብያን ቀዳማዊ"
+    "title_geez": "መቃብያን ቀዳማዊ",
+    "source_type": "none",
+    "english_available": false,
+    "english_notes": "Ethiopian Meqabyan — distinct from Greek 1 Maccabees; no standard English translation"
   },
   {
     "book_id": "meqabyan_2_3",
@@ -186,7 +261,10 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 21,
-    "title_geez": "መቃብያን ካልአዊ / ሦልሳዊ"
+    "title_geez": "መቃብያን ካልአዊ / ሦልሳዊ",
+    "source_type": "none",
+    "english_available": false,
+    "english_notes": "Ethiopian 2 & 3 Meqabyan — no standard English translation"
   },
   {
     "book_id": "job",
@@ -195,7 +273,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 22,
-    "title_geez": "ኢዮብ"
+    "title_geez": "ኢዮብ",
+    "source_type": "webbe",
+    "webbe_code": "JOB",
+    "english_available": true
   },
   {
     "book_id": "psalms",
@@ -204,7 +285,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 23,
-    "title_geez": "መጽሐፈ ዳዊት"
+    "title_geez": "መጽሐፈ ዳዊት",
+    "source_type": "webbe",
+    "webbe_code": "PSA",
+    "english_available": true
   },
   {
     "book_id": "proverbs",
@@ -213,7 +297,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 24,
-    "title_geez": "ምሳሌ"
+    "title_geez": "ምሳሌ",
+    "source_type": "webbe",
+    "webbe_code": "PRO",
+    "english_available": true
   },
   {
     "book_id": "tegsats",
@@ -222,7 +309,10 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 25,
-    "title_geez": "ተግሣጽ"
+    "title_geez": "ተግሣጽ",
+    "source_type": "none",
+    "english_available": false,
+    "english_notes": "Ethiopia-only book; no English translation available"
   },
   {
     "book_id": "wisdom",
@@ -231,7 +321,11 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 26,
-    "title_geez": "መጽሐፈ ጥበብ"
+    "title_geez": "መጽሐፈ ጥበብ",
+    "source_type": "webbe",
+    "webbe_code": "WIS",
+    "english_available": true,
+    "english_notes": "Wisdom of Solomon"
   },
   {
     "book_id": "ecclesiastes",
@@ -240,7 +334,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 27,
-    "title_geez": "መክብብ"
+    "title_geez": "መክብብ",
+    "source_type": "webbe",
+    "webbe_code": "ECC",
+    "english_available": true
   },
   {
     "book_id": "song_of_songs",
@@ -249,7 +346,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 28,
-    "title_geez": "ማኅሌተ ማኅሌት"
+    "title_geez": "ማኅሌተ ማኅሌት",
+    "source_type": "webbe",
+    "webbe_code": "SNG",
+    "english_available": true
   },
   {
     "book_id": "isaiah",
@@ -258,7 +358,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 29,
-    "title_geez": "ኢሳይያስ"
+    "title_geez": "ኢሳይያስ",
+    "source_type": "webbe",
+    "webbe_code": "ISA",
+    "english_available": true
   },
   {
     "book_id": "jeremiah",
@@ -267,7 +370,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 30,
-    "title_geez": "ኤርምያስ"
+    "title_geez": "ኤርምያስ",
+    "source_type": "webbe",
+    "webbe_code": "JER",
+    "english_available": true
   },
   {
     "book_id": "ezekiel",
@@ -276,7 +382,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 31,
-    "title_geez": "ሕዝቅኤል"
+    "title_geez": "ሕዝቅኤል",
+    "source_type": "webbe",
+    "webbe_code": "EZK",
+    "english_available": true
   },
   {
     "book_id": "daniel",
@@ -285,7 +394,11 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 32,
-    "title_geez": "ዳንኤል"
+    "title_geez": "ዳንኤል",
+    "source_type": "webbe",
+    "webbe_code": "DAG",
+    "english_available": true,
+    "english_notes": "Greek Daniel with additions (Susanna, Bel & Dragon)"
   },
   {
     "book_id": "hosea",
@@ -294,7 +407,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 33,
-    "title_geez": "ሆሴዕ"
+    "title_geez": "ሆሴዕ",
+    "source_type": "webbe",
+    "webbe_code": "HOS",
+    "english_available": true
   },
   {
     "book_id": "amos",
@@ -303,7 +419,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 34,
-    "title_geez": "አሞጽ"
+    "title_geez": "አሞጽ",
+    "source_type": "webbe",
+    "webbe_code": "AMO",
+    "english_available": true
   },
   {
     "book_id": "micah",
@@ -312,7 +431,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 35,
-    "title_geez": "ሚክያስ"
+    "title_geez": "ሚክያስ",
+    "source_type": "webbe",
+    "webbe_code": "MIC",
+    "english_available": true
   },
   {
     "book_id": "joel",
@@ -321,7 +443,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 36,
-    "title_geez": "ኢዮኤል"
+    "title_geez": "ኢዮኤል",
+    "source_type": "webbe",
+    "webbe_code": "JOL",
+    "english_available": true
   },
   {
     "book_id": "obadiah",
@@ -330,7 +455,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 37,
-    "title_geez": "አብድዩ"
+    "title_geez": "አብድዩ",
+    "source_type": "webbe",
+    "webbe_code": "OBA",
+    "english_available": true
   },
   {
     "book_id": "jonah",
@@ -339,7 +467,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 38,
-    "title_geez": "ዮናስ"
+    "title_geez": "ዮናስ",
+    "source_type": "webbe",
+    "webbe_code": "JON",
+    "english_available": true
   },
   {
     "book_id": "nahum",
@@ -348,7 +479,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 39,
-    "title_geez": "ናሆም"
+    "title_geez": "ናሆም",
+    "source_type": "webbe",
+    "webbe_code": "NAM",
+    "english_available": true
   },
   {
     "book_id": "habakkuk",
@@ -357,7 +491,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 40,
-    "title_geez": "ዕንባቆም"
+    "title_geez": "ዕንባቆም",
+    "source_type": "webbe",
+    "webbe_code": "HAB",
+    "english_available": true
   },
   {
     "book_id": "zephaniah",
@@ -366,7 +503,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 41,
-    "title_geez": "ሶፎንያስ"
+    "title_geez": "ሶፎንያስ",
+    "source_type": "webbe",
+    "webbe_code": "ZEP",
+    "english_available": true
   },
   {
     "book_id": "haggai",
@@ -375,7 +515,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 42,
-    "title_geez": "ሐጌ"
+    "title_geez": "ሐጌ",
+    "source_type": "webbe",
+    "webbe_code": "HAG",
+    "english_available": true
   },
   {
     "book_id": "zechariah",
@@ -384,7 +527,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 43,
-    "title_geez": "ዘካርያስ"
+    "title_geez": "ዘካርያስ",
+    "source_type": "webbe",
+    "webbe_code": "ZEC",
+    "english_available": true
   },
   {
     "book_id": "malachi",
@@ -393,7 +539,10 @@
     "testament": "Old Testament",
     "canon_tier": "Narrow",
     "display_order": 44,
-    "title_geez": "ሚልክያስ"
+    "title_geez": "ሚልክያስ",
+    "source_type": "webbe",
+    "webbe_code": "MAL",
+    "english_available": true
   },
   {
     "book_id": "sirach",
@@ -402,7 +551,10 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 45,
-    "title_geez": "ሲራክ"
+    "title_geez": "ሲራክ",
+    "source_type": "webbe",
+    "webbe_code": "SIR",
+    "english_available": true
   },
   {
     "book_id": "joseph_ben_gurion",
@@ -411,7 +563,10 @@
     "testament": "Old Testament",
     "canon_tier": "Broader",
     "display_order": 46,
-    "title_geez": "ዮሲፎን"
+    "title_geez": "ዮሲፎን",
+    "source_type": "academic",
+    "english_available": true,
+    "english_notes": "Josippon (medieval Hebrew chronicle); partial English available via academic sources"
   },
   {
     "book_id": "matthew",
@@ -420,7 +575,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 47,
-    "title_geez": "ማቴዎስ"
+    "title_geez": "ማቴዎስ",
+    "source_type": "webbe",
+    "webbe_code": "MAT",
+    "english_available": true
   },
   {
     "book_id": "mark",
@@ -429,7 +587,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 48,
-    "title_geez": "ማርቆስ"
+    "title_geez": "ማርቆስ",
+    "source_type": "webbe",
+    "webbe_code": "MRK",
+    "english_available": true
   },
   {
     "book_id": "luke",
@@ -438,7 +599,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 49,
-    "title_geez": "ሉቃስ"
+    "title_geez": "ሉቃስ",
+    "source_type": "webbe",
+    "webbe_code": "LUK",
+    "english_available": true
   },
   {
     "book_id": "john",
@@ -447,7 +611,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 50,
-    "title_geez": "ዮሐንስ"
+    "title_geez": "ዮሐንስ",
+    "source_type": "webbe",
+    "webbe_code": "JHN",
+    "english_available": true
   },
   {
     "book_id": "acts",
@@ -456,7 +623,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 51,
-    "title_geez": "ግብረ ሐዋርያት"
+    "title_geez": "ግብረ ሐዋርያት",
+    "source_type": "webbe",
+    "webbe_code": "ACT",
+    "english_available": true
   },
   {
     "book_id": "romans",
@@ -465,7 +635,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 52,
-    "title_geez": "ሮሜ"
+    "title_geez": "ሮሜ",
+    "source_type": "webbe",
+    "webbe_code": "ROM",
+    "english_available": true
   },
   {
     "book_id": "1_corinthians",
@@ -474,7 +647,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 53,
-    "title_geez": "ቆሮንቶስ ቀዳማዊ"
+    "title_geez": "ቆሮንቶስ ቀዳማዊ",
+    "source_type": "webbe",
+    "webbe_code": "1CO",
+    "english_available": true
   },
   {
     "book_id": "2_corinthians",
@@ -483,7 +659,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 54,
-    "title_geez": "ቆሮንቶስ ካልአዊ"
+    "title_geez": "ቆሮንቶስ ካልአዊ",
+    "source_type": "webbe",
+    "webbe_code": "2CO",
+    "english_available": true
   },
   {
     "book_id": "galatians",
@@ -492,7 +671,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 55,
-    "title_geez": "ገላትያ"
+    "title_geez": "ገላትያ",
+    "source_type": "webbe",
+    "webbe_code": "GAL",
+    "english_available": true
   },
   {
     "book_id": "ephesians",
@@ -501,7 +683,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 56,
-    "title_geez": "ኤፌሶን"
+    "title_geez": "ኤፌሶን",
+    "source_type": "webbe",
+    "webbe_code": "EPH",
+    "english_available": true
   },
   {
     "book_id": "philippians",
@@ -510,7 +695,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 57,
-    "title_geez": "ፊልጵስዩስ"
+    "title_geez": "ፊልጵስዩስ",
+    "source_type": "webbe",
+    "webbe_code": "PHP",
+    "english_available": true
   },
   {
     "book_id": "colossians",
@@ -519,7 +707,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 58,
-    "title_geez": "ቆላስያስ"
+    "title_geez": "ቆላስያስ",
+    "source_type": "webbe",
+    "webbe_code": "COL",
+    "english_available": true
   },
   {
     "book_id": "1_thessalonians",
@@ -528,7 +719,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 59,
-    "title_geez": "ተሰሎንቄ ቀዳማዊ"
+    "title_geez": "ተሰሎንቄ ቀዳማዊ",
+    "source_type": "webbe",
+    "webbe_code": "1TH",
+    "english_available": true
   },
   {
     "book_id": "2_thessalonians",
@@ -537,7 +731,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 60,
-    "title_geez": "ተሰሎንቄ ካልአዊ"
+    "title_geez": "ተሰሎንቄ ካልአዊ",
+    "source_type": "webbe",
+    "webbe_code": "2TH",
+    "english_available": true
   },
   {
     "book_id": "1_timothy",
@@ -546,7 +743,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 61,
-    "title_geez": "ጢሞቴዎስ ቀዳማዊ"
+    "title_geez": "ጢሞቴዎስ ቀዳማዊ",
+    "source_type": "webbe",
+    "webbe_code": "1TI",
+    "english_available": true
   },
   {
     "book_id": "2_timothy",
@@ -555,7 +755,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 62,
-    "title_geez": "ጢሞቴዎስ ካልአዊ"
+    "title_geez": "ጢሞቴዎስ ካልአዊ",
+    "source_type": "webbe",
+    "webbe_code": "2TI",
+    "english_available": true
   },
   {
     "book_id": "titus",
@@ -564,7 +767,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 63,
-    "title_geez": "ቲቶ"
+    "title_geez": "ቲቶ",
+    "source_type": "webbe",
+    "webbe_code": "TIT",
+    "english_available": true
   },
   {
     "book_id": "philemon",
@@ -573,7 +779,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 64,
-    "title_geez": "ፊልሞን"
+    "title_geez": "ፊልሞን",
+    "source_type": "webbe",
+    "webbe_code": "PHM",
+    "english_available": true
   },
   {
     "book_id": "hebrews",
@@ -582,7 +791,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 65,
-    "title_geez": "ዕብራውያን"
+    "title_geez": "ዕብራውያን",
+    "source_type": "webbe",
+    "webbe_code": "HEB",
+    "english_available": true
   },
   {
     "book_id": "1_peter",
@@ -591,7 +803,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 66,
-    "title_geez": "ጴጥሮስ ቀዳማዊ"
+    "title_geez": "ጴጥሮስ ቀዳማዊ",
+    "source_type": "webbe",
+    "webbe_code": "1PE",
+    "english_available": true
   },
   {
     "book_id": "2_peter",
@@ -600,7 +815,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 67,
-    "title_geez": "ጴጥሮስ ካልአዊ"
+    "title_geez": "ጴጥሮስ ካልአዊ",
+    "source_type": "webbe",
+    "webbe_code": "2PE",
+    "english_available": true
   },
   {
     "book_id": "1_john",
@@ -609,7 +827,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 68,
-    "title_geez": "ዮሐንስ ቀዳማዊ"
+    "title_geez": "ዮሐንስ ቀዳማዊ",
+    "source_type": "webbe",
+    "webbe_code": "1JN",
+    "english_available": true
   },
   {
     "book_id": "2_john",
@@ -618,7 +839,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 69,
-    "title_geez": "ዮሐንስ ካልአዊ"
+    "title_geez": "ዮሐንስ ካልአዊ",
+    "source_type": "webbe",
+    "webbe_code": "2JN",
+    "english_available": true
   },
   {
     "book_id": "3_john",
@@ -627,7 +851,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 70,
-    "title_geez": "ዮሐንስ ሦልሳዊ"
+    "title_geez": "ዮሐንስ ሦልሳዊ",
+    "source_type": "webbe",
+    "webbe_code": "3JN",
+    "english_available": true
   },
   {
     "book_id": "james",
@@ -636,7 +863,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 71,
-    "title_geez": "ያዕቆብ"
+    "title_geez": "ያዕቆብ",
+    "source_type": "webbe",
+    "webbe_code": "JAS",
+    "english_available": true
   },
   {
     "book_id": "jude",
@@ -645,7 +875,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 72,
-    "title_geez": "ይሁዳ"
+    "title_geez": "ይሁዳ",
+    "source_type": "webbe",
+    "webbe_code": "JUD",
+    "english_available": true
   },
   {
     "book_id": "revelation",
@@ -654,7 +887,10 @@
     "testament": "New Testament",
     "canon_tier": "Narrow",
     "display_order": 73,
-    "title_geez": "ራእየ ዮሐንስ"
+    "title_geez": "ራእየ ዮሐንስ",
+    "source_type": "webbe",
+    "webbe_code": "REV",
+    "english_available": true
   },
   {
     "book_id": "serate_tsion",
@@ -663,7 +899,10 @@
     "testament": "New Testament",
     "canon_tier": "Broader",
     "display_order": 74,
-    "title_geez": "ስራተ ፅዮን"
+    "title_geez": "ስራተ ፅዮን",
+    "source_type": "academic",
+    "english_available": true,
+    "english_notes": "Sinodos (Sirate Tsion); partial English via academic sources"
   },
   {
     "book_id": "teezaz",
@@ -672,7 +911,10 @@
     "testament": "New Testament",
     "canon_tier": "Broader",
     "display_order": 75,
-    "title_geez": "ተዕዛዝ"
+    "title_geez": "ተዕዛዝ",
+    "source_type": "none",
+    "english_available": false,
+    "english_notes": "Ge'ez only — no English translation available"
   },
   {
     "book_id": "gitsew",
@@ -681,7 +923,10 @@
     "testament": "New Testament",
     "canon_tier": "Broader",
     "display_order": 76,
-    "title_geez": "ግጽወ"
+    "title_geez": "ግጽወ",
+    "source_type": "none",
+    "english_available": false,
+    "english_notes": "Ge'ez only — no English translation available"
   },
   {
     "book_id": "abtilis",
@@ -690,7 +935,10 @@
     "testament": "New Testament",
     "canon_tier": "Broader",
     "display_order": 77,
-    "title_geez": "አብቲሊስ"
+    "title_geez": "አብቲሊስ",
+    "source_type": "none",
+    "english_available": false,
+    "english_notes": "Ge'ez only — no English translation available"
   },
   {
     "book_id": "covenant_1",
@@ -699,7 +947,10 @@
     "testament": "New Testament",
     "canon_tier": "Broader",
     "display_order": 78,
-    "title_geez": "መጽሐፈ ኪዳን ቀዳማዊ"
+    "title_geez": "መጽሐፈ ኪዳን ቀዳማዊ",
+    "source_type": "academic",
+    "english_available": true,
+    "english_notes": "1 Clement; English available (Ante-Nicene Fathers)"
   },
   {
     "book_id": "covenant_2",
@@ -708,7 +959,10 @@
     "testament": "New Testament",
     "canon_tier": "Broader",
     "display_order": 79,
-    "title_geez": "መጽሐፈ ኪዳን ካልአዊ"
+    "title_geez": "መጽሐፈ ኪዳን ካልአዊ",
+    "source_type": "academic",
+    "english_available": true,
+    "english_notes": "2 Clement; English available (Ante-Nicene Fathers)"
   },
   {
     "book_id": "clement",
@@ -717,7 +971,10 @@
     "testament": "New Testament",
     "canon_tier": "Broader",
     "display_order": 80,
-    "title_geez": "ቀሌምንጦስ"
+    "title_geez": "ቀሌምንጦስ",
+    "source_type": "academic",
+    "english_available": true,
+    "english_notes": "Ethiopic Clement (Book of Clement); partial English via academic sources"
   },
   {
     "book_id": "didascalia",
@@ -726,6 +983,9 @@
     "testament": "New Testament",
     "canon_tier": "Broader",
     "display_order": 81,
-    "title_geez": "ዲዳስቃሊያ"
+    "title_geez": "ዲዳስቃሊያ",
+    "source_type": "academic",
+    "english_available": true,
+    "english_notes": "Didascalia Apostolorum; English translation available (ANF vol. 7)"
   }
 ]

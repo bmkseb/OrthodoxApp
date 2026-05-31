@@ -1,27 +1,19 @@
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DidYouKnow } from '@/components/learn/did-you-know';
-import { LearnCollectionCard } from '@/components/learn/learn-collection-card';
-import { LearnFeaturedHero } from '@/components/learn/learn-featured-hero';
-import { LearnRecentStrip } from '@/components/learn/learn-recent-strip';
 import { LearnTeachingCard } from '@/components/learn/learn-teaching-card';
-import {
-  LearnTopicFilters,
-  type LearnTopicFilter,
-} from '@/components/learn/learn-topic-filters';
-import { BilingualHeader } from '@/components/orthodox/BilingualHeader';
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { PageHeader } from '@/components/orthodox/PageHeader';
-import { SacredSectionDivider } from '@/components/sacred/sacred-section-divider';
+import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
+import { SoftRailCard } from '@/components/ui/soft-rail-card';
 import {
   LEARN_COLLECTIONS,
-  LEARN_CONTINUE_ID,
   LEARN_DAILY_ID,
-  LEARN_RECENT_IDS,
+  LEARN_FEATURED,
   LEARN_SAVED_IDS,
   findTopicById,
-  getFeatured,
   type LearnCollection,
   type LearnTopic,
 } from '@/data/learnLibrary';
@@ -39,6 +31,10 @@ import { learnText } from '@/lib/learn-i18n';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
 import { SectionHeader } from '@/components/ui/section-header';
+import {
+  removeLearningProgress,
+  useLearningProgress,
+} from '@/hooks/use-learning-progress';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import { Layout, Space } from '@/constants/theme';
@@ -61,9 +57,7 @@ function mapDoctrineSubtopic(sub: DoctrineSubtopic): LearnTopic {
 export default function LearnScreen() {
   const { t, mode } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [topicFilter, setTopicFilter] = useState<LearnTopicFilter | null>(null);
   const { recentSearches, addRecentSearch } = useRecentSearches('learn');
-  const [featuredIndex] = useState(0);
   const [doctrineCollections, setDoctrineCollections] = useState<LearnCollection[]>([]);
   const [passageHits, setPassageHits] = useState<DoctrineSearchResult[]>([]);
   const [passageSearchLoading, setPassageSearchLoading] = useState(false);
@@ -105,9 +99,10 @@ export default function LearnScreen() {
   const collectionsToRender =
     doctrineCollections.length > 0 ? doctrineCollections : LEARN_COLLECTIONS;
 
-  const openLesson = (topic: LearnTopic, passageNumber?: number) => {
+  const openLesson = (topic: LearnTopic, passageNumber?: number, seriesTitle?: string) => {
     const slug = topic.slug ?? topic.id;
     const params = new URLSearchParams({ title: topic.titleEn });
+    if (seriesTitle) params.set('series', seriesTitle);
     if (passageNumber) params.set('passage', String(passageNumber));
     router.push(`/learn/${slug}?${params.toString()}`);
   };
@@ -117,13 +112,39 @@ export default function LearnScreen() {
     void addRecentSearch(term);
   };
 
-  const featured = getFeatured(featuredIndex);
-  const featuredTitle = learnText(featured.titleEn, featured.titleAm, mode);
-  const featuredCategory = learnText(featured.categoryEn, featured.categoryAm, mode);
+  const featuredItems = useMemo<FeaturedItem[]>(
+    () =>
+      LEARN_FEATURED.map((f) => {
+        const category = learnText(f.categoryEn, f.categoryAm, mode);
+        return {
+          id: f.id,
+          title: learnText(f.titleEn, f.titleAm, mode),
+          subtitle: category,
+          badgeLabel: `${f.readMin} min`,
+          imageUri: f.imageUri,
+          onPress: () => {
+            const found = findTopicById(f.id);
+            if (found) {
+              openLesson(
+                found.topic,
+                undefined,
+                learnText(found.collection.titleEn, found.collection.titleAm, mode)
+              );
+              return;
+            }
+            // Fall back to opening by the featured id so a card always links somewhere.
+            openLesson(
+              { id: f.id, slug: f.id, titleEn: learnText(f.titleEn, f.titleAm, mode), titleAm: '' },
+              undefined,
+              category
+            );
+          },
+        };
+      }),
+    [mode]
+  );
 
-  // The free-text search wins; an active topic filter acts as a quick-pick
-  // for the same search input, so changing one clears the other.
-  const effectiveQuery = searchQuery.trim() || topicFilter || '';
+  const effectiveQuery = searchQuery.trim();
   const debouncedQuery = useDebouncedValue(effectiveQuery, 350);
 
   useEffect(() => {
@@ -156,21 +177,8 @@ export default function LearnScreen() {
     return searchLearnHeaders(collectionsToRender, effectiveQuery, mode);
   }, [effectiveQuery, collectionsToRender, mode]);
 
-  const recentItems = useMemo(
-    () =>
-      LEARN_RECENT_IDS.map((id) => {
-        const found = findTopicById(id);
-        if (!found) return null;
-        return {
-          id,
-          title: learnText(found.topic.titleEn, found.topic.titleAm, mode),
-          collection: learnText(found.collection.titleEn, found.collection.titleAm, mode),
-        };
-      }).filter(Boolean) as { id: string; title: string; collection: string }[],
-    [mode]
-  );
+  const { entries: continueEntries } = useLearningProgress();
 
-  const continueTopic = findTopicById(LEARN_CONTINUE_ID);
   const dailyTopic = findTopicById(LEARN_DAILY_ID);
 
   const savedItems = useMemo(
@@ -192,74 +200,107 @@ export default function LearnScreen() {
           placeholder={t('learn.searchLearn')}
           placeholderTextColor={MUTED_GOLD}
           value={searchQuery}
-          onChangeText={(text) => {
-            setSearchQuery(text);
-            if (text.trim()) setTopicFilter(null);
-          }}
+          onChangeText={setSearchQuery}
           onSearchSubmit={handleSearchSubmit}
           recentSearches={recentSearches}
         />
       </View>
 
-      <View style={styles.filterWrap}>
-        <LearnTopicFilters
-          activeFilter={topicFilter}
-          onChange={(filter) => {
-            setTopicFilter(filter);
-            if (filter) setSearchQuery('');
-          }}
-        />
-      </View>
+      {recentSearches.length > 0 ? (
+        <View style={styles.filterWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}>
+            {recentSearches.map((term) => (
+              <OrthodoxPressable
+                key={term}
+                accessibilityRole="button"
+                onPress={() => setSearchQuery(term)}
+                style={styles.chip}>
+                <Text style={styles.chipLabel} numberOfLines={1} allowFontScaling={false}>
+                  {term}
+                </Text>
+              </OrthodoxPressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
 
       {showLibrary ? (
         <>
-          <View style={styles.sectionHeader}>
-            <BilingualHeader amharic="ዋና" english="Featured Teaching" />
-          </View>
-          <LearnFeaturedHero
-            title={featuredTitle}
-            category={featuredCategory}
-            readMin={featured.readMin}
-            imageUri={featured.imageUri}
-            // TODO: Replace with properly licensed Ethiopian Orthodox imagery
-            // (authentic ሥላሴ / Trinity iconography, Ethiopian liturgical art).
-            // The Trinity card was previously falling back to an Italian coastal village stock photo.
-            placeholder={featured.id === 'trinity' ? 'trinity' : undefined}
-            style={{ width: width - Layout.pagePadding * 2, marginBottom: Layout.sectionHeaderBottom }}
-          />
-
-          <View style={styles.sectionHeader}>
-            <BilingualHeader amharic="ስብስብ" english="Sacred Collections" />
-          </View>
-          {collectionsToRender.map((collection, index) => (
-            <LearnCollectionCard
-              key={collection.id}
-              collection={collection}
-              defaultExpanded={index === 0}
-              onTopicPress={(topic) => openLesson(topic)}
-            />
-          ))}
-
-          <SacredSectionDivider />
-
-          <SectionHeader title="Did You Know?" icon="sparkle" />
-          <DidYouKnow />
-
-          <SacredSectionDivider />
-
-          <SectionHeader title={t('learn.recentlyStudied')} icon="scroll" />
-          <LearnRecentStrip items={recentItems} />
-
-          {continueTopic ? (
-            <>
+          {continueEntries.length > 0 ? (
+            <View style={styles.section}>
               <SectionHeader title={t('learn.continueLearning')} icon="book" />
-              <LearnTeachingCard
-                label={t('learn.continueLearning')}
-                title={learnText(continueTopic.topic.titleEn, continueTopic.topic.titleAm, mode)}
-                readMin={continueTopic.topic.readMin}
-              />
-            </>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.rail}>
+                {continueEntries.map((entry) => (
+                  <SoftRailCard
+                    key={entry.slug}
+                    title={entry.title}
+                    subtitle={entry.subtitle}
+                    progress={entry.progress}
+                    onPress={() =>
+                      openLesson(
+                        { id: entry.slug, slug: entry.slug, titleEn: entry.title, titleAm: '' },
+                        undefined,
+                        entry.subtitle
+                      )
+                    }
+                    onRemove={() => void removeLearningProgress(entry.slug)}
+                    removeLabel={`Remove ${entry.title}`}
+                  />
+                ))}
+              </ScrollView>
+            </View>
           ) : null}
+
+          <View style={styles.section}>
+            <SectionHeader title="Featured Teaching" icon="sparkle" />
+            <FeaturedCarousel
+              items={featuredItems}
+              width={width - Layout.pagePadding * 2}
+              autoRotateMs={3200}
+              cardHeight={176}
+            />
+          </View>
+
+          <View style={styles.section}>
+            <SectionHeader
+              title="Catechism"
+              icon="scroll"
+              onSeeAllPress={() => router.push('/learn/catalog' as never)}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.rail}>
+              {collectionsToRender.map((collection) => (
+                <SoftRailCard
+                  key={collection.id}
+                  title={learnText(collection.titleEn, collection.titleAm, mode)}
+                  subtitle={learnText(collection.descriptionEn, collection.descriptionAm, mode)}
+                  onPress={() => {
+                    const first = findFirstLesson(collection);
+                    if (first) {
+                      openLesson(
+                        first,
+                        undefined,
+                        learnText(collection.titleEn, collection.titleAm, mode)
+                      );
+                    }
+                  }}
+                />
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.section}>
+            <SectionHeader title="Did You Know?" icon="sparkle" />
+            <DidYouKnow />
+          </View>
 
           {dailyTopic ? (
             <>
@@ -345,6 +386,31 @@ export default function LearnScreen() {
 const styles = StyleSheet.create({
   searchWrap: { marginBottom: Space.s12 },
   filterWrap: { marginBottom: Layout.sectionHeaderBottom },
-  sectionHeader: { marginBottom: Space.s12 },
+  section: { marginBottom: Layout.sectionContentBottom },
+  rail: {
+    gap: Layout.cardGap,
+    paddingRight: Layout.pagePadding,
+    marginRight: -Layout.pagePadding,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.s8,
+    paddingRight: Layout.pagePadding,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 147, 58, 0.3)',
+    backgroundColor: 'transparent',
+  },
+  chipLabel: {
+    fontSize: 13,
+    letterSpacing: 0.1,
+    color: MUTED_GOLD,
+    fontWeight: '500',
+  },
   savedList: { gap: 0 },
 });
