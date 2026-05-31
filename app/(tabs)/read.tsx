@@ -19,7 +19,12 @@ import { SacredImagery } from '@/constants/sacred-imagery';
 import { Layout } from '@/constants/theme';
 import { getBibleBook, getBookTitle } from '@/data/bibleCanon';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { removeReadingProgress, useReadingProgress } from '@/hooks/use-reading-progress';
+import {
+  isPrayerBookId,
+  prayerSlugFromBookId,
+  removeReadingProgress,
+  useReadingProgress,
+} from '@/hooks/use-reading-progress';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { scriptureChapterRoute } from '@/hooks/use-scripture-lang';
 import { useTranslation } from '@/hooks/use-translation';
@@ -107,7 +112,7 @@ export default function ReadScreen() {
       subtitle: t('content.todaysReadingsSub'),
       badgeLabel: t('calendar.today'),
       imageUri: SacredImagery.continueBible,
-      onPress: () => router.push('/calendar'),
+      onPress: () => router.push('/catalog'),
     },
     {
       id: 'saint',
@@ -115,7 +120,7 @@ export default function ReadScreen() {
       subtitle: t('content.saintOfTheDaySub'),
       badgeLabel: t('calendar.today'),
       imageUri: SacredImagery.prayerOrthodox,
-      onPress: () => router.push('/calendar'),
+      onPress: () => router.push('/horologium'),
     },
     {
       id: 'feast',
@@ -123,7 +128,7 @@ export default function ReadScreen() {
       subtitle: t('content.feastFastSub'),
       badgeLabel: t('calendar.today'),
       imageUri: SacredImagery.continueLiturgy,
-      onPress: () => router.push('/calendar'),
+      onPress: () => router.push('/catalog'),
     },
     {
       id: 'prayer',
@@ -211,9 +216,29 @@ export default function ReadScreen() {
               onContentSizeChange: continueContentSizeChange,
             }}>
             {entries.map((entry) => {
+              const progress = entry.totalChapters > 0 ? entry.chapter / entry.totalChapters : 0;
+
+              if (isPrayerBookId(entry.bookId)) {
+                const slug = prayerSlugFromBookId(entry.bookId);
+                const title = entry.title || t('content.dailyPrayer');
+                return (
+                  <BookshelfBookCard
+                    key={entry.bookId}
+                    title={title}
+                    subtitle={entry.subtitle || `${entry.chapter} / ${entry.totalChapters}`}
+                    imageUri={SacredImagery.prayerDaily}
+                    progress={progress}
+                    onPress={() =>
+                      router.push(`/prayer/${slug}/${entry.chapter}?lang=${entry.lang}` as never)
+                    }
+                    onRemove={() => void removeReadingProgress(entry.bookId)}
+                    removeLabel={`Remove ${title}`}
+                  />
+                );
+              }
+
               const book = getBibleBook(entry.bookId);
               const title = book ? getBookTitle(book, entry.lang) : t('content.holyBible');
-              const progress = entry.totalChapters > 0 ? entry.chapter / entry.totalChapters : 0;
               return (
                 <BookshelfBookCard
                   key={entry.bookId}

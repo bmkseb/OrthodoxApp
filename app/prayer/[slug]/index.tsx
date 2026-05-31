@@ -10,6 +10,7 @@ import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { Layout, Palette, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/hooks/use-translation';
 import {
+  defaultPrayerLanguage,
   fetchPrayerBook,
   fetchPrayerSections,
   pickPrayerText,
@@ -18,16 +19,9 @@ import {
   type PrayerSection,
 } from '@/lib/prayer';
 
-/** Build the reading route, carrying the section's titles + active language. */
-function readingHref(slug: string, section: PrayerSection, lang: PrayerLanguage, langs: PrayerLanguage[]) {
-  const params = new URLSearchParams({
-    titleEn: section.titleEn,
-    titleAm: section.titleAm ?? '',
-    titleGeez: section.titleGeez ?? '',
-    lang,
-    langs: langs.join(','),
-  });
-  return `/prayer/${slug}/${section.id}?${params.toString()}`;
+/** Reading route by 1-based section number (parallels scripture book/chapter). */
+function readingHref(slug: string, sectionNumber: number, lang: PrayerLanguage) {
+  return `/prayer/${slug}/${sectionNumber}?lang=${lang}`;
 }
 
 export default function PrayerBookScreen() {
@@ -48,6 +42,7 @@ export default function PrayerBookScreen() {
         if (!active) return;
         setBook(fetchedBook);
         if (fetchedBook) {
+          setLang(defaultPrayerLanguage(fetchedBook.availableLanguages));
           const fetchedSections = await fetchPrayerSections(fetchedBook.id);
           if (active) setSections(fetchedSections);
         }
@@ -103,11 +98,7 @@ export default function PrayerBookScreen() {
               <View key={section.id}>
                 <OrthodoxPressable
                   style={styles.scriptureRow}
-                  onPress={() =>
-                    router.push(
-                      readingHref(bookSlug, section, lang, book.availableLanguages) as never
-                    )
-                  }
+                  onPress={() => router.push(readingHref(bookSlug, index + 1, lang) as never)}
                   accessibilityRole="button">
                   <ThemedText style={styles.scriptureText} numberOfLines={2}>
                     {title}
