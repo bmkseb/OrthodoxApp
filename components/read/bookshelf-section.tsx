@@ -23,7 +23,7 @@ function WoodGrainOverlay() {
           style={[
             styles.grainLine,
             {
-              left: (index / GRAIN_LINES) * 100 + '%',
+              left: `${(index / GRAIN_LINES) * 100}%`,
               opacity: index % 2 === 0 ? 0.07 : 0.04,
             },
           ]}
