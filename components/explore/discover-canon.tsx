@@ -5,6 +5,7 @@ import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/feature
 import { ManuscriptBookCard } from '@/components/sacred/manuscript-book-card';
 import { SacredImagery } from '@/constants/explore-content';
 import { Layout, Space } from '@/constants/theme';
+import { useTranslation } from '@/hooks/use-translation';
 
 const { width } = Dimensions.get('window');
 
@@ -18,6 +19,7 @@ const CANON_BOOKS = [
 
 export function DiscoverCanon({ featuredLabel = 'Discover the Canon' }: { featuredLabel?: string }) {
   const featuredWidth = width - Layout.pagePadding * 2;
+  const { mode } = useTranslation();
 
   const featured: FeaturedItem[] = [
     {
@@ -51,7 +53,7 @@ export function DiscoverCanon({ featuredLabel = 'Discover the Canon' }: { featur
           <ManuscriptBookCard
             key={b.id}
             title={b.title}
-            subtitle={b.geez}
+            subtitle={mode === 'en' ? undefined : b.geez}
             imageUri={b.image}
             onPress={() => router.push('/catalog')}
           />

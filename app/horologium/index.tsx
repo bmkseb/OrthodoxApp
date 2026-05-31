@@ -10,8 +10,10 @@ import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
 import { HOROLOGIUM_HOURS, getCurrentHour } from '@/data/horologium';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function HorologiumScreen() {
+  const { mode } = useTranslation();
   const [currentHourId, setCurrentHourId] = useState<string>('');
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function HorologiumScreen() {
       <ScriptureBackBar />
       <ScriptureBookHeader
         title="Matshafa Se'atat"
-        subtitle="መጽሐፈ ሰዓታት · Book of Hours"
+        subtitle={mode === 'en' ? 'Book of Hours' : 'መጽሐፈ ሰዓታት · Book of Hours'}
       />
 
       <ThemedText type="muted" style={styles.intro}>
@@ -52,9 +54,11 @@ export default function HorologiumScreen() {
                 </View>
               )}
 
-              <ThemedText style={[styles.geez, isCurrent && styles.geezActive]}>
-                {hour.nameGeez}
-              </ThemedText>
+              {mode !== 'en' ? (
+                <ThemedText style={[styles.geez, isCurrent && styles.geezActive]}>
+                  {hour.nameGeez}
+                </ThemedText>
+              ) : null}
 
               <ThemedText style={[styles.name, isCurrent && styles.nameActive]}>
                 {hour.nameEnglish}

@@ -5,6 +5,7 @@ import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
+import { useTranslation } from '@/hooks/use-translation';
 
 type CanonFact = {
   id: string;
@@ -40,6 +41,8 @@ const FACTS: CanonFact[] = [
 ];
 
 export function DidYouKnow() {
+  const { mode } = useTranslation();
+
   return (
     <ScrollView
       horizontal
@@ -55,9 +58,11 @@ export function DidYouKnow() {
             <ThemedText style={styles.title} numberOfLines={1}>
               {item.title}
             </ThemedText>
-            <ThemedText style={styles.geez} numberOfLines={1}>
-              {item.geez}
-            </ThemedText>
+            {mode !== 'en' ? (
+              <ThemedText style={styles.geez} numberOfLines={1}>
+                {item.geez}
+              </ThemedText>
+            ) : null}
             <ThemedText style={styles.fact} numberOfLines={4}>
               {item.fact}
             </ThemedText>

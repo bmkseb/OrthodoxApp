@@ -14,6 +14,7 @@ import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
 import { FeaturedHeroCard } from '@/components/ui/featured-hero-card';
 import { MediaListItem } from '@/components/ui/media-list-item';
+import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
 import { SearchBar } from '@/components/ui/search-bar';
 import { useAudioPlayer, type AudioTrack } from '@/contexts/audio-player-context';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
@@ -30,6 +31,8 @@ const TAB_KEYS: ListenTab[] = ['hymns', 'sermons', 'melodies'];
 const MUTED_GOLD = '#8A8070';
 // 200ms-feel spring used by the sliding segmented-tab pill.
 const PILL_SPRING = { damping: 18, stiffness: 240, mass: 0.6 } as const;
+
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 type Track = {
   id: string;
@@ -176,6 +179,7 @@ export default function ListenScreen() {
   const { playTrack, isPlaying } = useAudioPlayer();
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = useFloatingBottomInset();
+  const { values: scrollIndicator, scrollHandler } = useScrollIndicator();
   const content = TAB_CONTENT[activeTab];
   const categoryLabel = getCategoryLabel(activeTab, t, mode);
 
@@ -246,10 +250,12 @@ export default function ListenScreen() {
   return (
     <ThemedView style={styles.root}>
       <SacredAtmosphere />
-      <ScrollView
+      <AnimatedScrollView
         style={styles.scroll}
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         contentContainerStyle={[
           styles.scrollContent,
           {
@@ -293,7 +299,13 @@ export default function ListenScreen() {
             />
           ))}
         </View>
-      </ScrollView>
+      </AnimatedScrollView>
+
+      <ScrollIndicator
+        values={scrollIndicator}
+        trackInsetTop={insets.top + Space.s8}
+        trackInsetBottom={scrollBottomPadding}
+      />
     </ThemedView>
   );
 }

@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
@@ -103,9 +103,15 @@ function CollapsibleGroup({
 
 export default function CatalogScreen() {
   const { t } = useTranslation();
+  const { q } = useLocalSearchParams<{ q?: string }>();
   const [activeLanguage, setActiveLanguage] = useState<LanguageTab>('english');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(typeof q === 'string' ? q : '');
   const { recentSearches, addRecentSearch } = useRecentSearches('catalog');
+
+  // Sync the search field when arriving with a query (e.g. from the Read page).
+  useEffect(() => {
+    if (typeof q === 'string') setQuery(q);
+  }, [q]);
 
   const handleSearchSubmit = (term: string) => {
     setQuery(term);
@@ -175,7 +181,7 @@ export default function CatalogScreen() {
       </ThemedText>
 
       <CollapsibleGroup title={otTitle} rows={oldTestament} defaultOpen />
-      <CollapsibleGroup title={ntTitle} rows={newTestament} />
+      <CollapsibleGroup title={ntTitle} rows={newTestament} defaultOpen={!!query.trim()} />
     </ScreenScrollView>
   );
 }

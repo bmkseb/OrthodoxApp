@@ -1,19 +1,25 @@
 import { router, Stack } from 'expo-router';
 import React, { useCallback } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { EthiopicCrossWatermark } from '@/components/sacred/ethiopic-cross-watermark';
+import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
 import { useAuth } from '@/contexts/auth-context';
 import { BorderRadius, Layout, Palette, Space, Typography } from '@/constants/theme';
 
 const GOLD_BORDER = 'rgba(201, 147, 58, 0.18)';
 
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, isGuest, signOut } = useAuth();
+  const { values: scrollIndicator, scrollHandler } = useScrollIndicator();
+  const scrollBottomPadding = insets.bottom + Space.s40;
 
   const handleSignOut = useCallback(() => {
     Alert.alert('Sign out', 'Sign out of your account?', [
@@ -59,12 +65,15 @@ export default function ProfileScreen() {
         <View style={styles.iconBtn} />
       </View>
 
-      <ScrollView
+      <View style={styles.scrollArea}>
+      <AnimatedScrollView
         contentContainerStyle={[
           styles.scroll,
-          { paddingBottom: insets.bottom + Space.s40 },
+          { paddingBottom: scrollBottomPadding },
         ]}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}>
         <View style={styles.profileBlock}>
           <View style={styles.avatarRing}>
             <View style={styles.avatar}>
@@ -104,7 +113,10 @@ export default function ProfileScreen() {
             <Text style={styles.outlineBtnText}>Sign out</Text>
           </OrthodoxPressable>
         )}
-      </ScrollView>
+      </AnimatedScrollView>
+
+        <ScrollIndicator values={scrollIndicator} trackInsetBottom={scrollBottomPadding} />
+      </View>
     </View>
   );
 }
@@ -130,6 +142,9 @@ const styles = StyleSheet.create({
   topTitle: {
     ...Typography.metadata,
     color: Palette.mutedGold,
+  },
+  scrollArea: {
+    flex: 1,
   },
   scroll: {
     paddingHorizontal: Layout.pagePadding,

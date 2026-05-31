@@ -1,13 +1,17 @@
 import React from 'react';
 import { RefreshControl, StyleSheet, type ScrollViewProps } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
+import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
 import { Layout, Palette, Spacing } from '@/constants/theme';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
+
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 type ScreenScrollViewProps = ScrollViewProps & {
   children: React.ReactNode;
@@ -17,6 +21,8 @@ type ScreenScrollViewProps = ScrollViewProps & {
   includeFloatingChrome?: boolean;
   /** Skip default SacredAtmosphere (e.g. Explore uses its own). */
   hideAtmosphere?: boolean;
+  /** Imperative ref to the underlying scroll view (e.g. for scroll-to-section). */
+  scrollRef?: React.Ref<any>;
 };
 
 export function ScreenScrollView({
@@ -27,6 +33,7 @@ export function ScreenScrollView({
   includeFloatingChrome = true,
   hideAtmosphere = false,
   style,
+  scrollRef,
   ...props
 }: ScreenScrollViewProps) {
   const insets = useSafeAreaInsets();
@@ -34,15 +41,21 @@ export function ScreenScrollView({
   const bottomPadding = includeFloatingChrome
     ? floatingInset
     : insets.bottom + Spacing.xl;
+  const topPadding = insets.top + Spacing.md;
+  const { values, scrollHandler } = useScrollIndicator();
 
   return (
     <ThemedView style={[styles.screen, style]} pointerEvents="box-none">
       {hideAtmosphere ? null : <SacredAtmosphere />}
       <ParchmentGrainOverlay />
-      <ScrollView
+      <AnimatedScrollView
+        ref={scrollRef}
         style={styles.scroll}
         nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         refreshControl={
           onRefresh ? (
             <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={Palette.gold} />
@@ -52,13 +65,19 @@ export function ScreenScrollView({
           styles.content,
           {
             paddingBottom: bottomPadding,
-            paddingTop: insets.top + Spacing.md,
+            paddingTop: topPadding,
           },
           contentContainerStyle,
         ]}
         {...props}>
         {children}
-      </ScrollView>
+      </AnimatedScrollView>
+
+      <ScrollIndicator
+        values={values}
+        trackInsetTop={topPadding}
+        trackInsetBottom={bottomPadding}
+      />
     </ThemedView>
   );
 }

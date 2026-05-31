@@ -167,6 +167,7 @@ const en = {
     holyBibleSub: 'Metsafe Kidus',
     liturgy: 'The Liturgy',
     liturgySub: 'Kidase',
+    startReadingPrompt: 'Open your Bible and start here',
   },
   explore: {
     chipDailyReading: 'Daily Reading',

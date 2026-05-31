@@ -124,7 +124,7 @@ export const HolyBibleHeroCard = memo(function HolyBibleHeroCard({
 
 const styles = StyleSheet.create({
   card: {
-    height: 232,
+    height: 196,
     borderRadius: Layout.cardRadius,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
