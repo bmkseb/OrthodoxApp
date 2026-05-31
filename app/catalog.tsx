@@ -2,10 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ContentSearchResults } from '@/components/search/content-search-results';
-import { BilingualHeader } from '@/components/ui/bilingual-header';
+import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
@@ -22,7 +21,7 @@ import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { scriptureChapterRoute, scriptureLangQuery } from '@/hooks/use-scripture-lang';
 import { searchVerses } from '@/lib/scripture';
-import { BorderRadius, Layout, Palette } from '@/constants/theme';
+import { Layout, Palette, Spacing } from '@/constants/theme';
 
 type LanguageTab = 'english' | 'amharic' | 'geez';
 const LANGUAGE_TAB_KEYS: LanguageTab[] = ['english', 'amharic', 'geez'];
@@ -36,11 +35,14 @@ function LanguageTabs({ activeTab, onChange }: { activeTab: LanguageTab; onChang
         return (
           <OrthodoxPressable
             key={key}
-            style={[styles.segmentPill, isActive ? styles.segmentPillActive : styles.segmentPillInactive]}
-            onPress={() => onChange(key)}>
-            <Text style={[styles.segmentLabel, isActive ? styles.segmentLabelActive : styles.segmentLabelInactive]}>
+            style={styles.segmentTab}
+            onPress={() => onChange(key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}>
+            <Text style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}>
               {t(`catalog.${key}` as TranslationKey)}
             </Text>
+            {isActive ? <View style={styles.segmentIndicator} /> : null}
           </OrthodoxPressable>
         );
       })}
@@ -88,8 +90,8 @@ function CollapsibleGroup({
         <Text style={[styles.groupChevron, { transform: [{ rotate: isOpen ? '90deg' : '0deg' }] }]}>›</Text>
         <ThemedText style={styles.groupTitle}>{title}</ThemedText>
       </OrthodoxPressable>
-      {isOpen && (
-        <View style={styles.stackedCard}>
+      {isOpen ? (
+        <View style={styles.bookList}>
           {rows.map((row, index) => (
             <ScriptureRow
               key={row.bookId}
@@ -99,7 +101,7 @@ function CollapsibleGroup({
             />
           ))}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -189,14 +191,11 @@ export default function CatalogScreen() {
         <ThemedText type="seeAll">{t('settings.back')}</ThemedText>
       </OrthodoxPressable>
 
-      <View style={styles.pageTitleRow}>
-        <Icon name="scroll" size={22} />
-        <BilingualHeader headerKey="orthodoxCatalog" variant="page" />
-      </View>
+      <ScriptureBookHeader title="Holy Bible" subtitle="መጽሐፍ ቅዱስ" />
 
       <LanguageTabs activeTab={activeLanguage} onChange={setActiveLanguage} />
 
-      <View style={styles.searchWrap}>
+      <View style={styles.searchSection}>
         <SearchBar
           placeholder={t('catalog.searchPlaceholder')}
           value={query}
@@ -232,48 +231,78 @@ export default function CatalogScreen() {
 
 const styles = StyleSheet.create({
   topBar: { marginBottom: Layout.headerContentGap },
-  pageTitleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginBottom: Layout.sectionGap },
-  segmentedRow: { flexDirection: 'row', gap: 8, marginBottom: Layout.sectionGap },
-  segmentPill: { flex: 1, borderRadius: BorderRadius.full, paddingVertical: 10, alignItems: 'center' },
-  segmentPillActive: { backgroundColor: Palette.gold },
-  segmentPillInactive: { backgroundColor: Palette.card },
-  segmentLabel: { fontSize: 13, fontWeight: '600' },
-  segmentLabelActive: { color: Palette.background },
-  segmentLabelInactive: { color: Palette.muted },
-  searchWrap: { marginBottom: Layout.sectionGap },
-  canonCount: { marginBottom: Layout.headerContentGap },
-  groupWrap: { marginBottom: Layout.sectionGap },
-  groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: Layout.headerContentGap },
-  groupChevron: { color: Palette.gold, fontSize: 18 },
-  groupTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Palette.text,
-    flex: 1,
-    lineHeight: 24,
-    flexShrink: 1,
+  segmentedRow: {
+    flexDirection: 'row',
+    marginBottom: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Layout.cardBorder,
   },
-  stackedCard: {
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Layout.cardBorder,
-    backgroundColor: Palette.card,
-    overflow: 'hidden',
+  segmentTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingTop: 6,
+    paddingBottom: 10,
+  },
+  segmentLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Palette.muted,
+  },
+  segmentLabelActive: {
+    color: Palette.text,
+    fontWeight: '600',
+  },
+  segmentIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: '18%',
+    right: '18%',
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: Palette.gold,
+  },
+  searchSection: {
+    marginBottom: Layout.sectionGap,
+  },
+  canonCount: { marginBottom: Layout.headerContentGap },
+  groupWrap: { marginBottom: Spacing.lg },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: Spacing.sm,
+  },
+  groupChevron: { color: Palette.mutedGold, fontSize: 16, width: 14 },
+  groupTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Palette.mutedGold,
+    flex: 1,
+    lineHeight: 20,
+    flexShrink: 1,
+    letterSpacing: 0.2,
+  },
+  bookList: {
+    marginTop: 2,
   },
   scriptureRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 2,
     gap: 8,
   },
   scriptureText: {
-    fontSize: 16,
+    fontSize: 15,
     color: Palette.text,
     flex: 1,
     flexShrink: 1,
-    lineHeight: 24,
+    lineHeight: 21,
   },
-  rowChevron: { color: Palette.muted, fontSize: 18, marginTop: 2 },
-  rowDivider: { height: 1, backgroundColor: Layout.cardBorder, marginHorizontal: 16 },
+  rowChevron: { color: Palette.muted, fontSize: 16 },
+  rowDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Layout.cardBorder,
+  },
 });

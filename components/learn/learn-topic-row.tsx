@@ -1,9 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Palette } from '@/constants/theme';
+import { Palette } from '@/constants/theme';
 
 type LearnTopicRowProps = {
   title: string;
@@ -12,6 +13,8 @@ type LearnTopicRowProps = {
   depth?: number;
   isSectionHeader?: boolean;
   isLast?: boolean;
+  expandable?: boolean;
+  expanded?: boolean;
   onPress?: () => void;
 };
 
@@ -22,6 +25,8 @@ export function LearnTopicRow({
   depth = 0,
   isSectionHeader = false,
   isLast,
+  expandable = false,
+  expanded = false,
   onPress,
 }: LearnTopicRowProps) {
   return (
@@ -31,8 +36,10 @@ export function LearnTopicRow({
         onPress={onPress}
         disabled={!onPress}
         accessibilityRole={onPress ? 'button' : 'text'}
-        accessibilityState={{ disabled: !onPress }}>
-        <View style={[styles.dot, isSectionHeader && styles.dotSection, depth > 0 && styles.dotChild]} />
+        accessibilityState={{ disabled: !onPress, expanded: expandable ? expanded : undefined }}>
+        <View style={styles.dotGlow}>
+          <View style={styles.dotCore} />
+        </View>
         <View style={styles.copy}>
           <ThemedText
             style={[styles.title, isSectionHeader && styles.titleSection, depth > 0 && styles.titleChild]}
@@ -47,9 +54,15 @@ export function LearnTopicRow({
             </View>
           ) : null}
         </View>
-        {onPress ? <Text style={styles.chevron}>›</Text> : null}
+        {expandable ? (
+          <View style={[styles.expandChevron, expanded && styles.expandChevronOpen]}>
+            <Icon name="chevron-right" size={16} color={Palette.gold} />
+          </View>
+        ) : onPress ? (
+          <Text style={styles.chevron}>›</Text>
+        ) : null}
       </OrthodoxPressable>
-      {!isLast ? <View style={styles.divider} /> : null}
+      {!isLast ? <View style={[styles.divider, depth > 0 && { marginLeft: 34 + depth * 16 }]} /> : null}
     </>
   );
 }
@@ -64,24 +77,25 @@ const styles = StyleSheet.create({
     gap: 10,
     minHeight: 48,
   },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(201, 147, 58, 0.45)',
+  dotGlow: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(201, 147, 58, 0.16)',
     marginTop: 2,
+    shadowColor: Palette.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  dotSection: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(201, 147, 58, 0.65)',
-  },
-  dotChild: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(201, 147, 58, 0.3)',
+  dotCore: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Palette.gold,
   },
   copy: { flex: 1, minWidth: 0, gap: 2 },
   title: {
@@ -112,6 +126,12 @@ const styles = StyleSheet.create({
     color: 'rgba(201, 147, 58, 0.4)',
     fontSize: 15,
     fontWeight: '300',
+  },
+  expandChevron: {
+    transform: [{ rotate: '0deg' }],
+  },
+  expandChevronOpen: {
+    transform: [{ rotate: '90deg' }],
   },
   divider: {
     height: StyleSheet.hairlineWidth,

@@ -40,8 +40,8 @@ export const PrayerStreakCard = memo(function PrayerStreakCard({
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <View style={styles.flameBadge}>
-          <Icon name="flame" size={20} color={Palette.gold} />
+        <View style={styles.crossBadge}>
+          <Icon name="cross" size={20} color={Palette.gold} />
         </View>
         <View style={styles.text}>
           <ThemedText style={styles.title}>{title}</ThemedText>
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Space.s12,
   },
-  flameBadge: {
+  crossBadge: {
     width: 40,
     height: 40,
     borderRadius: 20,

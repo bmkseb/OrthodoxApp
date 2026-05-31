@@ -4,7 +4,15 @@ import { ScrollView, StyleSheet, Text } from 'react-native';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { Palette } from '@/constants/theme';
 
-export const LEARN_TOPIC_FILTERS = ['Trinity', 'Eucharist', 'Mary', 'Cross', 'Fasting'] as const;
+export const LEARN_TOPIC_FILTERS = [
+  'Trinity',
+  'Eucharist',
+  'Myron',
+  'Holy Unction',
+  'Mary',
+  'Cross',
+  'Fasting',
+] as const;
 export type LearnTopicFilter = (typeof LEARN_TOPIC_FILTERS)[number];
 
 type LearnTopicFiltersProps = {

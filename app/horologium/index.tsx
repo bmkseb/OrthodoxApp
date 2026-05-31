@@ -64,7 +64,7 @@ export default function HorologiumScreen() {
                 {hour.timeLabel}
               </ThemedText>
 
-              <ThemedText type="muted" style={styles.intention} numberOfLines={2}>
+              <ThemedText style={[styles.intention, isCurrent && styles.intentionActive]} numberOfLines={2}>
                 {hour.intention}
               </ThemedText>
             </OrthodoxPressable>
@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
   intro: {
     lineHeight: 22,
     marginBottom: Spacing.lg,
-    marginHorizontal: Layout.pagePadding,
   },
   grid: {
     gap: 10,
@@ -109,7 +108,7 @@ const styles = StyleSheet.create({
   nowText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#000',
+    color: Palette.background,
     letterSpacing: 0.5,
   },
   geez: {
@@ -132,15 +131,20 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 13,
-    color: Palette.textMuted,
+    color: Palette.muted,
     marginBottom: Spacing.xs,
   },
   timeActive: {
-    color: Palette.gold,
-    opacity: 0.8,
+    color: Palette.text,
+    opacity: 0.72,
   },
   intention: {
     fontSize: 12,
     lineHeight: 18,
+    color: Palette.muted,
+  },
+  intentionActive: {
+    color: Palette.text,
+    opacity: 0.7,
   },
 });

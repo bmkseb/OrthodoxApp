@@ -146,16 +146,19 @@ UPDATE public.doctrine_subtopics SET
 UPDATE public.doctrine_subtopics SET parent_subtopic_id = NULL, sort_order = 8
   WHERE slug = 'mystery-of-holy-unction';
 
--- ---- Topic 6 — Feasts: overview → major & minor ----
+-- ---- Topic 6 — Feasts: 9 Major & 9 Minor directly under the topic (no duplicate overview row) ----
 UPDATE public.doctrine_subtopics SET parent_subtopic_id = NULL, sort_order = 1
-  WHERE slug = 'feasts-of-the-lord';
-UPDATE public.doctrine_subtopics SET
-  parent_subtopic_id = (SELECT id FROM public.doctrine_subtopics WHERE slug = 'feasts-of-the-lord'),
-  sort_order = 1
   WHERE slug = 'the-9-major-feasts';
-UPDATE public.doctrine_subtopics SET
-  parent_subtopic_id = (SELECT id FROM public.doctrine_subtopics WHERE slug = 'feasts-of-the-lord'),
-  sort_order = 2
+UPDATE public.doctrine_subtopics SET parent_subtopic_id = NULL, sort_order = 2
   WHERE slug = 'the-9-minor-feasts-of-the-lord';
+-- Move the overview intro passage into the Major Feasts branch
+UPDATE public.doctrine_passages
+SET subtopic_id = (SELECT id FROM public.doctrine_subtopics WHERE slug = 'the-9-major-feasts')
+WHERE subtopic_id = (SELECT id FROM public.doctrine_subtopics WHERE slug = 'feasts-of-the-lord');
+-- Park the redundant overview subtopic (slug preserved for legacy links)
+UPDATE public.doctrine_subtopics SET
+  topic_id = '11111111-0000-0000-0000-000000000008',
+  parent_subtopic_id = NULL
+  WHERE slug = 'feasts-of-the-lord';
 
 COMMIT;

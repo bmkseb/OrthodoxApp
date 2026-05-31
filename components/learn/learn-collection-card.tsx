@@ -2,9 +2,9 @@ import React, { useCallback, useState } from 'react';
 import { LayoutAnimation, Platform, StyleSheet, Text, UIManager, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
-import { LearnTopicRow } from '@/components/learn/learn-topic-row';
+import { LearnTopicBranch } from '@/components/learn/learn-topic-branch';
 import type { LearnCollection, LearnTopic } from '@/data/learnLibrary';
-import { learnText, levelLabel } from '@/lib/learn-i18n';
+import { learnText } from '@/lib/learn-i18n';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { useTranslation } from '@/hooks/use-translation';
@@ -15,25 +15,6 @@ const COLLAPSED_HEIGHT = 80;
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-type TopicRowEntry = {
-  topic: LearnTopic;
-  depth: number;
-  isLast: boolean;
-};
-
-/** Flatten nested topics into render rows while preserving depth for indentation. */
-function flattenTopics(topics: LearnTopic[], depth = 0): TopicRowEntry[] {
-  const rows: TopicRowEntry[] = [];
-  topics.forEach((topic, index) => {
-    const children = topic.children ?? [];
-    rows.push({ topic, depth, isLast: index === topics.length - 1 && children.length === 0 });
-    if (children.length > 0) {
-      rows.push(...flattenTopics(children, depth + 1));
-    }
-  });
-  return rows;
 }
 
 function countLessons(topics: LearnTopic[]): number {
@@ -60,7 +41,6 @@ export function LearnCollectionCard({
 
   const title = learnText(collection.titleEn, collection.titleAm, mode);
   const description = learnText(collection.descriptionEn, collection.descriptionAm, mode);
-  const topicRows = flattenTopics(collection.topics);
   const topicCount = countLessons(collection.topics);
 
   const toggle = useCallback(() => {
@@ -99,26 +79,15 @@ export function LearnCollectionCard({
           <View style={styles.panelDivider}>
             <Text style={styles.panelCross}>☩</Text>
           </View>
-          {topicRows.map(({ topic, depth, isLast }, index) => {
-            const hasContent = (topic.passageCount ?? 1) > 0;
-            const isSectionHeader = !hasContent && (topic.children?.length ?? 0) > 0;
-            return (
-              <LearnTopicRow
-                key={`${topic.id}-${depth}`}
-                title={learnText(topic.titleEn, topic.titleAm, mode)}
-                readMin={topic.readMin}
-                levelLabel={topic.level ? levelLabel(topic.level, mode) : undefined}
-                depth={depth}
-                isSectionHeader={isSectionHeader}
-                isLast={index === topicRows.length - 1}
-                onPress={
-                  hasContent
-                    ? () => onTopicPress?.(topic, collection)
-                    : undefined
-                }
-              />
-            );
-          })}
+          {collection.topics.map((topic, index) => (
+            <LearnTopicBranch
+              key={topic.id}
+              topic={topic}
+              collection={collection}
+              isLast={index === collection.topics.length - 1}
+              onTopicPress={onTopicPress}
+            />
+          ))}
         </View>
       ) : null}
     </View>

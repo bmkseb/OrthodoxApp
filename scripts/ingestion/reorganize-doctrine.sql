@@ -77,7 +77,7 @@ UPDATE public.doctrine_subtopics
 
 -- ---- Topic 1 — ሃይማኖት | Faith & Doctrine ----
 UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000001', sort_order=1, title='Faith'                    WHERE slug='faith';
-UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000001', sort_order=2, title='Faith and Action'          WHERE slug='necessity-of-faith-and-works';
+UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000001', sort_order=2, title='Faith and Works'          WHERE slug='necessity-of-faith-and-works';
 UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000001', sort_order=3, title='Christianity'              WHERE slug='christianity';
 UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000001', sort_order=4, title='Orthodox'                  WHERE slug='orthodox';
 UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000001', sort_order=5, title='Tewahedo (Miaphysitism)'   WHERE slug='tewahedo-unified-nature';
@@ -132,10 +132,10 @@ UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000
 UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000005', sort_order=17, title='Showing Oneself to the Priests' WHERE slug='showing-oneself-to-the-priests';
 UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000005', sort_order=18, title='Mystery of Holy Unction'      WHERE slug='mystery-of-holy-unction';
 
--- ---- Topic 6 — በዓላት | Feasts of the Lord ----
-UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000006', sort_order=1, title='Feasts of the Lord'         WHERE slug='feasts-of-the-lord';
-UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000006', sort_order=2, title='The 9 Major Feasts'         WHERE slug='the-9-major-feasts';
-UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000006', sort_order=3, title='The 9 Minor Feasts'         WHERE slug='the-9-minor-feasts-of-the-lord';
+-- ---- Topic 6 — በዓላት | Feasts of the Lord (topic title only; no duplicate subtopic) ----
+UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000006', sort_order=1, title='The 9 Major Feasts'         WHERE slug='the-9-major-feasts';
+UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000006', sort_order=2, title='The 9 Minor Feasts'         WHERE slug='the-9-minor-feasts-of-the-lord';
+-- feasts-of-the-lord stays in Further Studies (overview slug preserved; content moved in hierarchy script)
 
 -- ---- Topic 7 — ሕማማት | The Passion & The Cross ----
 UPDATE public.doctrine_subtopics SET topic_id='11111111-0000-0000-0000-000000000007', sort_order=1, title='The 13 Sorrows of the Cross' WHERE slug='the-13-sorrows-of-the-cross';

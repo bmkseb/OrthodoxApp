@@ -58,7 +58,7 @@ export const LEARN_COLLECTIONS: LearnCollection[] = [
     icon: 'pillar',
     topics: [
       t('faith', 'Faith', 'እምነት'),
-      t('faith-action', 'Faith and Action', 'እምነት እና ተግባር'),
+      t('faith-action', 'Faith and Works', 'እምነት እና ተግባር'),
       t('christianity', 'Christianity', 'ክርስትና'),
       t('orthodox', 'Orthodox', 'ኦርቶዶክስ'),
       t('tewahedo', 'Tewahedo', 'ተዋሕዶ'),

@@ -1,5 +1,5 @@
-import { getSupabase } from './supabase';
 import { buildSearchSnippet } from './search-snippets';
+import { getSupabase } from './supabase';
 
 /**
  * Doctrine content system powering the Learn section.
@@ -79,6 +79,31 @@ type SearchRow = {
 };
 
 type FlatSubtopic = Omit<DoctrineSubtopic, 'children'>;
+
+/**
+ * Topic 6 (Feasts of the Lord) uses the collection title only. The 9 Major and
+ * 9 Minor branches sit directly under the topic — not under a duplicate
+ * "Feasts of the Lord" subtopic row.
+ */
+function normalizeFeastsSubtopics(topicSlug: string, flat: FlatSubtopic[]): FlatSubtopic[] {
+  if (topicSlug !== 'bealat') return flat;
+
+  const overview = flat.find((subtopic) => subtopic.slug === 'feasts-of-the-lord');
+  if (!overview) return flat;
+
+  const overviewPassages = overview.passageCount;
+  return flat
+    .filter((subtopic) => subtopic.slug !== 'feasts-of-the-lord')
+    .map((subtopic) => {
+      if (subtopic.parentSubtopicId !== overview.id) return subtopic;
+
+      const promoted: FlatSubtopic = { ...subtopic, parentSubtopicId: null };
+      if (subtopic.slug === 'the-9-major-feasts' && overviewPassages > 0) {
+        promoted.passageCount += overviewPassages;
+      }
+      return promoted;
+    });
+}
 
 /** Build a nested tree and drop branches with no readable content. */
 function buildSubtopicTree(flat: FlatSubtopic[]): DoctrineSubtopic[] {
@@ -165,13 +190,15 @@ export async function fetchDoctrineOutline(): Promise<DoctrineTopic[]> {
         passageCount: s.doctrine_passages?.[0]?.count ?? 0,
       }));
 
+      const normalizedFlat = normalizeFeastsSubtopics(topic.slug, flat);
+
       return {
         id: String(topic.id),
         title: topic.title,
         titleAm: topic.title_am ?? null,
         slug: topic.slug,
         sortOrder: topic.sort_order ?? 0,
-        subtopics: buildSubtopicTree(flat),
+        subtopics: buildSubtopicTree(normalizedFlat),
       };
     })
     .filter((topic) => topic.subtopics.length > 0);
