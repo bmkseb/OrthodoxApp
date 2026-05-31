@@ -40,7 +40,7 @@ import {
 import { useTranslation } from '@/hooks/use-translation';
 import { formatPlaybackTime } from '@/lib/audio-utils';
 import { resolvePlayerCopyFromTrack } from '@/lib/audio-track-display';
-import { State } from 'react-native-track-player';
+import YoutubePlayer from 'react-native-youtube-iframe';
 
 const DISMISS_DISTANCE = 110;
 const DISMISS_VELOCITY = 850;
@@ -88,7 +88,11 @@ export function FullScreenPlayer() {
     previousTrack,
     seekTo,
     skipSeconds,
+    syncPlayingState,
   } = useAudioPlayer();
+
+  const isYoutube = Boolean(currentTrack?.videoId);
+  const youtubeVideoId = currentTrack?.videoId ?? '';
 
   const trackForDisplay =
     currentTrack ??
@@ -112,9 +116,12 @@ export function FullScreenPlayer() {
   );
 
   const showCategory =
-    copy?.categoryLabel &&
-    copy.categoryLabel !== copy.title &&
-    !copy.title.includes(copy.categoryLabel);
+    (copy?.categoryLabel &&
+      copy.categoryLabel !== copy.title &&
+      !copy.title.includes(copy.categoryLabel)) ||
+    Boolean(currentTrack?.album);
+
+  const categoryLabel = currentTrack?.album ?? copy?.categoryLabel;
 
   const miniLayout = useMemo(() => {
     const miniBottom = getMiniPlayerBottom(insets);
@@ -292,12 +299,34 @@ export function FullScreenPlayer() {
                 contentContainerStyle={styles.scrollContent}>
                 <Animated.View style={[styles.artworkColumn, artworkStyle]}>
                   <View style={styles.artworkGlow} pointerEvents="none" />
-                  <View style={styles.artworkFrame}>
-                    <SacredImage
-                      uri={trackForDisplay.artworkUri}
-                      style={styles.artworkImage}
-                      contentFit="cover"
-                    />
+                  <View style={[styles.artworkFrame, isYoutube && styles.youtubeFrame]}>
+                    {isYoutube ? (
+                      <YoutubePlayer
+                        key={youtubeVideoId}
+                        height={Math.min(ARTWORK_MAX_WIDTH, 280)}
+                        width={ARTWORK_MAX_WIDTH}
+                        play={isPlaying}
+                        videoId={youtubeVideoId}
+                        onChangeState={(state) => {
+                          if (state === 'playing') syncPlayingState(true);
+                          else if (state === 'paused') syncPlayingState(false);
+                          else if (state === 'ended') {
+                            syncPlayingState(false);
+                            nextTrack();
+                          }
+                        }}
+                        webViewProps={{
+                          allowsInlineMediaPlayback: true,
+                          mediaPlaybackRequiresUserAction: false,
+                        }}
+                      />
+                    ) : (
+                      <SacredImage
+                        uri={trackForDisplay.artworkUri}
+                        style={styles.artworkImage}
+                        contentFit="cover"
+                      />
+                    )}
                   </View>
                 </Animated.View>
 
@@ -308,27 +337,37 @@ export function FullScreenPlayer() {
                   <ThemedText style={styles.trackArtist} numberOfLines={1}>
                     {copy.artist}
                   </ThemedText>
-                  {showCategory ? (
-                    <Text style={styles.category}>{copy.categoryLabel}</Text>
+                  {showCategory && categoryLabel ? (
+                    <Text style={styles.category}>{categoryLabel}</Text>
                   ) : null}
                 </Animated.View>
 
-                <Animated.View style={[styles.block, progressStyle, { marginTop: V.titleToProgress }]}>
-                  <GoldProgressSlider progress={progress} onSeek={seekTo} />
-                  <View style={styles.timeRow}>
-                    <Text style={styles.time}>{formatPlaybackTime(elapsed)}</Text>
-                    <Text style={styles.time}>{formatPlaybackTime(totalDuration)}</Text>
-                  </View>
-                </Animated.View>
+                {!isYoutube ? (
+                  <Animated.View style={[styles.block, progressStyle, { marginTop: V.titleToProgress }]}>
+                    <GoldProgressSlider progress={progress} onSeek={seekTo} />
+                    <View style={styles.timeRow}>
+                      <Text style={styles.time}>{formatPlaybackTime(elapsed)}</Text>
+                      <Text style={styles.time}>{formatPlaybackTime(totalDuration)}</Text>
+                    </View>
+                  </Animated.View>
+                ) : null}
 
                 <Animated.View
-                  style={[styles.controlsRow, controlsStyle, { marginTop: V.progressToControls }]}>
-                  <OrthodoxPressable
-                    onPress={() => skipSeconds(-15)}
-                    style={styles.sideControl}
-                    accessibilityLabel="Rewind 15 seconds">
-                    <Icon name="rewind" size={20} color={Palette.mutedGold} />
-                  </OrthodoxPressable>
+                  style={[
+                    styles.controlsRow,
+                    controlsStyle,
+                    { marginTop: isYoutube ? V.artworkToTitle : V.progressToControls },
+                  ]}>
+                  {!isYoutube ? (
+                    <OrthodoxPressable
+                      onPress={() => skipSeconds(-15)}
+                      style={styles.sideControl}
+                      accessibilityLabel="Rewind 15 seconds">
+                      <Icon name="rewind" size={20} color={Palette.mutedGold} />
+                    </OrthodoxPressable>
+                  ) : (
+                    <View style={styles.sideControl} />
+                  )}
                   <OrthodoxPressable
                     onPress={previousTrack}
                     style={styles.sideControl}
@@ -344,12 +383,16 @@ export function FullScreenPlayer() {
                   <OrthodoxPressable onPress={nextTrack} style={styles.sideControl} accessibilityLabel="Next">
                     <Icon name="skip-forward" size={24} color={Palette.gold} />
                   </OrthodoxPressable>
-                  <OrthodoxPressable
-                    onPress={() => skipSeconds(15)}
-                    style={styles.sideControl}
-                    accessibilityLabel="Forward 15 seconds">
-                    <Icon name="forward" size={20} color={Palette.mutedGold} />
-                  </OrthodoxPressable>
+                  {!isYoutube ? (
+                    <OrthodoxPressable
+                      onPress={() => skipSeconds(15)}
+                      style={styles.sideControl}
+                      accessibilityLabel="Forward 15 seconds">
+                      <Icon name="forward" size={20} color={Palette.mutedGold} />
+                    </OrthodoxPressable>
+                  ) : (
+                    <View style={styles.sideControl} />
+                  )}
                 </Animated.View>
 
                 <Animated.View
@@ -480,6 +523,10 @@ const styles = StyleSheet.create({
       },
       android: { elevation: 12 },
     }),
+  },
+  youtubeFrame: {
+    aspectRatio: undefined,
+    minHeight: 220,
   },
   artworkImage: {
     width: '100%',

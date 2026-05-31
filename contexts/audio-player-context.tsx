@@ -25,6 +25,9 @@ export type AudioTrack = {
   artworkUri: string;
   /** Remote or local audio URL. Falls back to demo streams when omitted. */
   url?: string;
+  /** YouTube video ID — uses embedded player instead of TrackPlayer. */
+  videoId?: string;
+  album?: string;
   category?: string;
   categoryLabel?: string;
   titleKey?: TranslationKey;
@@ -46,6 +49,8 @@ type AudioPlayerContextValue = {
   seekTo: (progress: number) => void;
   skipSeconds: (delta: number) => void;
   dismissMiniPlayer: () => void;
+  /** Sync play state from embedded YouTube player UI. */
+  syncPlayingState: (playing: boolean) => void;
   /** @deprecated use playPause */
   togglePlay: () => void;
   /** @deprecated use playPause */
@@ -57,6 +62,10 @@ type AudioPlayerContextValue = {
 const EXPAND_SPRING = { damping: 22, stiffness: 220, mass: 0.9 };
 const HAS_TRACK_PLAYER = isTrackPlayerNativeAvailable();
 
+function isYoutubeTrack(track: AudioTrack | null | undefined): boolean {
+  return Boolean(track?.videoId);
+}
+
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
@@ -67,6 +76,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const expandProgress = useSharedValue(0);
   const trackMetaRef = useRef<Map<string, AudioTrack>>(new Map());
+  const queueOrderRef = useRef<string[]>([]);
 
   const isMiniPlayerVisible = currentTrack != null && !isFullPlayerOpen;
 
@@ -133,10 +143,19 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       for (const item of nextQueue) {
         trackMetaRef.current.set(item.id, item);
       }
+      queueOrderRef.current = nextQueue.map((item) => item.id);
 
       const selected = nextQueue[index] ?? track;
       setCurrentTrack(selected);
       setIsPlaying(autoPlay);
+
+      if (isYoutubeTrack(selected)) {
+        if (HAS_TRACK_PLAYER && playerReady) {
+          const mod = getTrackPlayerModule();
+          if (mod) void mod.default.reset();
+        }
+        return;
+      }
 
       if (!HAS_TRACK_PLAYER || !playerReady) return;
 
@@ -172,13 +191,22 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     setIsPlaying(false);
     setCurrentTrack(null);
     trackMetaRef.current.clear();
+    queueOrderRef.current = [];
     if (HAS_TRACK_PLAYER && playerReady) {
       const mod = getTrackPlayerModule();
       if (mod) void mod.default.reset();
     }
   }, [closeFullPlayer, playerReady]);
 
+  const syncPlayingState = useCallback((playing: boolean) => {
+    setIsPlaying(playing);
+  }, []);
+
   const playPause = useCallback(() => {
+    if (isYoutubeTrack(currentTrack)) {
+      setIsPlaying((p) => !p);
+      return;
+    }
     if (!HAS_TRACK_PLAYER || !playerReady) {
       setIsPlaying((p) => !p);
       return;
@@ -198,10 +226,11 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         setIsPlaying(true);
       }
     })();
-  }, [playerReady]);
+  }, [currentTrack, playerReady]);
 
   const seekTo = useCallback(
     (value: number) => {
+      if (isYoutubeTrack(currentTrack)) return;
       if (!HAS_TRACK_PLAYER || !playerReady) return;
       void (async () => {
         const mod = getTrackPlayerModule();
@@ -214,11 +243,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         await TrackPlayer.seekTo(clamped * duration);
       })();
     },
-    [playerReady]
+    [currentTrack, playerReady]
   );
 
   const skipSeconds = useCallback(
     (delta: number) => {
+      if (isYoutubeTrack(currentTrack)) return;
       if (!HAS_TRACK_PLAYER || !playerReady) return;
       void (async () => {
         const mod = getTrackPlayerModule();
@@ -230,10 +260,20 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         await TrackPlayer.seekTo(next);
       })();
     },
-    [playerReady]
+    [currentTrack, playerReady]
   );
 
   const nextTrack = useCallback(() => {
+    if (isYoutubeTrack(currentTrack)) {
+      const ids = queueOrderRef.current;
+      const idx = currentTrack ? ids.indexOf(currentTrack.id) : -1;
+      if (idx < 0 || idx >= ids.length - 1) return;
+      const next = trackMetaRef.current.get(ids[idx + 1]);
+      if (!next) return;
+      setCurrentTrack(next);
+      setIsPlaying(true);
+      return;
+    }
     if (!HAS_TRACK_PLAYER || !playerReady) return;
     void (async () => {
       const mod = getTrackPlayerModule();
@@ -245,9 +285,19 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       await TrackPlayer.play();
       setIsPlaying(true);
     })();
-  }, [playerReady, syncActiveTrack]);
+  }, [currentTrack, playerReady, syncActiveTrack]);
 
   const previousTrack = useCallback(() => {
+    if (isYoutubeTrack(currentTrack)) {
+      const ids = queueOrderRef.current;
+      const idx = currentTrack ? ids.indexOf(currentTrack.id) : -1;
+      if (idx <= 0) return;
+      const prev = trackMetaRef.current.get(ids[idx - 1]);
+      if (!prev) return;
+      setCurrentTrack(prev);
+      setIsPlaying(true);
+      return;
+    }
     if (!HAS_TRACK_PLAYER || !playerReady) return;
     void (async () => {
       const mod = getTrackPlayerModule();
@@ -264,7 +314,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       await TrackPlayer.play();
       setIsPlaying(true);
     })();
-  }, [playerReady, syncActiveTrack]);
+  }, [currentTrack, playerReady, syncActiveTrack]);
 
   const value = useMemo(
     () => ({
@@ -282,6 +332,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       previousTrack,
       seekTo,
       skipSeconds,
+      syncPlayingState,
       togglePlay: playPause,
       skipBack: previousTrack,
       skipForward: nextTrack,
@@ -301,6 +352,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       previousTrack,
       seekTo,
       skipSeconds,
+      syncPlayingState,
     ]
   );
 

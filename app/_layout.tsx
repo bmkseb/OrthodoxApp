@@ -66,6 +66,10 @@ export default function RootLayout() {
                     options={{ headerShown: false, animation: 'slide_from_bottom' }}
                   />
                   <Stack.Screen
+                    name="listen"
+                    options={{ headerShown: false, animation: 'slide_from_bottom' }}
+                  />
+                  <Stack.Screen
                     name="saved"
                     options={{ headerShown: false, animation: 'slide_from_bottom' }}
                   />

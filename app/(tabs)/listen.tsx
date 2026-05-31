@@ -22,6 +22,7 @@ import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import { resolvePlayerTrackCopy } from '@/lib/audio-track-display';
+import { encodeRouteParam, fetchArtists, type MezmurArtist } from '@/lib/mezmur';
 import { SacredImagery } from '@/constants/sacred-imagery';
 import { translate, type LanguageMode, type TranslationKey } from '@/lib/translations';
 import { Layout, Palette, Space } from '@/constants/theme';
@@ -85,13 +86,8 @@ const TAB_CONTENT: Record<
   },
 };
 
-/** Hymns Catalog rail — browse mezmur by mood/season, plus chants and the office. */
-const LISTEN_COLLECTIONS: { id: string; title: string; subtitle: string; image: string; tab?: ListenTab; route?: string }[] = [
-  { id: 'repentance', title: 'Repentance Mezmur', subtitle: 'ንስሐ መዝሙር', image: SacredImagery.prayerMary, tab: 'hymns' },
-  { id: 'joyous', title: 'Joyous Mezmur', subtitle: 'ደስታ መዝሙር', image: SacredImagery.listenHymns, tab: 'hymns' },
-  { id: 'praise', title: 'Praise Mezmur', subtitle: 'ምስጋና መዝሙር', image: SacredImagery.listenMelodies, tab: 'hymns' },
-  { id: 'yared', title: 'Yared Chants', subtitle: 'ዜማ · Zema', image: SacredImagery.readManuscript, tab: 'melodies' },
-  { id: 'sermons', title: 'Sermons', subtitle: 'ስብከት · Teachings', image: SacredImagery.listenSermons, tab: 'sermons' },
+/** Extra catalog entries outside the Supabase mezmur channels. */
+const EXTRA_LISTEN_LINKS: { id: string; title: string; subtitle: string; image: string; route: string }[] = [
   { id: 'office', title: 'Prayer Office', subtitle: "ሰዓታት · Se'atat", image: SacredImagery.readManuscript, route: '/horologium' },
 ];
 
@@ -188,6 +184,7 @@ export default function ListenScreen() {
   const { t, mode } = useTranslation();
   const [activeTab, setActiveTab] = useState<ListenTab>('hymns');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mezmurArtists, setMezmurArtists] = useState<MezmurArtist[]>([]);
   const { recentSearches, addRecentSearch } = useRecentSearches('listen');
   const { playTrack, openFullPlayer } = useAudioPlayer();
   const insets = useSafeAreaInsets();
@@ -225,6 +222,20 @@ export default function ListenScreen() {
     (): AudioTrack[] => content.tracks.map((track) => toPlaybackTrack(track)),
     [content.tracks, toPlaybackTrack]
   );
+
+  useEffect(() => {
+    let active = true;
+    fetchArtists()
+      .then((rows) => {
+        if (active) setMezmurArtists(rows);
+      })
+      .catch(() => {
+        if (active) setMezmurArtists([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const first = content.tracks[0];
@@ -335,17 +346,24 @@ export default function ListenScreen() {
 
         {/* Catalog — browse the wider audio library */}
         <View style={styles.section}>
-          <SectionHeader title="Hymns Catalog" icon="scroll" onSeeAllPress={() => setActiveTab('hymns')} />
+          <SectionHeader title="Hymns Catalog" icon="scroll" onSeeAllPress={() => router.push('/listen' as never)} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
-            {LISTEN_COLLECTIONS.map((c) => (
+            {mezmurArtists.map((channel) => (
+              <SoftRailCard
+                key={channel.name}
+                title={channel.name}
+                subtitle={`${channel.albumCount} playlists · ${channel.songCount} songs`}
+                imageUri={channel.thumbnailUrl ?? SacredImagery.listenHymns}
+                onPress={() => router.push(`/listen/${encodeRouteParam(channel.name)}` as never)}
+              />
+            ))}
+            {EXTRA_LISTEN_LINKS.map((c) => (
               <SoftRailCard
                 key={c.id}
                 title={c.title}
                 subtitle={c.subtitle}
-                onPress={() => {
-                  if (c.tab) setActiveTab(c.tab);
-                  else if (c.route) router.push(c.route as never);
-                }}
+                imageUri={c.image}
+                onPress={() => router.push(c.route as never)}
               />
             ))}
           </ScrollView>
