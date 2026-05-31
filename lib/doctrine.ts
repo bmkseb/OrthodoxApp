@@ -84,12 +84,24 @@ export async function fetchDoctrineOutline(): Promise<DoctrineTopic[]> {
   const supabase = getSupabase();
   if (!supabase) return [];
 
-  const { data, error } = await supabase
+  const withAmharic =
+    'id, title, title_am, slug, sort_order, doctrine_subtopics ( id, title, title_am, slug, sort_order, parent_subtopic_id, doctrine_passages(count) )';
+  const withoutAmharic =
+    'id, title, slug, sort_order, doctrine_subtopics ( id, title, slug, sort_order, parent_subtopic_id, doctrine_passages(count) )';
+
+  let { data, error } = await supabase
     .from('doctrine_topics')
-    .select(
-      'id, title, title_am, slug, sort_order, doctrine_subtopics ( id, title, title_am, slug, sort_order, parent_subtopic_id, doctrine_passages(count) )'
-    )
+    .select(withAmharic)
     .order('sort_order', { ascending: true });
+
+  // Before the reorganization migration runs the title_am column won't exist
+  // (Postgres error 42703). Retry without it so the page still shows content.
+  if (error?.code === '42703') {
+    ({ data, error } = await supabase
+      .from('doctrine_topics')
+      .select(withoutAmharic)
+      .order('sort_order', { ascending: true }));
+  }
 
   if (error) throw error;
 
