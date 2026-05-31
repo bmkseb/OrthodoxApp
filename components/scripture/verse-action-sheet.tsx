@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -56,7 +58,9 @@ export function VerseActionSheet({
       animationType="slide"
       statusBarTranslucent
       onRequestClose={onClose}>
-      <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Dismiss" />
 
         <View style={[styles.sheet, { paddingBottom: 20 + Math.max(insets.bottom, 8) }]}>
@@ -131,7 +135,7 @@ export function VerseActionSheet({
             </>
           ) : null}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

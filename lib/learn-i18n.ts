@@ -1,8 +1,11 @@
 import type { LanguageMode } from '@/lib/translations';
 
 export function learnText(en: string, am: string, mode: LanguageMode): string {
-  if (mode === 'am') return am;
-  if (mode === 'bilingual') return `${am} | ${en}`;
+  const amharic = am?.trim();
+  if (mode === 'am') return amharic || en;
+  // English first, then Amharic in Ge'ez script — and omit Amharic when it's
+  // missing or identical to the English (avoids "English | English").
+  if (mode === 'bilingual' && amharic && amharic !== en) return `${en}  ${amharic}`;
   return en;
 }
 

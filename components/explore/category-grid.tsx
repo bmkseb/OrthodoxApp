@@ -55,8 +55,8 @@ const styles = StyleSheet.create({
   },
   badge: {
     width: '100%',
-    aspectRatio: 1,
-    borderRadius: 16,
+    aspectRatio: 1.4,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Palette.card,
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(201, 147, 58, 0.28)',
   },
   label: {
-    marginTop: Space.s8,
+    marginTop: Space.s4 + 2,
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',

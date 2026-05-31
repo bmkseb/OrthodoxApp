@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Fragment, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -87,8 +88,13 @@ export function VerseList({ verses, lang, bookId, chapter, bookTitle }: VerseLis
           <Pressable
             key={verse.verse}
             style={styles.row}
-            onPress={() => setSelected(verse)}
+            delayLongPress={250}
+            onLongPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              setSelected(verse);
+            }}
             accessibilityRole="button"
+            accessibilityHint="Press and hold to highlight or save this verse"
             accessibilityLabel={`${bookTitle} ${chapter}:${verse.verse}`}>
             <ThemedText style={styles.verseNum}>{verse.verse}</ThemedText>
             <View style={styles.verseBody}>

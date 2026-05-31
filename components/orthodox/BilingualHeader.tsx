@@ -72,19 +72,28 @@ export function BilingualHeader({
     );
   }
 
-  // Default: bilingual.
+  // Default: bilingual — English first (parchment), Amharic a bit smaller beside it (gold).
+  const accentSize = Math.max(12, Math.round(size * 0.62));
+  const accentStyle: TextStyle = {
+    fontSize: accentSize,
+    fontWeight: weight,
+    lineHeight: Math.round(accentSize * 1.25),
+    letterSpacing: 0,
+  };
+
   return (
     <View style={[styles.row, style]}>
-      <Text style={[baseTextStyle, styles.amharic]} numberOfLines={1} allowFontScaling={false}>
-        {amharic}
+      <Text
+        style={[baseTextStyle, styles.english, styles.primaryText]}
+        numberOfLines={1}
+        allowFontScaling={false}>
+        {english}
       </Text>
       <Text
-        style={[baseTextStyle, styles.pipe, { fontWeight: '300' }]}
+        style={[accentStyle, styles.amharic, styles.accentText]}
+        numberOfLines={1}
         allowFontScaling={false}>
-        |
-      </Text>
-      <Text style={[baseTextStyle, styles.english]} numberOfLines={1} allowFontScaling={false}>
-        {english}
+        {amharic}
       </Text>
     </View>
   );
@@ -94,11 +103,13 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 8,
+    gap: 6,
     flexShrink: 1,
     minWidth: 0,
   },
   amharic: { color: Palette.gold },
-  pipe: { color: 'rgba(201, 147, 58, 0.45)' },
   english: { color: Palette.text },
+  // English keeps its full size; Amharic accent truncates first if space runs out.
+  primaryText: { flexShrink: 0 },
+  accentText: { flexShrink: 1, minWidth: 0 },
 });

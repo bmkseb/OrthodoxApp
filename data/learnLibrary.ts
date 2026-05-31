@@ -8,6 +8,8 @@ export type LearnTopic = {
   titleAm: string;
   readMin?: number;
   level?: TopicLevel;
+  /** Kebab-case doctrine subtopic slug (present when sourced from Supabase). */
+  slug?: string;
 };
 
 export type LearnCollection = {

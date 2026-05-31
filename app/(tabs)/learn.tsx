@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import { router } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 
+import { DidYouKnow } from '@/components/learn/did-you-know';
 import { LearnCollectionCard } from '@/components/learn/learn-collection-card';
 import { LearnFeaturedHero } from '@/components/learn/learn-featured-hero';
 import { LearnRecentStrip } from '@/components/learn/learn-recent-strip';
@@ -22,7 +24,10 @@ import {
   findTopicById,
   getFeatured,
   searchLearnLibrary,
+  type LearnCollection,
+  type LearnTopic,
 } from '@/data/learnLibrary';
+import { fetchDoctrineOutline } from '@/lib/doctrine';
 import { learnText } from '@/lib/learn-i18n';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
@@ -41,6 +46,51 @@ export default function LearnScreen() {
   const [topicFilter, setTopicFilter] = useState<LearnTopicFilter | null>(null);
   const { recentSearches, addRecentSearch } = useRecentSearches('learn');
   const [featuredIndex] = useState(0);
+  const [doctrineCollections, setDoctrineCollections] = useState<LearnCollection[]>([]);
+
+  // Load the doctrine outline from Supabase; subtopics become the lesson cards.
+  // Falls back silently to the bundled library when unavailable/offline.
+  useEffect(() => {
+    let active = true;
+    fetchDoctrineOutline()
+      .then((topics) => {
+        if (!active) return;
+        const mapped: LearnCollection[] = topics
+          .filter((topic) => topic.subtopics.length > 0)
+          .map((topic) => ({
+            id: topic.slug,
+            titleEn: topic.title,
+            // Amharic shown beside English in bilingual mode; '' => English only.
+            titleAm: topic.titleAm ?? '',
+            subtitleEn: '',
+            subtitleAm: '',
+            descriptionEn: `${topic.subtopics.length} lessons`,
+            descriptionAm: `${topic.subtopics.length} ትምህርቶች`,
+            icon: 'book',
+            topics: topic.subtopics.map((sub) => ({
+              id: sub.slug,
+              slug: sub.slug,
+              titleEn: sub.title,
+              titleAm: sub.titleAm ?? '',
+            })),
+          }));
+        setDoctrineCollections(mapped);
+      })
+      .catch(() => {
+        // Keep the bundled fallback on any fetch/RLS error.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const collectionsToRender =
+    doctrineCollections.length > 0 ? doctrineCollections : LEARN_COLLECTIONS;
+
+  const openLesson = (topic: LearnTopic) => {
+    const slug = topic.slug ?? topic.id;
+    router.push(`/learn/${slug}?title=${encodeURIComponent(topic.titleEn)}`);
+  };
 
   const handleSearchSubmit = (term: string) => {
     setSearchQuery(term);
@@ -135,13 +185,19 @@ export default function LearnScreen() {
           <View style={styles.sectionHeader}>
             <BilingualHeader amharic="ስብስብ" english="Sacred Collections" />
           </View>
-          {LEARN_COLLECTIONS.map((collection, index) => (
+          {collectionsToRender.map((collection, index) => (
             <LearnCollectionCard
               key={collection.id}
               collection={collection}
               defaultExpanded={index === 0}
+              onTopicPress={(topic) => openLesson(topic)}
             />
           ))}
+
+          <SacredSectionDivider />
+
+          <SectionHeader title="Did You Know?" icon="sparkle" />
+          <DidYouKnow />
 
           <SacredSectionDivider />
 

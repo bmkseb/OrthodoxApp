@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 
-import { CategoryGrid, type Category } from '@/components/explore/category-grid';
+import { Icon, type IconName } from '@/components/Icon';
 import { DiscoverCanon } from '@/components/explore/discover-canon';
 import { ExploreAtmosphere } from '@/components/explore/explore-atmosphere';
 import { ExploreSectionFrame } from '@/components/explore/explore-section-frame';
 import { PrayerStreakCard } from '@/components/explore/prayer-streak-card';
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { PageHeader } from '@/components/orthodox/PageHeader';
 import { ManuscriptBookCard } from '@/components/sacred/manuscript-book-card';
 import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
@@ -23,6 +24,19 @@ import { useTranslation } from '@/hooks/use-translation';
 
 const MUTED_GOLD = '#8A8070';
 const STREAK_DAYS = 14;
+
+// Two-column Quick Access grid sizing.
+const QUICK_GAP = 16;
+const QUICK_CARD_WIDTH =
+  (Dimensions.get('window').width - Layout.pagePadding * 2 - QUICK_GAP) / 2;
+
+type QuickAccessItem = {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: IconName;
+  onPress: () => void;
+};
 
 const FEATURED_COLLECTIONS = [
   { id: 'lent', title: 'Great Lent Essentials', subtitle: 'Fasting season', image: SacredImagery.reflection, route: '/calendar' as const },
@@ -58,13 +72,13 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const { recentSearches, addRecentSearch } = useRecentSearches('explore');
 
-  const quickAccess: Category[] = [
-    { id: 'prayers', label: t('explore.catPrayers'), icon: 'sun', onPress: () => router.push('/horologium') },
-    { id: 'saints', label: t('explore.catSaints'), icon: 'church', onPress: () => router.push('/calendar') },
-    { id: 'hymns', label: t('explore.catHymns'), icon: 'music', onPress: () => router.push('/listen') },
-    { id: 'feasts', label: t('explore.catFeastsOnly'), icon: 'calendar', onPress: () => router.push('/calendar') },
-    { id: 'fasts', label: t('explore.catFasts'), icon: 'flame', onPress: () => router.push('/calendar') },
-    { id: 'search', label: t('explore.catScriptureSearch'), icon: 'search', onPress: () => router.push('/catalog') },
+  const quickAccess: QuickAccessItem[] = [
+    { id: 'prayers', title: t('explore.catPrayers'), subtitle: 'Daily offices', icon: 'sun', onPress: () => router.push('/horologium') },
+    { id: 'saints', title: t('explore.catSaints'), subtitle: 'Lives and feasts', icon: 'church', onPress: () => router.push('/calendar') },
+    { id: 'hymns', title: t('explore.catHymns'), subtitle: 'Sacred melodies', icon: 'music', onPress: () => router.push('/listen') },
+    { id: 'feasts', title: t('explore.catFeastsOnly'), subtitle: 'Calendar and fasts', icon: 'calendar', onPress: () => router.push('/calendar') },
+    { id: 'fasts', title: t('explore.catFasts'), subtitle: 'Fasting seasons', icon: 'flame', onPress: () => router.push('/calendar') },
+    { id: 'search', title: t('explore.catScriptureSearch'), subtitle: 'Find passages', icon: 'search', onPress: () => router.push('/catalog') },
   ];
 
   const handleSearchSubmit = (term: string) => {
@@ -77,7 +91,10 @@ export default function ExploreScreen() {
   return (
     <View style={styles.screen}>
       <ExploreAtmosphere />
-      <ScreenScrollView hideAtmosphere style={styles.scrollView}>
+      <ScreenScrollView
+        hideAtmosphere
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}>
         <PageHeader title="Explore" geez="መርምር" />
 
         {/* Search — top of the page */}
@@ -102,7 +119,28 @@ export default function ExploreScreen() {
 
         {/* Quick access shortcut menu */}
         <ExploreSectionFrame title={t('explore.quickAccess')} icon="sparkle">
-          <CategoryGrid items={quickAccess} columns={3} />
+          <View style={styles.quickGrid}>
+            {quickAccess.map((item) => (
+              <OrthodoxPressable
+                key={item.id}
+                onPress={item.onPress}
+                accessibilityRole="button"
+                accessibilityLabel={item.title}
+                style={styles.quickCard}>
+                <View style={styles.quickIcon}>
+                  <Icon name={item.icon} size={24} color={Palette.gold} />
+                </View>
+                <View style={styles.quickTextBlock}>
+                  <ThemedText style={styles.quickTitle} numberOfLines={1}>
+                    {item.title}
+                  </ThemedText>
+                  <ThemedText style={styles.quickSubtitle} numberOfLines={1}>
+                    {item.subtitle}
+                  </ThemedText>
+                </View>
+              </OrthodoxPressable>
+            ))}
+          </View>
         </ExploreSectionFrame>
 
         <SacredSectionDivider />
@@ -201,8 +239,47 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
+  // Clear the floating mini player + tab bar so the last cards stay scrollable.
+  scrollContent: { paddingBottom: 240 },
   block: { marginBottom: Space.s16 },
   streakBlock: { marginBottom: Space.s24 },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: QUICK_GAP,
+  },
+  quickCard: {
+    width: QUICK_CARD_WIDTH,
+    minHeight: 116,
+    borderRadius: 22,
+    backgroundColor: Palette.surfaceWarm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.18)',
+    padding: Space.s16,
+    justifyContent: 'space-between',
+  },
+  quickIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(201, 147, 58, 0.1)',
+  },
+  quickTextBlock: {
+    marginTop: Space.s12,
+    gap: 2,
+  },
+  quickTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Palette.text,
+    letterSpacing: -0.2,
+  },
+  quickSubtitle: {
+    fontSize: 12.5,
+    color: MUTED_GOLD,
+  },
   rail: {
     gap: Layout.cardGap,
     paddingRight: Layout.pagePadding,
