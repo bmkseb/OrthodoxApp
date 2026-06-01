@@ -1,0 +1,101 @@
+import { memo } from 'react';
+import { StyleSheet, View } from 'react-native';
+
+import { Icon, type IconName } from '@/components/Icon';
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { ThemedText } from '@/components/themed-text';
+import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+
+type CatalogBookRowProps = {
+  title: string;
+  subtitle: string;
+  /** Ge'ez/Amharic title shown above the English title in non-English UI modes. */
+  geez?: string;
+  /** Whether to render the Ge'ez line (typically `mode !== 'en'`). */
+  showGeez?: boolean;
+  /** Leading glyph giving the row a distinct identity. */
+  icon?: IconName;
+  onPress: () => void;
+};
+
+/**
+ * One row in the Orthodox Catalog. Shared so every catalog book — Scripture,
+ * prayer books, the Liturgy — renders with the same chrome and behavior.
+ */
+export const CatalogBookRow = memo(function CatalogBookRow({
+  title,
+  subtitle,
+  geez,
+  showGeez = false,
+  icon,
+  onPress,
+}: CatalogBookRowProps) {
+  return (
+    <OrthodoxPressable style={styles.row} onPress={onPress} accessibilityRole="button">
+      {icon ? (
+        <View style={styles.iconWrap}>
+          <Icon name={icon} size={20} color={Palette.gold} />
+        </View>
+      ) : null}
+      <View style={styles.rowText}>
+        {showGeez && geez ? <ThemedText style={styles.rowGeez}>{geez}</ThemedText> : null}
+        <ThemedText style={styles.rowTitle} numberOfLines={1}>
+          {title}
+        </ThemedText>
+        <ThemedText type="muted" style={styles.rowSubtitle} numberOfLines={1}>
+          {subtitle}
+        </ThemedText>
+      </View>
+      <ThemedText style={styles.arrow}>›</ThemedText>
+    </OrthodoxPressable>
+  );
+});
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Layout.cardBorder,
+    backgroundColor: Palette.card,
+  },
+  iconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+    backgroundColor: 'rgba(201, 147, 58, 0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.2)',
+  },
+  rowText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rowGeez: {
+    fontSize: 13,
+    color: Palette.gold,
+    marginBottom: 3,
+  },
+  rowTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 21,
+    color: Palette.text,
+  },
+  rowSubtitle: {
+    fontSize: 12.5,
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  arrow: {
+    fontSize: 22,
+    color: Palette.mutedGold,
+    marginLeft: Spacing.sm,
+  },
+});

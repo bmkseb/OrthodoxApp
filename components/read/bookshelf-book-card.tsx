@@ -7,7 +7,7 @@ import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
 import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
-import { Layout, Overlays, Palette, Space, Typography } from '@/constants/theme';
+import { Overlays, Palette, Space, Typography } from '@/constants/theme';
 
 const BOOK_WIDTH = 96;
 const BOOK_HEIGHT = 142;
@@ -34,13 +34,30 @@ export const BookshelfBookCard = memo(function BookshelfBookCard({
   removeLabel,
 }: BookshelfBookCardProps) {
   const showProgress = progress > 0;
+  const hasImage = !!imageUri;
 
   return (
     <OrthodoxPressable style={styles.wrap} onPress={onPress} accessibilityRole="button">
       <View style={styles.shadowHost}>
         <View style={styles.card}>
-          <SacredImage uri={imageUri} style={[styles.image, { opacity: ManuscriptTokens.imageSoftening }]} />
-          <View style={styles.parchmentWash} />
+          {hasImage ? (
+            <>
+              <SacredImage uri={imageUri} style={[styles.image, { opacity: ManuscriptTokens.imageSoftening }]} />
+              <LinearGradient
+                colors={['rgba(46, 32, 18, 0.18)', 'rgba(20, 14, 9, 0.34)']}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+            </>
+          ) : (
+            <LinearGradient
+              colors={['#2A2118', ManuscriptTokens.cardWarmEnd]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[StyleSheet.absoluteFill, styles.placeholder]}>
+              <Text style={styles.placeholderCross}>☩</Text>
+            </LinearGradient>
+          )}
 
           <LinearGradient
             colors={['rgba(0, 0, 0, 0.58)', 'rgba(0, 0, 0, 0.22)', 'transparent']}
@@ -96,9 +113,7 @@ export const BookshelfBookCard = memo(function BookshelfBookCard({
 });
 
 const styles = StyleSheet.create({
-  wrap: {
-    marginRight: Layout.cardGap,
-  },
+  wrap: {},
   shadowHost: {
     ...Platform.select({
       ios: {
@@ -126,9 +141,13 @@ const styles = StyleSheet.create({
   image: {
     ...StyleSheet.absoluteFillObject,
   },
-  parchmentWash: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(28, 16, 8, 0.18)',
+  placeholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeholderCross: {
+    color: 'rgba(201, 147, 58, 0.4)',
+    fontSize: 30,
   },
   spine: {
     position: 'absolute',

@@ -12,9 +12,19 @@ import {
   removeBookmark,
   useBookmarks,
 } from '@/hooks/use-bookmarks';
+import { isPrayerBookId, prayerSlugFromBookId } from '@/hooks/use-reading-progress';
 import { removeSavedVerse, useSavedVerses } from '@/hooks/use-saved-verses';
 import { scriptureLangQuery } from '@/hooks/use-scripture-lang';
 import { useTranslation } from '@/hooks/use-translation';
+import type { ScriptureLang } from '@/types/scripture';
+
+/** Reader route for a saved page/verse — prayer books and scripture differ. */
+function readerRoute(bookId: string, chapter: number, lang: ScriptureLang): string {
+  if (isPrayerBookId(bookId)) {
+    return `/prayer/${prayerSlugFromBookId(bookId)}/${chapter}?lang=${lang}`;
+  }
+  return `/book/${bookId}/${chapter}${scriptureLangQuery(lang)}`;
+}
 
 export default function SavedScreen() {
   const { saved } = useSavedVerses();
@@ -54,11 +64,7 @@ export default function SavedScreen() {
               key={makeBookmarkId(bm.bookId, bm.chapter)}
               style={styles.bookmarkRow}
               accessibilityRole="button"
-              onPress={() =>
-                router.push(
-                  `/book/${bm.bookId}/${bm.chapter}${scriptureLangQuery(bm.lang)}`
-                )
-              }>
+              onPress={() => router.push(readerRoute(bm.bookId, bm.chapter, bm.lang) as never)}>
               <Icon name="bookmark" size={18} color={Palette.gold} />
               <View style={styles.bookmarkText}>
                 <ThemedText style={styles.bookmarkTitle}>{bm.bookTitle}</ThemedText>
@@ -87,11 +93,7 @@ export default function SavedScreen() {
             key={item.verseId}
             style={styles.row}
             accessibilityRole="button"
-            onPress={() =>
-              router.push(
-                `/book/${item.bookId}/${item.chapter}${scriptureLangQuery(item.lang)}`
-              )
-            }>
+            onPress={() => router.push(readerRoute(item.bookId, item.chapter, item.lang) as never)}>
             <View style={styles.rowHeader}>
               <View style={styles.refWrap}>
                 {item.color ? (

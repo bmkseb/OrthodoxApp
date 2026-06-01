@@ -12,7 +12,26 @@ export type ReadingProgressEntry = {
   totalChapters: number;
   lang: ScriptureLang;
   updatedAt: number;
+  /** Display title for non-scripture catalog books (e.g. prayer books). */
+  title?: string;
+  /** Secondary line for non-scripture catalog books (e.g. the section name). */
+  subtitle?: string;
 };
+
+/** Catalog books other than the Bible store progress under a namespaced id. */
+export const PRAYER_BOOK_PREFIX = 'prayer:';
+
+export function makePrayerBookId(slug: string): string {
+  return `${PRAYER_BOOK_PREFIX}${slug}`;
+}
+
+export function isPrayerBookId(bookId: string): boolean {
+  return bookId.startsWith(PRAYER_BOOK_PREFIX);
+}
+
+export function prayerSlugFromBookId(bookId: string): string {
+  return bookId.slice(PRAYER_BOOK_PREFIX.length);
+}
 
 // Module-level cache + pub/sub so the chapter reader and the Read tab stay in sync.
 let cache: ReadingProgressEntry[] = [];

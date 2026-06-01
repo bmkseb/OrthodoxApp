@@ -71,7 +71,7 @@ export const Layout = {
   sectionDividerAbove: Space.s24,
   sectionDividerBelow: Space.s24,
   sectionHeaderBottom: Space.s12,
-  sectionContentBottom: Space.s24,
+  sectionContentBottom: Space.s32,
   sectionGap: Space.s24,
   sectionHeaderGap: Space.s12,
   headerContentGap: Space.s8,

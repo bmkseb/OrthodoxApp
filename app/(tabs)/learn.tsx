@@ -54,6 +54,48 @@ function mapDoctrineSubtopic(sub: DoctrineSubtopic): LearnTopic {
   };
 }
 
+// Distinctive keyword for each curated featured card, used to match a real
+// loaded lesson (whose Supabase slug differs from the static featured id).
+const FEATURED_KEYWORDS: Record<string, string> = {
+  trinity: 'trinity',
+  eucharist: 'eucharist',
+  '7-heavens': 'heaven',
+  'holy-cross': 'cross',
+};
+
+/** First readable lesson (slug + passages) whose title contains `needle`. */
+function findRealLessonByKeyword(
+  collections: LearnCollection[],
+  needle: string
+): { topic: LearnTopic; collection: LearnCollection } | null {
+  const lc = needle.trim().toLowerCase();
+  if (!lc) return null;
+  for (const collection of collections) {
+    const stack: LearnTopic[] = [...collection.topics];
+    while (stack.length) {
+      const topic = stack.shift() as LearnTopic;
+      if (topic.children?.length) stack.push(...topic.children);
+      if (!topic.titleEn.toLowerCase().includes(lc)) continue;
+      const resolved = resolveLearnTopic(topic);
+      if (resolved.slug && (resolved.passageCount ?? 1) > 0) {
+        return { topic: resolved, collection };
+      }
+    }
+  }
+  return null;
+}
+
+/** First readable lesson anywhere in the library — a safe linking fallback. */
+function firstLessonAnywhere(
+  collections: LearnCollection[]
+): { topic: LearnTopic; collection: LearnCollection } | null {
+  for (const collection of collections) {
+    const lesson = findFirstLesson(collection);
+    if (lesson) return { topic: lesson, collection };
+  }
+  return null;
+}
+
 export default function LearnScreen() {
   const { t, mode } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -112,37 +154,29 @@ export default function LearnScreen() {
     void addRecentSearch(term);
   };
 
-  const featuredItems = useMemo<FeaturedItem[]>(
-    () =>
-      LEARN_FEATURED.map((f) => {
-        const category = learnText(f.categoryEn, f.categoryAm, mode);
-        return {
-          id: f.id,
-          title: learnText(f.titleEn, f.titleAm, mode),
-          subtitle: category,
-          badgeLabel: `${f.readMin} min`,
-          imageUri: f.imageUri,
-          onPress: () => {
-            const found = findTopicById(f.id);
-            if (found) {
-              openLesson(
-                found.topic,
-                undefined,
-                learnText(found.collection.titleEn, found.collection.titleAm, mode)
-              );
-              return;
-            }
-            // Fall back to opening by the featured id so a card always links somewhere.
-            openLesson(
-              { id: f.id, slug: f.id, titleEn: learnText(f.titleEn, f.titleAm, mode), titleAm: '' },
-              undefined,
-              category
-            );
-          },
-        };
-      }),
-    [mode]
-  );
+  const featuredItems = useMemo<FeaturedItem[]>(() => {
+    const fallback = firstLessonAnywhere(collectionsToRender);
+    return LEARN_FEATURED.map((f) => {
+      const category = learnText(f.categoryEn, f.categoryAm, mode);
+      const needle = FEATURED_KEYWORDS[f.id] ?? f.titleEn;
+      const target = findRealLessonByKeyword(collectionsToRender, needle) ?? fallback;
+      return {
+        id: f.id,
+        title: learnText(f.titleEn, f.titleAm, mode),
+        subtitle: category,
+        badgeLabel: `${f.readMin} min`,
+        imageUri: f.imageUri,
+        onPress: () => {
+          if (!target) return;
+          openLesson(
+            target.topic,
+            undefined,
+            learnText(target.collection.titleEn, target.collection.titleAm, mode)
+          );
+        },
+      };
+    });
+  }, [collectionsToRender, mode]);
 
   const effectiveQuery = searchQuery.trim();
   const debouncedQuery = useDebouncedValue(effectiveQuery, 350);
@@ -269,7 +303,7 @@ export default function LearnScreen() {
 
           <View style={styles.section}>
             <SectionHeader
-              title="Catechism"
+              title="Catechism Catalog"
               icon="scroll"
               onSeeAllPress={() => router.push('/learn/catalog' as never)}
             />
@@ -384,7 +418,7 @@ export default function LearnScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchWrap: { marginBottom: Space.s12 },
+  searchWrap: { marginBottom: Space.s16 },
   filterWrap: { marginBottom: Layout.sectionHeaderBottom },
   section: { marginBottom: Layout.sectionContentBottom },
   rail: {

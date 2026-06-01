@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.background },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: Layout.pagePadding },
-  searchWrap: { marginBottom: Space.s12 },
+  searchWrap: { marginBottom: Space.s16 },
   segmentContainer: {
     flexDirection: 'row',
     alignItems: 'stretch',

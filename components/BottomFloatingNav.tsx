@@ -68,7 +68,7 @@ export function BottomFloatingNav({ state, navigation }: BottomTabBarProps) {
       style={[styles.host, { bottom, left: FloatingBottom.horizontalMargin, right: FloatingBottom.horizontalMargin }]}>
       <View style={styles.pill} pointerEvents="auto">
         {Platform.OS === 'ios' ? (
-          <BlurView intensity={64} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
         ) : null}
         <View style={styles.glass} />
 
@@ -182,16 +182,16 @@ const styles = StyleSheet.create({
   },
   glass: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(14, 12, 10, 0.88)',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(14, 12, 10, 0.76)' : 'rgba(14, 12, 10, 0.92)',
   },
   capsule: {
     position: 'absolute',
     top: 5,
     bottom: 5,
     borderRadius: 28,
-    backgroundColor: 'rgba(201, 147, 58, 0.14)',
+    backgroundColor: 'rgba(201, 147, 58, 0.18)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
+    borderColor: 'rgba(201, 147, 58, 0.32)',
   },
   row: {
     flex: 1,
@@ -208,13 +208,13 @@ const styles = StyleSheet.create({
   tabInner: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 4,
     paddingTop: 2,
   },
   label: {
     fontSize: 10,
     fontWeight: '500',
-    letterSpacing: 0.1,
+    letterSpacing: 0.2,
   },
   iconGlow: {
     shadowColor: Palette.gold,

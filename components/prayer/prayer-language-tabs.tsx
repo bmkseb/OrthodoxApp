@@ -2,9 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { Layout, Palette, Spacing } from '@/constants/theme';
-import { useTranslation } from '@/hooks/use-translation';
-import type { PrayerLanguage } from '@/lib/prayer';
-import type { TranslationKey } from '@/lib/translations';
+import { PRAYER_LANGUAGE_LABELS, type PrayerLanguage } from '@/lib/prayer';
 
 type PrayerLanguageTabsProps = {
   available: PrayerLanguage[];
@@ -13,12 +11,11 @@ type PrayerLanguageTabsProps = {
 };
 
 /**
- * Per-book language toggle. Renders only the tabs in `available`; when a book
- * supports a single language there is nothing to switch, so it renders nothing.
+ * Per-book language toggle. The tab list comes entirely from `available`
+ * (driven by prayer_books.available_languages) — nothing is hardcoded. When a
+ * book supports a single language there's nothing to switch, so it renders nothing.
  */
 export function PrayerLanguageTabs({ available, value, onChange }: PrayerLanguageTabsProps) {
-  const { t } = useTranslation();
-
   if (available.length <= 1) return null;
 
   return (
@@ -32,8 +29,11 @@ export function PrayerLanguageTabs({ available, value, onChange }: PrayerLanguag
             onPress={() => onChange(lang)}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}>
-            <Text style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}>
-              {t(`catalog.${lang}` as TranslationKey)}
+            <Text
+              style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}
+              numberOfLines={1}
+              allowFontScaling={false}>
+              {PRAYER_LANGUAGE_LABELS[lang]}
             </Text>
             {isActive ? <View style={styles.segmentIndicator} /> : null}
           </OrthodoxPressable>

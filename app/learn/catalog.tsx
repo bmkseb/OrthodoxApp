@@ -90,17 +90,16 @@ export default function LearnCatalogScreen() {
         <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
       </OrthodoxPressable>
 
-      <ThemedText style={styles.pageTitle}>Catechism</ThemedText>
+      <ThemedText style={styles.pageTitle}>Catechism Catalog</ThemedText>
       {mode !== 'en' ? <ThemedText style={styles.pageGeez}>ትምህርት</ThemedText> : null}
       <ThemedText type="muted" style={styles.description}>
         The doctrine and teachings of the Ethiopian Orthodox Tewahedo Church.
       </ThemedText>
 
-      {collectionsToRender.map((collection, index) => (
+      {collectionsToRender.map((collection) => (
         <LearnCollectionCard
           key={collection.id}
           collection={collection}
-          defaultExpanded={index === 0}
           onTopicPress={(topic) => openLesson(topic)}
         />
       ))}

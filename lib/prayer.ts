@@ -4,12 +4,20 @@ export type PrayerLanguage = 'english' | 'amharic' | 'geez';
 
 export const PRAYER_LANGUAGES: PrayerLanguage[] = ['english', 'amharic', 'geez'];
 
+/** Display labels for the language tabs (script + transliterated name). */
+export const PRAYER_LANGUAGE_LABELS: Record<PrayerLanguage, string> = {
+  english: 'English',
+  amharic: 'አማርኛ / Amharic',
+  geez: 'ግዕዝ / Geʼez',
+};
+
 export type PrayerBook = {
   id: string;
   slug: string;
   titleEn: string;
   titleAm: string | null;
   titleGeez: string | null;
+  /** Driven by prayer_books.available_languages (maintained by a DB trigger). */
   availableLanguages: PrayerLanguage[];
 };
 
@@ -23,43 +31,51 @@ export type PrayerSection = {
 
 export type PrayerVerse = {
   id: string;
-  verseNumber: number;
-  contentEn: string;
-  contentAm: string | null;
-  contentGeez: string | null;
+  position: number;
+  english: string | null;
+  amharic: string | null;
+  geez: string | null;
+  transliteration: string | null;
 };
 
-type BookRow = {
-  id: string | number;
-  slug: string;
-  title_en: string;
-  title_am: string | null;
-  title_geez: string | null;
-  available_languages: string[] | null;
-};
+type Row = Record<string, unknown>;
 
-type SectionRow = {
-  id: string | number;
-  title_en: string;
-  title_am: string | null;
-  title_geez: string | null;
-  sort_order: number | null;
-};
+/** Trimmed string or null — treats whitespace-only content as empty. */
+function nonEmpty(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
 
-type VerseRow = {
-  id: string | number;
-  verse_number: number | null;
-  content_en: string;
-  content_am: string | null;
-  content_geez: string | null;
-};
+/** First defined column among several candidate names (schema-tolerant read). */
+function readCol(row: Row, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const v = nonEmpty(row[key]);
+    if (v !== null) return v;
+  }
+  return null;
+}
+
+function readNumber(row: Row, ...keys: string[]): number | null {
+  for (const key of keys) {
+    const v = row[key];
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+  }
+  return null;
+}
 
 /** Keep only recognized language codes; fall back to English-only when empty. */
-function normalizeLanguages(raw: string[] | null | undefined): PrayerLanguage[] {
-  const filtered = (raw ?? []).filter((lang): lang is PrayerLanguage =>
+function normalizeLanguages(raw: unknown): PrayerLanguage[] {
+  const list = Array.isArray(raw) ? raw : [];
+  const filtered = list.filter((lang): lang is PrayerLanguage =>
     PRAYER_LANGUAGES.includes(lang as PrayerLanguage)
   );
   return filtered.length > 0 ? filtered : ['english'];
+}
+
+/** English when present, otherwise the first available language. */
+export function defaultPrayerLanguage(available: PrayerLanguage[]): PrayerLanguage {
+  return available.includes('english') ? 'english' : (available[0] ?? 'english');
 }
 
 /** A prayer book by its slug (e.g. 'daily-prayer'), or null when unavailable. */
@@ -69,71 +85,83 @@ export async function fetchPrayerBook(slug: string): Promise<PrayerBook | null> 
 
   const { data, error } = await supabase
     .from('prayer_books')
-    .select('id, slug, title_en, title_am, title_geez, available_languages')
+    .select('*')
     .eq('slug', slug)
     .maybeSingle();
 
   if (error) throw error;
   if (!data) return null;
 
-  const row = data as BookRow;
+  const row = data as Row;
   return {
     id: String(row.id),
-    slug: row.slug,
-    titleEn: row.title_en,
-    titleAm: row.title_am ?? null,
-    titleGeez: row.title_geez ?? null,
+    slug: String(row.slug ?? slug),
+    titleEn: readCol(row, 'title_en', 'title_english') ?? slug,
+    titleAm: readCol(row, 'title_am', 'title_amharic'),
+    titleGeez: readCol(row, 'title_geez'),
     availableLanguages: normalizeLanguages(row.available_languages),
   };
 }
 
-/** Sections of a book, ordered by sort_order ascending. */
+/** Sections of a book, ordered by sort_order/position ascending. */
 export async function fetchPrayerSections(bookId: string): Promise<PrayerSection[]> {
   const supabase = getSupabase();
   if (!supabase || !bookId) return [];
 
-  const { data, error } = await supabase
-    .from('prayer_sections')
-    .select('id, title_en, title_am, title_geez, sort_order')
-    .eq('book_id', bookId)
-    .order('sort_order', { ascending: true });
+  const { data, error } = await supabase.from('prayer_sections').select('*').eq('book_id', bookId);
 
   if (error) throw error;
 
-  const rows = (data ?? []) as SectionRow[];
-  return rows.map((r) => ({
-    id: String(r.id),
-    titleEn: r.title_en,
-    titleAm: r.title_am ?? null,
-    titleGeez: r.title_geez ?? null,
-    sortOrder: r.sort_order ?? 0,
-  }));
+  const rows = (data ?? []) as Row[];
+  return rows
+    .map((r) => ({
+      id: String(r.id),
+      titleEn: readCol(r, 'title_en', 'title_english') ?? '',
+      titleAm: readCol(r, 'title_am', 'title_amharic'),
+      titleGeez: readCol(r, 'title_geez'),
+      sortOrder: readNumber(r, 'sort_order', 'position') ?? 0,
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-/** Verses of a section, ordered by verse_number ascending. */
+/** Verses of a section, ordered by position ascending; all language columns selected. */
 export async function fetchPrayerVerses(sectionId: string): Promise<PrayerVerse[]> {
   const supabase = getSupabase();
   if (!supabase || !sectionId) return [];
 
   const { data, error } = await supabase
     .from('prayer_verses')
-    .select('id, verse_number, content_en, content_am, content_geez')
-    .eq('section_id', sectionId)
-    .order('verse_number', { ascending: true });
+    .select('*')
+    .eq('section_id', sectionId);
 
   if (error) throw error;
 
-  const rows = (data ?? []) as VerseRow[];
-  return rows.map((r) => ({
-    id: String(r.id),
-    verseNumber: r.verse_number ?? 0,
-    contentEn: r.content_en,
-    contentAm: r.content_am ?? null,
-    contentGeez: r.content_geez ?? null,
-  }));
+  const rows = (data ?? []) as Row[];
+  return rows
+    .map((r) => ({
+      id: String(r.id),
+      position: readNumber(r, 'position', 'verse_number', 'sort_order') ?? 0,
+      english: readCol(r, 'text_english', 'content_en'),
+      amharic: readCol(r, 'text_amharic', 'content_am'),
+      geez: readCol(r, 'text_geez', 'content_geez'),
+      transliteration: readCol(r, 'text_transliteration', 'transliteration'),
+    }))
+    .sort((a, b) => a.position - b.position);
 }
 
-/** Pick the column for the active language, falling back to English. */
+/** Verse body text for the active language (no English fallback — null means absent). */
+export function pickVerseText(verse: PrayerVerse, lang: PrayerLanguage): string | null {
+  if (lang === 'amharic') return verse.amharic;
+  if (lang === 'geez') return verse.geez;
+  return verse.english;
+}
+
+/** A section "has" a language when at least one of its verses has content for it. */
+export function sectionHasLanguage(verses: PrayerVerse[], lang: PrayerLanguage): boolean {
+  return verses.some((verse) => pickVerseText(verse, lang) !== null);
+}
+
+/** Pick a title for the active language, falling back to English when null. */
 export function pickPrayerText(
   row: { en: string; am: string | null; geez: string | null },
   lang: PrayerLanguage
