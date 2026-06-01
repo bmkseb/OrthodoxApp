@@ -48,7 +48,7 @@ export function MiniPlayer({
       <View style={styles.glass} />
 
       <View style={styles.content}>
-        <SacredImage uri={artworkUri} style={styles.artwork} />
+        <SacredImage uri={artworkUri} style={styles.artwork} contentFit="contain" />
 
         <View style={styles.meta}>
           <ThemedText style={styles.title} numberOfLines={1}>

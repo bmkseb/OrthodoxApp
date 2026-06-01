@@ -21,10 +21,12 @@ export function getFloatingChromeHeight(hasMiniPlayer: boolean, safeBottom: numb
 }
 
 /** ScrollView paddingBottom so content clears floating tab bar + optional mini player. */
-export function getFloatingBottomInset(hasMiniPlayer: boolean, insets: EdgeInsets): number {
-  return (
-    getFloatingChromeHeight(hasMiniPlayer, insets.bottom) + FloatingBottom.contentExtraPadding
-  );
+export function getFloatingBottomInset(
+  hasMiniPlayer: boolean,
+  insets: EdgeInsets,
+  contentExtraPadding = FloatingBottom.contentExtraPadding
+): number {
+  return getFloatingChromeHeight(hasMiniPlayer, insets.bottom) + contentExtraPadding;
 }
 
 export function getMiniPlayerBottom(insets: EdgeInsets): number {

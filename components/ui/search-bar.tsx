@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Platform, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, View, Keyboard } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
@@ -18,6 +18,9 @@ type SearchBarProps = {
   onRemoveRecent?: (term: string) => void;
   /** Override the placeholder text colour. Defaults to `Palette.muted`. */
   placeholderTextColor?: string;
+  /** When true, recent chips under the bar are hidden (screen renders its own recents UI). */
+  hideRecentChips?: boolean;
+  onFocusChange?: (focused: boolean) => void;
 };
 
 export function SearchBar({
@@ -29,13 +32,16 @@ export function SearchBar({
   onRecentPress,
   onRemoveRecent,
   placeholderTextColor = Palette.muted,
+  hideRecentChips = false,
+  onFocusChange,
 }: SearchBarProps) {
   const [internalValue, setInternalValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const query = value ?? internalValue;
-  const showRecent = isFocused && Boolean(recentSearches?.length) && !query.trim();
+  const showRecent = !hideRecentChips && isFocused && Boolean(recentSearches?.length) && !query.trim();
 
   const applyTerm = (text: string) => {
+    Keyboard.dismiss();
     setInternalValue(text);
     onChangeText?.(text);
     onSearchSubmit?.(text);
@@ -49,6 +55,7 @@ export function SearchBar({
 
   const handleSubmit = () => {
     const trimmed = query.trim();
+    Keyboard.dismiss();
     if (trimmed) {
       onSearchSubmit?.(trimmed);
     }
@@ -65,8 +72,14 @@ export function SearchBar({
           placeholderTextColor={placeholderTextColor}
           value={query}
           onChangeText={handleChange}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={() => {
+            setIsFocused(true);
+            onFocusChange?.(true);
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            onFocusChange?.(false);
+          }}
           onSubmitEditing={handleSubmit}
           returnKeyType="search"
           accessibilityLabel={placeholder}

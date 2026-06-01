@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Dimensions, Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -9,87 +9,139 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ListenRecentSearchesPanel } from '@/components/listen/listen-recent-searches-panel';
+import { MezmurCatalogShelf } from '@/components/listen/mezmur-catalog-shelf';
+import { YaredMelodyShelf } from '@/components/listen/yared-melody-shelf';
+import { MezmurSongRow } from '@/components/listen/mezmur-song-row';
 import { PageHeader } from '@/components/orthodox/PageHeader';
 import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
+import { ContentSearchResults } from '@/components/search/content-search-results';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
+import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
 import { SearchBar } from '@/components/ui/search-bar';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SoftRailCard } from '@/components/ui/soft-rail-card';
-import { useAudioPlayer, type AudioTrack } from '@/contexts/audio-player-context';
+import { useAudioPlayer } from '@/contexts/audio-player-context';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useListenRecentSearches, type ListenRecentSearchEntry } from '@/hooks/use-listen-recent-searches';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
-import { useRecentSearches } from '@/hooks/use-recent-searches';
+import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
+import {
+  removeListeningProgress,
+  useListeningProgress,
+  type ListeningProgressEntry,
+} from '@/hooks/use-listening-progress';
+import {
+  removeSavedHymn,
+  useSavedHymns,
+  type SavedHymn,
+  type SavedListenKind,
+} from '@/hooks/use-saved-hymns';
 import { useTranslation } from '@/hooks/use-translation';
-import { resolvePlayerTrackCopy } from '@/lib/audio-track-display';
-import { encodeRouteParam, fetchArtists, type MezmurArtist } from '@/lib/mezmur';
+import {
+  encodeRouteParam,
+  fetchAllMezmur,
+  fetchArtistsGroupedByLanguage,
+  fetchSongsByArtistAlbum,
+  findMezmurByTitleNeedle,
+  listeningEntryToMezmur,
+  mezmurListToAudioTracks,
+  mezmurToAudioTrack,
+  searchMezmurCatalog,
+  type Mezmur,
+  type MezmurArtist,
+  type MezmurSearchResults,
+} from '@/lib/mezmur';
 import { SacredImagery } from '@/constants/sacred-imagery';
-import { translate, type LanguageMode, type TranslationKey } from '@/lib/translations';
 import { Layout, Palette, Space } from '@/constants/theme';
+import { MEZMUR_LANGUAGE_SHELVES, type MezmurLanguage } from '@/data/mezmurCatalog';
+import { YARED_MELODY_SHELVES } from '@/data/yaredMelodiesCatalog';
+import { translate, type LanguageMode, type TranslationKey } from '@/lib/translations';
+import type { IconName } from '@/components/Icon';
+
+const EMPTY_ARTISTS_BY_LANGUAGE: Record<MezmurLanguage, MezmurArtist[]> = {
+  english: [],
+  amharic: [],
+};
 
 type ListenTab = 'hymns' | 'sermons' | 'melodies';
 const TAB_KEYS: ListenTab[] = ['hymns', 'sermons', 'melodies'];
-// Muted gold used for the search placeholder per design spec.
 const MUTED_GOLD = '#8A8070';
-// 200ms-feel spring used by the sliding segmented-tab pill.
 const PILL_SPRING = { damping: 18, stiffness: 240, mass: 0.6 } as const;
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
-
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
-
-type Track = {
-  id: string;
-  titleKey?: TranslationKey;
-  title?: string;
-  artistKey?: TranslationKey;
-  artist?: string;
-  image: string;
-};
 
 const TAB_CONTENT: Record<
   ListenTab,
   {
-    sectionIcon: 'sparkle' | 'music';
     featured: { titleKey?: TranslationKey; title?: string; subtitleKey?: TranslationKey; subtitle?: string; image: string };
-    tracks: Track[];
   }
 > = {
   hymns: {
-    sectionIcon: 'sparkle',
     featured: { title: 'Covenant of Mercy', subtitle: 'Helena Alemu', image: SacredImagery.listenHymns },
-    tracks: [
-      { id: '1', title: 'Covenant of Mercy', artist: 'Helena Alemu', image: SacredImagery.listenHymns },
-      { id: '2', title: 'Your Graciousness has Sustained Me', artist: 'Various Artists', image: SacredImagery.prayerMary },
-      { id: '3', title: 'Holy Holy Holy', artist: 'Orthodox Choir', image: SacredImagery.readManuscript },
-    ],
   },
   sermons: {
-    sectionIcon: 'sparkle',
     featured: { title: 'The Path of Repentance', subtitle: 'Fr. Daniel Habtemariam', image: SacredImagery.listenSermons },
-    tracks: [
-      { id: '1', title: 'The Path of Repentance', artist: 'Fr. Daniel Habtemariam', image: SacredImagery.listenSermons },
-      { id: '2', title: 'Living in Christ', artist: 'Fr. Tekle Mariam', image: SacredImagery.readFeatured },
-    ],
   },
   melodies: {
-    sectionIcon: 'sparkle',
     featured: {
       titleKey: 'listen.yaredMelody',
       subtitleKey: 'listen.yaredMelodyArtist',
       image: SacredImagery.listenMelodies,
     },
-    tracks: [
-      { id: '1', titleKey: 'listen.yaredMelody', artistKey: 'listen.yaredMelodyArtist', image: SacredImagery.listenMelodies },
-      { id: '2', title: 'Ancient Chant I', artist: 'Monastery Choir', image: SacredImagery.readManuscript },
-    ],
   },
 };
 
-/** Extra catalog entries outside the Supabase mezmur channels. */
-const EXTRA_LISTEN_LINKS: { id: string; title: string; subtitle: string; image: string; route: string }[] = [
-  { id: 'office', title: 'Prayer Office', subtitle: "ሰዓታት · Se'atat", image: SacredImagery.readManuscript, route: '/horologium' },
-];
+const EMPTY_SEARCH: MezmurSearchResults = { channels: [], playlists: [], songs: [] };
+const SAVED_HYMNS_PREVIEW_LIMIT = 3;
+
+const TAB_TO_SAVED_KIND: Record<ListenTab, SavedListenKind> = {
+  hymns: 'hymn',
+  sermons: 'sermon',
+  melodies: 'melody',
+};
+
+const LISTEN_CONTINUE_ICON: IconName = 'play-outline';
+const LISTEN_CATALOG_ICON: IconName = 'scroll';
+
+const TAB_SECTION_META: Record<
+  ListenTab,
+  {
+    continueTitleKey: TranslationKey;
+    catalogTitleKey: TranslationKey;
+    savedTitleKey: TranslationKey;
+    savedIcon: IconName;
+    fallbackImage: string;
+  }
+> = {
+  hymns: {
+    continueTitleKey: 'listen.continueListening',
+    catalogTitleKey: 'listen.hymnsCatalog',
+    savedTitleKey: 'listen.savedHymns',
+    savedIcon: 'bookmark-filled',
+    fallbackImage: SacredImagery.listenHymns,
+  },
+  sermons: {
+    continueTitleKey: 'listen.continueListening',
+    catalogTitleKey: 'listen.sermonCatalog',
+    savedTitleKey: 'listen.savedSermons',
+    savedIcon: 'church',
+    fallbackImage: SacredImagery.listenSermons,
+  },
+  melodies: {
+    continueTitleKey: 'listen.continueListening',
+    catalogTitleKey: 'listen.melodiesCatalog',
+    savedTitleKey: 'listen.savedMelodies',
+    savedIcon: 'music',
+    fallbackImage: SacredImagery.listenMelodies,
+  },
+};
+
+/** Featured hymn card → catalog title match (Helena Alemu · Covenant of Mercy). */
+const FEATURED_HYMN_TITLE = 'Covenant of Mercy';
 
 function resolveLabel(t: (k: TranslationKey) => string, key?: TranslationKey, fallback?: string) {
   return key ? t(key) : (fallback ?? '');
@@ -99,13 +151,6 @@ function getListenTabLabel(t: (k: TranslationKey) => string, mode: LanguageMode,
   if (key !== 'melodies') return t(`listen.${key}`);
   if (mode === 'am') return translate('listen.yaredMelody', 'am');
   return translate('listen.yaredMelody', 'en');
-}
-
-function getCategoryLabel(key: ListenTab, t: (k: TranslationKey) => string, mode: LanguageMode): string {
-  if (key === 'hymns') return t('listen.hymns');
-  if (key === 'sermons') return t('listen.sermons');
-  if (mode === 'am') return translate('listen.melodies', 'am');
-  return translate('listen.melodies', 'en');
 }
 
 type TabLayouts = Partial<Record<ListenTab, { x: number; width: number }>>;
@@ -128,8 +173,6 @@ function SegmentedTabs({
     const layout = layouts[activeTab];
     if (!layout) return;
     if (pillOpacity.value === 0) {
-      // First measurement — snap into place, then fade in so the pill never
-      // appears to "fly in" from the origin on initial mount.
       pillX.value = layout.x;
       pillWidth.value = layout.width;
       pillOpacity.value = withSpring(1, PILL_SPRING);
@@ -184,53 +227,79 @@ export default function ListenScreen() {
   const { t, mode } = useTranslation();
   const [activeTab, setActiveTab] = useState<ListenTab>('hymns');
   const [searchQuery, setSearchQuery] = useState('');
-  const [mezmurArtists, setMezmurArtists] = useState<MezmurArtist[]>([]);
-  const { recentSearches, addRecentSearch } = useRecentSearches('listen');
-  const { playTrack, openFullPlayer } = useAudioPlayer();
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchBlurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [mezmurArtistsByLanguage, setMezmurArtistsByLanguage] =
+    useState<Record<MezmurLanguage, MezmurArtist[]>>(EMPTY_ARTISTS_BY_LANGUAGE);
+  const [mezmurCatalog, setMezmurCatalog] = useState<Mezmur[]>([]);
+  const [searchResults, setSearchResults] = useState<MezmurSearchResults>(EMPTY_SEARCH);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const { entries: continueEntries } = useListeningProgress();
+  const { entries: savedItems } = useSavedHymns();
+  const savedKind = TAB_TO_SAVED_KIND[activeTab];
+  const savedForTab = useMemo(
+    () => savedItems.filter((entry) => entry.kind === savedKind),
+    [savedItems, savedKind]
+  );
+  const savedPreview = useMemo(
+    () => savedForTab.slice(0, SAVED_HYMNS_PREVIEW_LIMIT),
+    [savedForTab]
+  );
+  const {
+    entries: recentSearchEntries,
+    addRecentSearch,
+    removeRecentSearch,
+    clearRecentSearches,
+  } = useListenRecentSearches();
+  const { playTrack } = useAudioPlayer();
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = useFloatingBottomInset();
-  const { values: scrollIndicator, scrollHandler } = useScrollIndicator();
-  const content = TAB_CONTENT[activeTab];
-  const categoryLabel = getCategoryLabel(activeTab, t, mode);
+  const {
+    values: scrollIndicator,
+    scrollHandler,
+    onLayout: onScrollShellLayout,
+    onContentSizeChange: onScrollContentSizeChange,
+  } = useScrollIndicator();
   const featuredWidth = WINDOW_WIDTH - Layout.pagePadding * 2;
+  const debouncedQuery = useDebouncedValue(searchQuery.trim(), 350);
+  const trimmedSearchQuery = searchQuery.trim();
+  const showRecentLayout = searchFocused && !trimmedSearchQuery;
+  const keyboardHeight = useKeyboardHeight();
+  const searchKeyboardActive = keyboardHeight > 0 && (showRecentLayout || Boolean(trimmedSearchQuery));
+  const searchResultsQueryRef = useRef('');
+  const pendingQuerySaveRef = useRef<string | null>(null);
+  const lastSavedQueryRef = useRef('');
 
-  const toPlaybackTrack = useCallback(
-    (track: Track): AudioTrack => {
-      const copy = resolvePlayerTrackCopy({
-        mode,
-        titleKey: track.titleKey,
-        title: track.title,
-        artistKey: track.artistKey,
-        artist: track.artist,
-        categoryLabel,
-      });
-      return {
-        id: `${activeTab}-${track.id}`,
-        title: copy.title,
-        artist: copy.artist,
-        artworkUri: track.image,
-        category: copy.categoryLabel,
-        categoryLabel: copy.categoryLabel,
-        titleKey: track.titleKey,
-        artistKey: track.artistKey,
-      };
-    },
-    [activeTab, categoryLabel, mode]
-  );
+  useEffect(() => {
+    return () => {
+      if (searchBlurTimerRef.current) clearTimeout(searchBlurTimerRef.current);
+    };
+  }, []);
 
-  const buildQueue = useCallback(
-    (): AudioTrack[] => content.tracks.map((track) => toPlaybackTrack(track)),
-    [content.tracks, toPlaybackTrack]
-  );
+  const handleSearchFocusChange = useCallback((focused: boolean) => {
+    if (searchBlurTimerRef.current) clearTimeout(searchBlurTimerRef.current);
+    if (focused) {
+      setSearchFocused(true);
+      return;
+    }
+    searchBlurTimerRef.current = setTimeout(() => setSearchFocused(false), 150);
+  }, []);
 
   useEffect(() => {
     let active = true;
-    fetchArtists()
+    fetchArtistsGroupedByLanguage()
       .then((rows) => {
-        if (active) setMezmurArtists(rows);
+        if (active) setMezmurArtistsByLanguage(rows);
       })
       .catch(() => {
-        if (active) setMezmurArtists([]);
+        if (active) setMezmurArtistsByLanguage(EMPTY_ARTISTS_BY_LANGUAGE);
+      });
+    fetchAllMezmur()
+      .then((rows) => {
+        if (active) setMezmurCatalog(rows);
+      })
+      .catch(() => {
+        if (active) setMezmurCatalog([]);
       });
     return () => {
       active = false;
@@ -238,151 +307,475 @@ export default function ListenScreen() {
   }, []);
 
   useEffect(() => {
-    const first = content.tracks[0];
-    if (first) {
-      const queue = buildQueue();
-      playTrack(toPlaybackTrack(first), { queue });
+    if (!debouncedQuery) {
+      setSearchResults(EMPTY_SEARCH);
+      setSearchLoading(false);
+      searchResultsQueryRef.current = '';
+      return;
     }
-  }, [activeTab, buildQueue, content.tracks, playTrack, toPlaybackTrack]);
 
-  const playFromTrack = useCallback(
-    (track: Track) => {
-      playTrack(toPlaybackTrack(track), { queue: buildQueue() });
+    let active = true;
+    const query = debouncedQuery;
+    setSearchResults(EMPTY_SEARCH);
+    setSearchLoading(true);
+    searchResultsQueryRef.current = '';
+
+    searchMezmurCatalog(query)
+      .then((results) => {
+        if (active) {
+          setSearchResults(results);
+          searchResultsQueryRef.current = query;
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSearchResults(EMPTY_SEARCH);
+          searchResultsQueryRef.current = query;
+        }
+      })
+      .finally(() => {
+        if (active) setSearchLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedQuery]);
+
+  const playContinueEntry = useCallback(
+    async (entry: ListeningProgressEntry) => {
+      const songs = await fetchSongsByArtistAlbum(entry.artist, entry.album);
+      const queue = mezmurListToAudioTracks(songs.length > 0 ? songs : [listeningEntryToMezmur(entry)]);
+      const track = mezmurToAudioTrack(listeningEntryToMezmur(entry));
+      playTrack(track, {
+        queue,
+        autoPlay: true,
+        startSeconds: entry.positionSeconds,
+        openFullPlayer: true,
+      });
     },
-    [buildQueue, playTrack, toPlaybackTrack]
+    [playTrack]
   );
 
-  // Auto-rotating featured carousel skims across all three categories.
+  const playSong = useCallback(
+    async (song: Mezmur) => {
+      const songs = await fetchSongsByArtistAlbum(song.artist, song.album);
+      const queue = mezmurListToAudioTracks(songs.length > 0 ? songs : [song]);
+      playTrack(mezmurToAudioTrack(song), { queue, autoPlay: true, openFullPlayer: true });
+    },
+    [playTrack]
+  );
+
+  const featuredHymn = useMemo(
+    () => findMezmurByTitleNeedle(mezmurCatalog, FEATURED_HYMN_TITLE),
+    [mezmurCatalog]
+  );
+
+  const playSavedItem = useCallback(
+    (entry: SavedHymn) => {
+      void playSong(listeningEntryToMezmur(entry));
+    },
+    [playSong]
+  );
+
   const featuredItems = useMemo<FeaturedItem[]>(
     () =>
       TAB_KEYS.map((tab) => {
         const f = TAB_CONTENT[tab].featured;
+        const isFeaturedHymn = tab === 'hymns';
         return {
           id: tab,
           title: resolveLabel(t, f.titleKey, f.title),
           subtitle: resolveLabel(t, f.subtitleKey, f.subtitle),
           badgeLabel: getListenTabLabel(t, mode, tab),
-          imageUri: f.image,
-          onPress: () => setActiveTab(tab),
+          imageUri:
+            isFeaturedHymn && featuredHymn?.thumbnailUrl ? featuredHymn.thumbnailUrl : f.image,
+          onPress: () => {
+            if (isFeaturedHymn && featuredHymn) {
+              void playSong(featuredHymn);
+              return;
+            }
+            setActiveTab(tab);
+          },
         };
       }),
-    [t, mode]
+    [t, mode, featuredHymn, playSong]
   );
 
-  const q = searchQuery.trim().toLowerCase();
-  const filteredTracks = useMemo(() => {
-    if (!q) return content.tracks;
-    return content.tracks.filter((track) => {
-      const title = resolveLabel(t, track.titleKey, track.title);
-      const artist = resolveLabel(t, track.artistKey, track.artist);
-      return title.toLowerCase().includes(q) || artist.toLowerCase().includes(q);
-    });
-  }, [content.tracks, q, t]);
+  const hasSearchHits =
+    searchResults.channels.length > 0 ||
+    searchResults.playlists.length > 0 ||
+    searchResults.songs.length > 0;
 
-  const handleSearchSubmit = (term: string) => {
-    setSearchQuery(term);
-    void addRecentSearch(term);
-  };
+  const trySaveSubmittedQuery = useCallback(() => {
+    const pending = pendingQuerySaveRef.current;
+    if (!pending || pending !== debouncedQuery) return;
+    if (searchLoading) return;
+    if (searchResultsQueryRef.current !== debouncedQuery) return;
+
+    pendingQuerySaveRef.current = null;
+    if (!hasSearchHits) return;
+    if (lastSavedQueryRef.current === debouncedQuery) return;
+
+    lastSavedQueryRef.current = debouncedQuery;
+    void addRecentSearch({
+      kind: 'query',
+      title: debouncedQuery,
+      query: debouncedQuery,
+    });
+  }, [addRecentSearch, debouncedQuery, hasSearchHits, searchLoading]);
+
+  useEffect(() => {
+    trySaveSubmittedQuery();
+  }, [trySaveSubmittedQuery]);
+
+  const handleSearchSubmit = useCallback((term: string) => {
+    const trimmed = term.trim();
+    setSearchQuery(trimmed);
+    pendingQuerySaveRef.current = trimmed || null;
+  }, []);
+
+  const saveChannelRecent = useCallback(
+    (channel: MezmurArtist) => {
+      void addRecentSearch({
+        kind: 'channel',
+        title: channel.name,
+        subtitle: `${channel.albumCount} playlists · ${channel.songCount} songs`,
+        thumbnailUrl: channel.thumbnailUrl ?? undefined,
+        channelName: channel.name,
+      });
+    },
+    [addRecentSearch]
+  );
+
+  const savePlaylistRecent = useCallback(
+    (artist: string, album: { name: string; thumbnailUrl?: string | null }) => {
+      void addRecentSearch({
+        kind: 'playlist',
+        title: album.name,
+        subtitle: artist,
+        thumbnailUrl: album.thumbnailUrl ?? undefined,
+        artist,
+        album: album.name,
+      });
+    },
+    [addRecentSearch]
+  );
+
+  const saveSongRecent = useCallback(
+    (song: Mezmur, kind: ListenRecentSearchEntry['kind'] = 'song') => {
+      void addRecentSearch({
+        kind,
+        title: song.title,
+        subtitle: `${song.artist} · ${song.album}`,
+        thumbnailUrl: song.thumbnailUrl ?? undefined,
+        videoId: song.videoId,
+        artist: song.artist,
+        album: song.album,
+      });
+    },
+    [addRecentSearch]
+  );
+
+  const handleRecentEntryPress = useCallback(
+    (entry: ListenRecentSearchEntry) => {
+      Keyboard.dismiss();
+      switch (entry.kind) {
+        case 'query':
+          setSearchQuery(entry.query ?? entry.title);
+          return;
+        case 'channel':
+          router.push(`/listen/${encodeRouteParam(entry.channelName ?? entry.title)}` as never);
+          return;
+        case 'playlist':
+          if (entry.artist && entry.album) {
+            router.push(
+              `/listen/${encodeRouteParam(entry.artist)}/${encodeRouteParam(entry.album)}` as never
+            );
+          }
+          return;
+        case 'song':
+        case 'sermon':
+        case 'video':
+        case 'melody':
+          if (entry.videoId && entry.artist && entry.album) {
+            void playSong(
+              listeningEntryToMezmur({
+                videoId: entry.videoId,
+                title: entry.title,
+                artist: entry.artist,
+                album: entry.album,
+                thumbnailUrl: entry.thumbnailUrl ?? '',
+              })
+            );
+          }
+          return;
+        default:
+          return;
+      }
+    },
+    [playSong]
+  );
+
+  const tabSections = TAB_SECTION_META[activeTab];
+  const showSavedSection = savedForTab.length > 0;
+  const keyboardContentGap = Space.s12;
+  const recentBottomInset = keyboardHeight > 0 ? keyboardContentGap : scrollBottomPadding;
+  const searchResultsBottomInset = keyboardHeight > 0 ? keyboardContentGap : scrollBottomPadding;
+  const listenScrollTrackRight = -Layout.pagePadding + 4;
 
   return (
     <ThemedView style={styles.root}>
       <SacredAtmosphere />
-      <AnimatedScrollView
-        style={styles.scroll}
-        nestedScrollEnabled
-        showsVerticalScrollIndicator={false}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: insets.top + Space.s8,
-            paddingBottom: scrollBottomPadding,
-          },
-        ]}>
-        <PageHeader title="Listen" geez="መዝሙር" />
-        <View style={styles.searchWrap}>
-          <SearchBar
-            placeholder={t('listen.searchPlaceholder')}
-            placeholderTextColor={MUTED_GOLD}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSearchSubmit={handleSearchSubmit}
-            recentSearches={recentSearches}
-          />
-        </View>
-        <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
+      <KeyboardAvoidingView
+        style={[
+          styles.keyboardAvoid,
+          Platform.OS === 'android' &&
+            searchKeyboardActive &&
+            { paddingBottom: keyboardHeight },
+        ]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={searchKeyboardActive && Platform.OS === 'ios'}>
+        <View
+          style={[
+            styles.screenBody,
+            {
+              paddingTop: insets.top + Space.s8,
+              paddingBottom:
+                showRecentLayout && keyboardHeight === 0 ? scrollBottomPadding : 0,
+            },
+          ]}>
+          <PageHeader title="Listen" geez="መዝሙር" />
 
-        {/* Continue listening — horizontal rail of the active category */}
-        {filteredTracks.length > 0 ? (
-          <View style={styles.section}>
-            <SectionHeader title="Continue Listening" icon="music" onSeeAllPress={openFullPlayer} />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.rail}>
-              {filteredTracks.map((track) => (
-                <SoftRailCard
-                  key={track.id}
-                  title={resolveLabel(t, track.titleKey, track.title)}
-                  subtitle={resolveLabel(t, track.artistKey, track.artist)}
-                  onPress={() => playFromTrack(track)}
-                />
-              ))}
-            </ScrollView>
+          <View style={styles.searchWrap}>
+            <SearchBar
+              placeholder={t('listen.searchPlaceholder')}
+              placeholderTextColor={MUTED_GOLD}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSearchSubmit={handleSearchSubmit}
+              hideRecentChips
+              onFocusChange={handleSearchFocusChange}
+            />
           </View>
-        ) : null}
 
-        {/* Featured — auto-rotating across categories */}
-        <View style={styles.section}>
-          <SectionHeader title="Featured" icon="sparkle" />
-          <FeaturedCarousel
-            items={featuredItems}
-            width={featuredWidth}
-            autoRotateMs={3200}
-            cardHeight={176}
-          />
+          {showRecentLayout ? (
+            <ListenRecentSearchesPanel
+              entries={recentSearchEntries}
+              onPressEntry={handleRecentEntryPress}
+              onRemoveEntry={(id) => void removeRecentSearch(id)}
+              onClearAll={() => void clearRecentSearches()}
+              bottomInset={recentBottomInset}
+              showScrollIndicator={keyboardHeight > 0}
+            />
+          ) : (
+            <View style={styles.scrollShell} onLayout={onScrollShellLayout}>
+              <AnimatedScrollView
+                style={styles.scroll}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                onScroll={scrollHandler}
+                scrollEventThrottle={16}
+                onContentSizeChange={onScrollContentSizeChange}
+                contentContainerStyle={{ paddingBottom: searchResultsBottomInset }}>
+                {trimmedSearchQuery ? (
+                <>
+                  <ContentSearchResults
+                    heading="Channels"
+                    hits={searchResults.channels.map((channel) => ({
+                      id: `channel-${channel.name}`,
+                      title: channel.name,
+                      subtitle: `${channel.albumCount} playlists · ${channel.songCount} songs`,
+                      imageUri: channel.thumbnailUrl,
+                      isHeader: true,
+                      onPress: () => {
+                        saveChannelRecent(channel);
+                        router.push(`/listen/${encodeRouteParam(channel.name)}` as never);
+                      },
+                    }))}
+                  />
+                  <ContentSearchResults
+                    heading="Playlists"
+                    hits={searchResults.playlists.map(({ artist, album }) => ({
+                      id: `playlist-${artist}-${album.name}`,
+                      title: album.name,
+                      subtitle: artist,
+                      imageUri: album.thumbnailUrl,
+                      isHeader: true,
+                      onPress: () => {
+                        savePlaylistRecent(artist, album);
+                        router.push(
+                          `/listen/${encodeRouteParam(artist)}/${encodeRouteParam(album.name)}` as never
+                        );
+                      },
+                    }))}
+                  />
+                  <ContentSearchResults
+                    heading="Songs"
+                    hits={searchResults.songs.map((song) => ({
+                      id: `song-${song.videoId}`,
+                      title: song.title,
+                      subtitle: `${song.artist} · ${song.album}`,
+                      imageUri: song.thumbnailUrl || null,
+                      onPress: () => {
+                        saveSongRecent(song);
+                        void playSong(song);
+                      },
+                    }))}
+                    loading={searchLoading}
+                    emptyLabel={
+                      !searchLoading && !hasSearchHits ? 'No mezmur found on Listen.' : undefined
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
+
+                  {continueEntries.length > 0 ? (
+                    <View style={styles.section}>
+                      <SectionHeader
+                        title={t(tabSections.continueTitleKey)}
+                        icon={LISTEN_CONTINUE_ICON}
+                      />
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.rail}>
+                        {continueEntries.map((entry) => (
+                          <SoftRailCard
+                            key={entry.videoId}
+                            title={entry.title}
+                            subtitle={`${entry.artist} · ${entry.album}`}
+                            imageUri={entry.thumbnailUrl || tabSections.fallbackImage}
+                            onPress={() => void playContinueEntry(entry)}
+                            onRemove={() => void removeListeningProgress(entry.videoId)}
+                            removeLabel={`Remove ${entry.title}`}
+                          />
+                        ))}
+                      </ScrollView>
+                    </View>
+                  ) : null}
+
+                  <View style={styles.section}>
+                    <SectionHeader title={t('sections.featured')} icon="sparkle" />
+                    <FeaturedCarousel
+                      items={featuredItems}
+                      width={featuredWidth}
+                      autoRotateMs={3200}
+                      cardHeight={176}
+                    />
+                  </View>
+
+                  <View style={[styles.section, !showSavedSection && styles.lastSection]}>
+                    <SectionHeader
+                      title={t(tabSections.catalogTitleKey)}
+                      icon={LISTEN_CATALOG_ICON}
+                    />
+                    {activeTab === 'hymns' ? (
+                      MEZMUR_LANGUAGE_SHELVES.map((shelf, index, shelves) => (
+                        <MezmurCatalogShelf
+                          key={shelf.language}
+                          title={t(`catalog.${shelf.language}` as TranslationKey)}
+                          artists={mezmurArtistsByLanguage[shelf.language]}
+                          compactBottom={showSavedSection && index === shelves.length - 1}
+                          onSeeAll={() =>
+                            router.push({
+                              pathname: '/listen',
+                              params: { language: shelf.language },
+                            } as never)
+                          }
+                        />
+                      ))
+                    ) : activeTab === 'melodies' ? (
+                      YARED_MELODY_SHELVES.map((shelf, index, shelves) => (
+                        <YaredMelodyShelf
+                          key={shelf.id}
+                          shelf={shelf}
+                          compactBottom={showSavedSection && index === shelves.length - 1}
+                          onSeeAll={() =>
+                            router.push({
+                              pathname: '/listen/melodies',
+                              params: { shelf: shelf.id },
+                            } as never)
+                          }
+                        />
+                      ))
+                    ) : (
+                      <ThemedText type="muted" style={styles.catalogPlaceholder}>
+                        {t('listen.catalogComingSoon')}
+                      </ThemedText>
+                    )}
+                  </View>
+
+                  {showSavedSection ? (
+                    <View style={[styles.section, styles.lastSection]}>
+                      <SectionHeader
+                        title={t(tabSections.savedTitleKey)}
+                        icon={tabSections.savedIcon}
+                        onSeeAllPress={() =>
+                          router.push({
+                            pathname: '/listen/saved',
+                            params: { kind: savedKind },
+                          } as never)
+                        }
+                      />
+                      <View style={styles.savedHymnsList}>
+                        {savedPreview.map((entry, index) => (
+                          <View key={entry.videoId}>
+                            <MezmurSongRow
+                              title={entry.title}
+                              subtitle={`${entry.artist} · ${entry.album}`}
+                              thumbnailUrl={entry.thumbnailUrl || tabSections.fallbackImage}
+                              audioTrack={mezmurToAudioTrack(listeningEntryToMezmur(entry))}
+                              onPress={() => playSavedItem(entry)}
+                              onRemove={() => void removeSavedHymn(entry.videoId)}
+                              removeIcon="more-horizontal"
+                              removeLabel="Remove Saved Hymn"
+                            />
+                            {index < savedPreview.length - 1 ? (
+                              <View style={styles.savedHymnDivider} />
+                            ) : null}
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
+                </>
+              )}
+              </AnimatedScrollView>
+
+              {(trimmedSearchQuery && keyboardHeight > 0) || !trimmedSearchQuery ? (
+                <ScrollIndicator
+                  values={scrollIndicator}
+                  persistent={Boolean(trimmedSearchQuery && keyboardHeight > 0)}
+                  trackRight={listenScrollTrackRight}
+                  trackInsetBottom={scrollBottomPadding}
+                />
+              ) : null}
+            </View>
+          )}
         </View>
-
-        {/* Catalog — browse the wider audio library */}
-        <View style={styles.section}>
-          <SectionHeader title="Hymns Catalog" icon="scroll" onSeeAllPress={() => router.push('/listen' as never)} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
-            {mezmurArtists.map((channel) => (
-              <SoftRailCard
-                key={channel.name}
-                title={channel.name}
-                subtitle={`${channel.albumCount} playlists · ${channel.songCount} songs`}
-                imageUri={channel.thumbnailUrl ?? SacredImagery.listenHymns}
-                onPress={() => router.push(`/listen/${encodeRouteParam(channel.name)}` as never)}
-              />
-            ))}
-            {EXTRA_LISTEN_LINKS.map((c) => (
-              <SoftRailCard
-                key={c.id}
-                title={c.title}
-                subtitle={c.subtitle}
-                imageUri={c.image}
-                onPress={() => router.push(c.route as never)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-      </AnimatedScrollView>
-
-      <ScrollIndicator
-        values={scrollIndicator}
-        trackInsetTop={insets.top + Space.s8}
-        trackInsetBottom={scrollBottomPadding}
-      />
+      </KeyboardAvoidingView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.background },
+  keyboardAvoid: { flex: 1 },
+  screenBody: {
+    flex: 1,
+    minHeight: 0,
+    paddingHorizontal: Layout.pagePadding,
+  },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: Layout.pagePadding },
+  scrollShell: {
+    flex: 1,
+    minHeight: 0,
+    overflow: 'visible',
+  },
   searchWrap: { marginBottom: Space.s16 },
   segmentContainer: {
     flexDirection: 'row',
@@ -417,6 +810,18 @@ const styles = StyleSheet.create({
   segmentLabelActive: { color: '#000000', fontWeight: '600' },
   segmentLabelInactive: { color: MUTED_GOLD, fontWeight: '500' },
   section: { marginBottom: Layout.sectionContentBottom },
+  lastSection: { marginBottom: 0 },
+  savedHymnsList: { marginTop: 2 },
+  savedHymnDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Layout.cardBorder,
+    marginLeft: 60,
+  },
+  catalogPlaceholder: {
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 2,
+  },
   rail: {
     gap: Layout.cardGap,
     paddingRight: Layout.pagePadding,

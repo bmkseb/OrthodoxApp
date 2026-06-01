@@ -1,4 +1,4 @@
-import { router, type Href } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 
@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/orthodox/PageHeader';
 import { BookshelfBookCard } from '@/components/read/bookshelf-book-card';
 import { BookshelfSection } from '@/components/read/bookshelf-section';
 import { CatalogShelf } from '@/components/read/catalog-shelf';
+import { SavedReadContent } from '@/components/read/saved-read-content';
 import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
 import { HolyBibleHeroCard } from '@/components/sacred/holy-bible-hero-card';
 import { ContentSearchResults } from '@/components/search/content-search-results';
@@ -49,6 +50,7 @@ const CATALOG_BOOKS = CATALOG_SHELVES.flatMap((shelf) =>
 // Curated highlights — only books that open a real reader (excludes the
 // placeholder Liturgy entry and Enoch, which lives inside the Holy Bible).
 const FEATURED_BOOK_IDS = ['bible', 'daily-prayer', 'wudase-mariam', 'horologium'];
+const SAVED_PREVIEW_LIMIT = 3;
 
 export default function ReadScreen() {
   const { t } = useTranslation();
@@ -270,6 +272,13 @@ export default function ReadScreen() {
           />
         ))}
       </View>
+
+      {!debouncedQuery ? (
+        <View style={[styles.section, styles.lastSection]}>
+          <SectionHeader headerKey="saved" icon="bookmark-filled" />
+          <SavedReadContent previewLimitPerSection={SAVED_PREVIEW_LIMIT} />
+        </View>
+      ) : null}
     </ScreenScrollView>
   );
 }
@@ -280,6 +289,9 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: Layout.sectionContentBottom,
+  },
+  lastSection: {
+    marginBottom: 0,
   },
   railHint: {
     marginTop: Space.s8,

@@ -292,7 +292,7 @@ export default function LearnScreen() {
           ) : null}
 
           <View style={styles.section}>
-            <SectionHeader title="Featured Teaching" icon="sparkle" />
+            <SectionHeader headerKey="featured" icon="sparkle" />
             <FeaturedCarousel
               items={featuredItems}
               width={width - Layout.pagePadding * 2}

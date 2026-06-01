@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { runOnJS } from 'react-native-reanimated';
 
 import { Palette } from '@/constants/theme';
 
@@ -11,77 +11,94 @@ type GoldProgressSliderProps = {
 };
 
 export function GoldProgressSlider({ progress, onSeek }: GoldProgressSliderProps) {
-  const width = useSharedValue(0);
-  const dragProgress = useSharedValue(progress);
+  const trackWidthRef = useRef(0);
+  const [scrubbing, setScrubbing] = useState(false);
+  const [scrubProgress, setScrubProgress] = useState(0);
 
-  React.useEffect(() => {
-    dragProgress.value = progress;
-  }, [progress, dragProgress]);
+  const clamp = useCallback((value: number) => Math.min(Math.max(value, 0), 1), []);
 
-  const fillStyle = useAnimatedStyle(() => {
-    const w = width.value * Math.min(Math.max(dragProgress.value, 0), 1);
-    return { width: w };
-  });
+  const progressFromX = useCallback(
+    (x: number) => {
+      const width = trackWidthRef.current;
+      if (width <= 0) return 0;
+      return clamp(x / width);
+    },
+    [clamp]
+  );
 
-  const thumbStyle = useAnimatedStyle(() => {
-    const w = width.value * Math.min(Math.max(dragProgress.value, 0), 1);
-    return { transform: [{ translateX: w - 5 }] };
-  });
+  const beginScrub = useCallback(
+    (x: number) => {
+      setScrubbing(true);
+      setScrubProgress(progressFromX(x));
+    },
+    [progressFromX]
+  );
+
+  const updateScrub = useCallback(
+    (x: number) => {
+      setScrubProgress(progressFromX(x));
+    },
+    [progressFromX]
+  );
+
+  const endScrub = useCallback(
+    (x: number) => {
+      const next = progressFromX(x);
+      setScrubProgress(next);
+      setScrubbing(false);
+      onSeek(next);
+    },
+    [onSeek, progressFromX]
+  );
 
   const pan = Gesture.Pan()
-    .onUpdate((e) => {
-      if (width.value <= 0) return;
-      dragProgress.value = Math.min(Math.max(e.x / width.value, 0), 1);
+    .onBegin((e) => {
+      runOnJS(beginScrub)(e.x);
     })
-    .onEnd(() => {
-      runOnJS(onSeek)(dragProgress.value);
+    .onUpdate((e) => {
+      runOnJS(updateScrub)(e.x);
+    })
+    .onEnd((e) => {
+      runOnJS(endScrub)(e.x);
     });
 
   const tap = Gesture.Tap().onEnd((e) => {
-    if (width.value <= 0) return;
-    const next = Math.min(Math.max(e.x / width.value, 0), 1);
-    dragProgress.value = next;
-    runOnJS(onSeek)(next);
+    runOnJS(endScrub)(e.x);
   });
+
+  const shown = scrubbing ? scrubProgress : progress;
+  const pct = clamp(shown) * 100;
 
   return (
     <GestureDetector gesture={Gesture.Race(pan, tap)}>
       <View
-        style={styles.track}
+        style={styles.hitArea}
         onLayout={(e) => {
-          width.value = e.nativeEvent.layout.width;
+          trackWidthRef.current = e.nativeEvent.layout.width;
         }}>
-        <Animated.View style={[styles.fill, fillStyle]} />
-        <Animated.View style={[styles.thumb, thumbStyle]} />
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${pct}%` }]} />
+        </View>
       </View>
     </GestureDetector>
   );
 }
 
 const styles = StyleSheet.create({
-  track: {
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  hitArea: {
+    width: '100%',
+    paddingVertical: 12,
     justifyContent: 'center',
   },
-  fill: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(201, 147, 58, 0.75)',
+  track: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
   },
-  thumb: {
-    position: 'absolute',
-    left: 0,
-    top: -4,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  fill: {
+    height: '100%',
+    borderRadius: 2,
     backgroundColor: Palette.gold,
-    borderWidth: 1.5,
-    borderColor: Palette.background,
   },
 });

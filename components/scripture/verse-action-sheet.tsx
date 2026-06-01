@@ -116,9 +116,9 @@ export function VerseActionSheet({
                   <OrthodoxPressable
                     style={[styles.actionBtn, styles.removeBtn]}
                     onPress={onRemove}
-                    accessibilityLabel="Remove from saved">
+                    accessibilityLabel="Remove Highlight">
                     <Icon name="close" size={16} color={Palette.crimson} />
-                    <ThemedText style={[styles.actionLabel, styles.removeLabel]}>Remove</ThemedText>
+                    <ThemedText style={[styles.actionLabel, styles.removeLabel]}>Remove Highlight</ThemedText>
                   </OrthodoxPressable>
                 ) : (
                   <View style={styles.actionBtn} />

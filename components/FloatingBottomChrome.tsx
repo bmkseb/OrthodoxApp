@@ -4,19 +4,15 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomFloatingNav } from '@/components/BottomFloatingNav';
-import { FloatingMiniPlayer } from '@/components/FloatingMiniPlayer';
 import { getFloatingChromeHeight } from '@/constants/floating-bottom';
-import { usePlayback } from '@/contexts/playback-context';
 
-/** Tab bar slot: mini player + floating pill nav as one bottom control system. */
+/** Tab bar slot: floating pill nav (mini player renders globally). */
 export function FloatingBottomChrome(props: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const { isMiniPlayerVisible } = usePlayback();
-  const height = getFloatingChromeHeight(isMiniPlayerVisible, insets.bottom);
+  const height = getFloatingChromeHeight(false, insets.bottom);
 
   return (
     <View style={[styles.host, { height }]} pointerEvents="box-none">
-      <FloatingMiniPlayer />
       <BottomFloatingNav {...props} />
     </View>
   );

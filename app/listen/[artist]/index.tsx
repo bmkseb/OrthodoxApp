@@ -1,30 +1,36 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { ScriptureBackBar } from '@/components/scripture/scripture-back-bar';
-import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
+import { MezmurPlaylistRow } from '@/components/listen/mezmur-playlist-row';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
-import { BorderRadius, Layout, Palette } from '@/constants/theme';
+import { SearchBar } from '@/components/ui/search-bar';
+import { Layout, Palette, Space, Spacing } from '@/constants/theme';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import {
   decodeRouteParam,
   encodeRouteParam,
   fetchAlbumsByArtist,
+  filterByQuery,
   type MezmurAlbum,
 } from '@/lib/mezmur';
 
+const MUTED_GOLD = '#8A8070';
+
 export default function ListenAlbumsScreen() {
-  const { t } = useTranslation();
+  const { t, mode } = useTranslation();
   const { artist: artistParam } = useLocalSearchParams<{ artist: string }>();
   const artist = decodeRouteParam(artistParam);
 
   const [albums, setAlbums] = useState<MezmurAlbum[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { recentSearches, addRecentSearch } = useRecentSearches(`listen-playlists-${artist}`);
 
   const load = useCallback(async () => {
     if (!artist) return;
@@ -45,19 +51,54 @@ export default function ListenAlbumsScreen() {
     void load();
   }, [load]);
 
+  const filteredAlbums = useMemo(
+    () => filterByQuery(albums, searchQuery, (album) => [album.name]),
+    [albums, searchQuery]
+  );
+
   if (!artist) {
     return (
-      <ScreenScrollView includeFloatingChrome={false}>
-        <ScriptureBackBar />
+      <ScreenScrollView includeFloatingChrome>
+        <OrthodoxPressable style={styles.topBar} onPress={() => router.back()}>
+          <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
+        </OrthodoxPressable>
         <EmptyState title="Channel not found" />
       </ScreenScrollView>
     );
   }
 
   return (
-    <ScreenScrollView includeFloatingChrome={false}>
-      <ScriptureBackBar />
-      <ScriptureBookHeader title={artist} subtitle="Select a playlist" />
+    <ScreenScrollView includeFloatingChrome>
+      <OrthodoxPressable
+        style={styles.topBar}
+        onPress={() => {
+          if (router.canGoBack()) router.back();
+          else router.push('/(tabs)/listen');
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={t('settings.back')}>
+        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
+      </OrthodoxPressable>
+
+      <ThemedText style={styles.pageTitle}>{artist}</ThemedText>
+      {mode !== 'en' ? <ThemedText style={styles.pageGeez}>መዝሙር</ThemedText> : null}
+      <ThemedText type="muted" style={styles.description}>
+        Playlists from this channel.
+      </ThemedText>
+
+      <View style={styles.searchWrap}>
+        <SearchBar
+          placeholder="Search playlists"
+          placeholderTextColor={MUTED_GOLD}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSearchSubmit={(term) => {
+            setSearchQuery(term);
+            void addRecentSearch(term);
+          }}
+          recentSearches={recentSearches}
+        />
+      </View>
 
       {loading ? (
         <ActivityIndicator color={Palette.gold} style={styles.spinner} />
@@ -65,25 +106,24 @@ export default function ListenAlbumsScreen() {
         <EmptyState title={error} suggestion={t('scripture.tryAgain')} />
       ) : albums.length === 0 ? (
         <EmptyState title="No playlists found" suggestion="Try again later." />
+      ) : filteredAlbums.length === 0 ? (
+        <EmptyState title="No playlists match your search" suggestion="Try a different term." />
       ) : (
-        <View style={styles.grid}>
-          {albums.map((album) => (
-            <OrthodoxPressable
-              key={album.name}
-              style={styles.playlistCell}
-              onPress={() =>
-                router.push(
-                  `/listen/${encodeRouteParam(artist)}/${encodeRouteParam(album.name)}` as never
-                )
-              }
-              accessibilityRole="button">
-              <ThemedText style={styles.playlistTitle} numberOfLines={3}>
-                {album.name}
-              </ThemedText>
-              <ThemedText type="muted" style={styles.playlistMeta}>
-                {album.songCount} {album.songCount === 1 ? 'song' : 'songs'}
-              </ThemedText>
-            </OrthodoxPressable>
+        <View style={styles.list}>
+          {filteredAlbums.map((album, index) => (
+            <View key={album.name}>
+              <MezmurPlaylistRow
+                title={album.name}
+                songCount={album.songCount}
+                thumbnailUrl={album.thumbnailUrl}
+                onPress={() =>
+                  router.push(
+                    `/listen/${encodeRouteParam(artist)}/${encodeRouteParam(album.name)}` as never
+                  )
+                }
+              />
+              {index < filteredAlbums.length - 1 ? <View style={styles.divider} /> : null}
+            </View>
           ))}
         </View>
       )}
@@ -92,34 +132,32 @@ export default function ListenAlbumsScreen() {
 }
 
 const styles = StyleSheet.create({
-  spinner: { marginTop: 32 },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  topBar: {
+    marginBottom: Spacing.sm,
   },
-  playlistCell: {
-    width: '30%',
-    minWidth: 96,
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Layout.cardBorder,
-    backgroundColor: Palette.card,
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    lineHeight: 40,
+    marginBottom: 4,
   },
-  playlistTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+  pageGeez: {
+    fontSize: 18,
     color: Palette.gold,
-    textAlign: 'center',
-    lineHeight: 18,
+    marginBottom: Spacing.sm,
   },
-  playlistMeta: {
-    fontSize: 12,
-    marginTop: 4,
-    textAlign: 'center',
+  description: {
+    marginBottom: Layout.sectionGap,
+    lineHeight: 22,
+  },
+  searchWrap: { marginBottom: Space.s16 },
+  spinner: { marginTop: 32 },
+  list: {
+    marginTop: 2,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Layout.cardBorder,
+    marginLeft: 64,
   },
 });

@@ -1,15 +1,18 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Palette, Spacing } from '@/constants/theme';
+import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
 
 export type ContentSearchHit = {
   id: string;
   title: string;
   subtitle?: string;
   snippet?: string;
+  /** When set (including null), renders a leading thumbnail on the left. */
+  imageUri?: string | null;
   /** Header rows (books, topics, chapters) omit the quote snippet. */
   isHeader?: boolean;
   onPress: () => void;
@@ -49,13 +52,27 @@ export function ContentSearchResults({
     <View style={styles.wrap}>
       <ThemedText style={styles.heading}>{heading}</ThemedText>
       <View style={styles.list}>
-        {hits.map((hit, index) => (
+        {hits.map((hit, index) => {
+          const showImage = hit.imageUri !== undefined;
+          return (
           <View key={hit.id}>
             <OrthodoxPressable
-              style={styles.row}
-              onPress={hit.onPress}
+              style={[styles.row, showImage && styles.rowWithImage]}
+              onPress={() => {
+                Keyboard.dismiss();
+                hit.onPress();
+              }}
               accessibilityRole="button"
               accessibilityLabel={`${hit.title}. ${hit.isHeader ? hit.subtitle ?? hit.title : hit.snippet ?? hit.title}`}>
+              {showImage ? (
+                hit.imageUri ? (
+                  <Image source={{ uri: hit.imageUri }} style={styles.thumb} contentFit="cover" />
+                ) : (
+                  <View style={[styles.thumb, styles.thumbPlaceholder]}>
+                    <ThemedText style={styles.thumbGlyph}>{hit.title.charAt(0)}</ThemedText>
+                  </View>
+                )
+              ) : null}
               <View style={styles.copy}>
                 <ThemedText style={[styles.title, hit.isHeader && styles.headerTitle]} numberOfLines={1}>
                   {hit.title}
@@ -73,9 +90,12 @@ export function ContentSearchResults({
               </View>
               <ThemedText style={styles.chevron}>›</ThemedText>
             </OrthodoxPressable>
-            {index < hits.length - 1 ? <View style={styles.divider} /> : null}
+            {index < hits.length - 1 ? (
+              <View style={[styles.divider, showImage && styles.dividerWithImage]} />
+            ) : null}
           </View>
-        ))}
+        );
+        })}
       </View>
     </View>
   );
@@ -105,6 +125,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 4,
   },
+  rowWithImage: {
+    alignItems: 'center',
+  },
+  thumb: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Palette.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(201, 147, 58, 0.2)',
+  },
+  thumbPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbGlyph: {
+    color: Palette.gold,
+    fontSize: 16,
+    fontWeight: '700',
+  },
   copy: { flex: 1, minWidth: 0, gap: 2 },
   title: {
     fontSize: 15,
@@ -133,6 +173,9 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     marginLeft: Spacing.md,
     backgroundColor: 'rgba(201, 147, 58, 0.1)',
+  },
+  dividerWithImage: {
+    marginLeft: Spacing.md + 44 + Spacing.sm,
   },
   loadingWrap: {
     paddingVertical: Spacing.lg,

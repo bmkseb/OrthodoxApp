@@ -13,6 +13,7 @@ import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
 import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
 import { Layout, Palette, Spacing } from '@/constants/theme';
+import { FloatingBottom } from '@/constants/floating-bottom';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
@@ -25,6 +26,8 @@ type ScreenScrollViewProps = ScrollViewProps & {
   includeFloatingChrome?: boolean;
   /** Skip default SacredAtmosphere (e.g. Explore uses its own). */
   hideAtmosphere?: boolean;
+  /** Additional space below content beyond tab bar / mini player clearance. Default 16. */
+  contentExtraPadding?: number;
   /** Reports furthest scroll fraction (0..1), quantized to 5% steps. */
   onScrollProgress?: (fraction: number) => void;
 };
@@ -37,6 +40,7 @@ export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(
     onRefresh,
     includeFloatingChrome = true,
     hideAtmosphere = false,
+    contentExtraPadding = FloatingBottom.contentExtraPadding,
     onScrollProgress,
     style,
     ...props
@@ -44,7 +48,7 @@ export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(
   ref
 ) {
   const insets = useSafeAreaInsets();
-  const floatingInset = useFloatingBottomInset();
+  const floatingInset = useFloatingBottomInset(includeFloatingChrome, contentExtraPadding);
   const bottomPadding = includeFloatingChrome
     ? floatingInset
     : insets.bottom + Spacing.xl;

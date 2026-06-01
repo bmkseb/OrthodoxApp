@@ -13,6 +13,8 @@ type BookshelfSectionProps = {
   children: ReactNode;
   /** When true, wraps children in a horizontal ScrollView. */
   horizontal?: boolean;
+  /** Vertical saved/catalog list — recessed panel without book-rail min height. */
+  list?: boolean;
   scrollProps?: ScrollViewProps;
 };
 
@@ -21,7 +23,12 @@ type BookshelfSectionProps = {
  * gentle niche that matches the dark, warm theme — a thin gold ledge plus a soft
  * shadow keep the "shelf" feel without a literal wood texture.
  */
-export function BookshelfSection({ children, horizontal = false, scrollProps }: BookshelfSectionProps) {
+export function BookshelfSection({
+  children,
+  horizontal = false,
+  list = false,
+  scrollProps,
+}: BookshelfSectionProps) {
   const content = horizontal ? (
     <AnimatedScrollView
       horizontal
@@ -39,12 +46,12 @@ export function BookshelfSection({ children, horizontal = false, scrollProps }: 
     <View style={styles.outer}>
       <LinearGradient
         colors={[Palette.background, Palette.backgroundDeep]}
-        style={styles.shelf}>
-        <View style={styles.cardArea}>{content}</View>
+        style={[styles.shelf, list && styles.shelfList]}>
+        <View style={[styles.cardArea, list && styles.listArea]}>{content}</View>
         <View style={styles.ledge} />
         <LinearGradient
           colors={['rgba(0, 0, 0, 0.22)', 'transparent']}
-          style={styles.depth}
+          style={[styles.depth, list && styles.depthList]}
           pointerEvents="none"
         />
       </LinearGradient>
@@ -61,8 +68,16 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     overflow: 'hidden',
   },
+  shelfList: {
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
   cardArea: {
     minHeight: 142,
+  },
+  listArea: {
+    minHeight: 0,
+    paddingVertical: 4,
   },
   rail: {
     gap: Layout.cardGap,
@@ -75,5 +90,8 @@ const styles = StyleSheet.create({
   },
   depth: {
     height: 10,
+  },
+  depthList: {
+    height: 8,
   },
 });

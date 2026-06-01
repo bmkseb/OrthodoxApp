@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { useSegments } from 'expo-router';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -16,20 +17,15 @@ import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
 import { FloatingBottom, getTabBarBottom } from '@/constants/floating-bottom';
 import { Palette, Space, Typography } from '@/constants/theme';
-import {
-  useActiveTrack,
-  useAudioPlayer,
-  useProgress,
-} from '@/contexts/audio-player-context';
-import { resolvePlayerCopyFromTrack } from '@/lib/audio-track-display';
+import { useAudioPlayer, usePlayerProgress } from '@/contexts/audio-player-context';
 import { useTranslation } from '@/hooks/use-translation';
+import { resolvePlayerCopyFromTrack } from '@/lib/audio-track-display';
 
 export function FloatingMiniPlayer() {
   const insets = useSafeAreaInsets();
+  const segments = useSegments();
+  const onTabs = segments[0] === '(tabs)';
   const { mode } = useTranslation();
-  const activeTrack = useActiveTrack();
-  const { position, duration } = useProgress(250);
-  const progress = duration > 0 ? position / duration : 0;
 
   const {
     currentTrack,
@@ -42,47 +38,33 @@ export function FloatingMiniPlayer() {
     nextTrack,
   } = useAudioPlayer();
 
-  const displayTrack = currentTrack ?? (activeTrack
-    ? {
-        id: String(activeTrack.id),
-        title: activeTrack.title ?? 'Unknown',
-        artist: activeTrack.artist ?? '',
-        artworkUri: typeof activeTrack.artwork === 'string' ? activeTrack.artwork : '',
-      }
-    : null);
+  const { position, duration } = usePlayerProgress(250);
+  const progress = duration > 0 ? position / duration : 0;
+  const copy = currentTrack ? resolvePlayerCopyFromTrack(mode, currentTrack) : null;
 
-  const copy = displayTrack ? resolvePlayerCopyFromTrack(mode, displayTrack) : null;
-
-  // The player is clipped to a container that ends at the top of the nav bar, so
-  // sliding the pill down makes it disappear exactly at the nav bar's top edge.
-  const navBarTop = getTabBarBottom(insets) + FloatingBottom.tabBarHeight;
+  const navBarTop = onTabs
+    ? getTabBarBottom(insets) + FloatingBottom.tabBarHeight
+    : insets.bottom + Space.s8;
   const slideOffset = FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap;
 
   const translateY = useSharedValue(slideOffset);
-
-  // Keep the last track mounted while it slides out so dismissal is animated.
-  const [renderTrack, setRenderTrack] = useState(displayTrack);
+  const [renderTrack, setRenderTrack] = useState(currentTrack);
 
   useEffect(() => {
-    if (displayTrack) {
-      setRenderTrack(displayTrack);
-    }
-  }, [displayTrack]);
+    if (currentTrack) setRenderTrack(currentTrack);
+  }, [currentTrack]);
 
   useEffect(() => {
     if (isMiniPlayerVisible) {
       translateY.value = withSpring(0, { damping: 22, stiffness: 280, mass: 0.85 });
       return;
     }
-    // Slide straight out with no spring tail, then unmount as it leaves.
     translateY.value = withTiming(slideOffset, { duration: 140 }, (finished) => {
-      if (finished && !displayTrack) {
-        runOnJS(setRenderTrack)(null);
-      }
+      if (finished && !currentTrack) runOnJS(setRenderTrack)(null);
     });
-  }, [isMiniPlayerVisible, displayTrack, slideOffset, translateY]);
+  }, [isMiniPlayerVisible, currentTrack, slideOffset, translateY]);
 
-  const animatedHost = useAnimatedStyle(() => ({
+  const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
@@ -92,7 +74,7 @@ export function FloatingMiniPlayer() {
 
   return (
     <View
-      pointerEvents={isMiniPlayerVisible && displayTrack ? 'box-none' : 'none'}
+      pointerEvents={isMiniPlayerVisible && currentTrack ? 'box-none' : 'none'}
       style={[
         styles.clip,
         {
@@ -101,63 +83,63 @@ export function FloatingMiniPlayer() {
           right: FloatingBottom.horizontalMargin,
         },
       ]}>
-      <Animated.View style={[styles.slider, animatedHost]}>
-        <Pressable
-          onPress={openFullPlayer}
-          style={styles.pill}
-          accessibilityRole="button"
-          accessibilityLabel="Open full player">
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${pct}%` }]} />
-        </View>
-
-        {Platform.OS === 'ios' ? (
-          <BlurView intensity={72} tint="dark" style={StyleSheet.absoluteFill} />
-        ) : null}
-        <View style={styles.glass} />
-
-        <View style={styles.row}>
-          <SacredImage uri={renderTrack.artworkUri} style={styles.artwork} />
-
-          <View style={styles.meta}>
-            <ThemedText style={styles.title} numberOfLines={1}>
-              {copy?.title ?? renderTrack.title}
-            </ThemedText>
-            <ThemedText style={styles.artist} numberOfLines={1}>
-              {copy?.artist ?? renderTrack.artist}
-            </ThemedText>
+      <Animated.View style={[styles.slider, animatedStyle]}>
+        <View style={styles.pill}>
+          <View style={styles.progressTrack} pointerEvents="none">
+            <View style={[styles.progressFill, { width: `${pct}%` }]} />
           </View>
 
-          <View style={styles.controls} onStartShouldSetResponder={() => true}>
+          {Platform.OS === 'ios' ? (
+            <BlurView
+              intensity={72}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+          ) : null}
+          <View style={styles.glass} pointerEvents="none" />
+
+          <View style={styles.row}>
+            <Pressable
+              onPress={openFullPlayer}
+              style={styles.tapArea}
+              accessibilityRole="button"
+              accessibilityLabel="Open full player">
+              <SacredImage uri={renderTrack.artworkUri} style={styles.artwork} contentFit="cover" />
+              <View style={styles.meta}>
+                <ThemedText style={styles.title} numberOfLines={1}>
+                  {copy?.title ?? renderTrack.title}
+                </ThemedText>
+                <ThemedText style={styles.artist} numberOfLines={1}>
+                  {copy?.artist ?? renderTrack.artist}
+                </ThemedText>
+              </View>
+            </Pressable>
+
+            <View style={styles.controls} pointerEvents="auto">
+              <OrthodoxPressable onPress={previousTrack} accessibilityLabel="Previous track" hitSlop={8}>
+                <Icon name="skip-back" size={18} color={Palette.gold} />
+              </OrthodoxPressable>
+              <OrthodoxPressable
+                onPress={playPause}
+                accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+                hitSlop={12}>
+                <Icon name={isPlaying ? 'pause' : 'play'} size={22} color={Palette.gold} />
+              </OrthodoxPressable>
+              <OrthodoxPressable onPress={nextTrack} accessibilityLabel="Next track" hitSlop={8}>
+                <Icon name="skip-forward" size={18} color={Palette.gold} />
+              </OrthodoxPressable>
+            </View>
+
             <OrthodoxPressable
-              onPress={previousTrack}
-              accessibilityLabel="Previous track"
-              hitSlop={8}>
-              <Icon name="skip-back" size={18} color={Palette.gold} />
-            </OrthodoxPressable>
-            <OrthodoxPressable
-              onPress={playPause}
-              accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
-              hitSlop={8}>
-              <Icon name={isPlaying ? 'pause' : 'play'} size={22} color={Palette.gold} />
-            </OrthodoxPressable>
-            <OrthodoxPressable onPress={nextTrack} accessibilityLabel="Next track" hitSlop={8}>
-              <Icon name="skip-forward" size={18} color={Palette.gold} />
+              onPress={dismissMiniPlayer}
+              accessibilityLabel="Close player"
+              hitSlop={8}
+              style={styles.closeBtn}>
+              <Icon name="close" size={18} color={Palette.muted} />
             </OrthodoxPressable>
           </View>
-
-          <OrthodoxPressable
-            onPress={(e) => {
-              e?.stopPropagation?.();
-              dismissMiniPlayer();
-            }}
-            accessibilityLabel="Close player"
-            hitSlop={8}
-            style={styles.closeBtn}>
-            <Icon name="close" size={18} color={Palette.muted} />
-          </OrthodoxPressable>
         </View>
-        </Pressable>
       </Animated.View>
     </View>
   );
@@ -166,12 +148,10 @@ export function FloatingMiniPlayer() {
 const styles = StyleSheet.create({
   clip: {
     position: 'absolute',
-    // Height covers the pill + its gap above the nav bar; bottom is pinned to the
-    // nav bar top and overflow is hidden so the pill vanishes at the nav bar's top edge.
     height: FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap,
     overflow: 'hidden',
-    zIndex: 80,
-    elevation: 80,
+    zIndex: 1100,
+    elevation: 1100,
   },
   slider: {
     height: FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap,
@@ -183,8 +163,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    // 1px gold hairline at the top edge to visually separate the player from
-    // the page beneath it (30% opacity per spec).
     borderTopWidth: 1,
     borderTopColor: 'rgba(201, 147, 58, 0.3)',
     ...Platform.select({
@@ -214,15 +192,22 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: Space.s8,
     paddingRight: Space.s12,
-    gap: Space.s12,
+    gap: Space.s8,
     zIndex: 2,
   },
+  tapArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: Space.s8,
+    gap: Space.s12,
+    minWidth: 0,
+  },
   artwork: {
-    width: 42,
-    height: 42,
-    borderRadius: 9,
+    width: 68,
+    height: 38,
+    borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(201, 147, 58, 0.28)',
   },
@@ -251,5 +236,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Space.s16,
+    zIndex: 4,
   },
 });

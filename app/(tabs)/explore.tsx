@@ -115,7 +115,7 @@ export default function ExploreScreen() {
         </ExploreSectionFrame>
 
         {/* Weekly Explore — curated, rotating highlights */}
-        <ExploreSectionFrame title="Weekly Explore" icon="sparkle">
+        <ExploreSectionFrame title="Weekly Explore" icon="sparkle" style={styles.lastSection}>
           <WeeklyExplore />
         </ExploreSectionFrame>
       </ScreenScrollView>
@@ -175,5 +175,8 @@ const styles = StyleSheet.create({
   quickSubtitle: {
     fontSize: 11,
     color: MUTED_GOLD,
+  },
+  lastSection: {
+    marginBottom: 0,
   },
 });

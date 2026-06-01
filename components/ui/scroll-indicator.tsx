@@ -54,7 +54,15 @@ export function useScrollIndicator() {
 
   const values: ScrollIndicatorValues = { scrollY, contentHeight, layoutHeight, active };
 
-  return { values, scrollHandler };
+  const onLayout = (event: LayoutChangeEvent) => {
+    layoutHeight.value = event.nativeEvent.layout.height;
+  };
+
+  const onContentSizeChange = (_width: number, height: number) => {
+    contentHeight.value = height;
+  };
+
+  return { values, scrollHandler, onLayout, onContentSizeChange };
 }
 
 type ScrollIndicatorProps = {
@@ -63,14 +71,21 @@ type ScrollIndicatorProps = {
   trackInsetTop?: number;
   /** Space at the bottom of the viewport the thumb should stay above (e.g. nav bar). */
   trackInsetBottom?: number;
+  /** Keep the thumb visible whenever the content overflows. */
+  persistent?: boolean;
+  /** Distance from the overlay's right edge (negative values sit in outer margin). */
+  trackRight?: number;
 };
 
 export function ScrollIndicator({
   values,
   trackInsetTop = 0,
   trackInsetBottom = 0,
+  persistent = false,
+  trackRight = TRACK_RIGHT,
 }: ScrollIndicatorProps) {
   const { scrollY, contentHeight, layoutHeight, active } = values;
+  const trackEdge = trackRight + (THUMB_WIDTH - 2) / 2;
 
   const thumbStyle = useAnimatedStyle(() => {
     const trackHeight = Math.max(layoutHeight.value - trackInsetTop - trackInsetBottom, 1);
@@ -82,24 +97,28 @@ export function ScrollIndicator({
     const maxScroll = Math.max(contentHeight.value - layoutHeight.value, 1);
     const progress = Math.min(Math.max(scrollY.value / maxScroll, 0), 1);
     const translateY = trackInsetTop + progress * (trackHeight - thumbHeight);
+    const scrollable = contentHeight.value > layoutHeight.value + 1;
 
     return {
       height: thumbHeight,
-      opacity: active.value,
+      opacity: persistent ? (scrollable ? 0.9 : 0) : active.value,
       transform: [{ translateY }],
     };
   });
 
-  const trackStyle = useAnimatedStyle(() => ({
-    opacity: active.value * 0.35,
-    top: trackInsetTop,
-    bottom: trackInsetBottom,
-  }));
+  const trackStyle = useAnimatedStyle(() => {
+    const scrollable = contentHeight.value > layoutHeight.value + 1;
+    return {
+      opacity: persistent ? (scrollable ? 0.35 : 0) : active.value * 0.35,
+      top: trackInsetTop,
+      bottom: trackInsetBottom,
+    };
+  });
 
   return (
     <View style={styles.overlay} pointerEvents="none">
-      <Animated.View style={[styles.track, trackStyle]} />
-      <Animated.View style={[styles.thumb, thumbStyle]} />
+      <Animated.View style={[styles.track, { right: trackEdge }, trackStyle]} />
+      <Animated.View style={[styles.thumb, { right: trackRight }, thumbStyle]} />
     </View>
   );
 }
@@ -184,7 +203,6 @@ const styles = StyleSheet.create({
   },
   track: {
     position: 'absolute',
-    right: TRACK_RIGHT + (THUMB_WIDTH - 2) / 2,
     width: 2,
     borderRadius: 1,
     backgroundColor: Palette.muted,
@@ -192,7 +210,6 @@ const styles = StyleSheet.create({
   thumb: {
     position: 'absolute',
     top: 0,
-    right: TRACK_RIGHT,
     width: THUMB_WIDTH,
     borderRadius: THUMB_WIDTH / 2,
     backgroundColor: Palette.gold,

@@ -2,7 +2,6 @@ import { Tabs } from 'expo-router';
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { FullScreenPlayer } from '@/components/audio/FullScreenPlayer';
 import { TabBarOverlay } from '@/components/navigation/tab-bar-overlay';
 import { Palette } from '@/constants/theme';
 import { TabBarPropsProvider, TabBarPropsSync } from '@/contexts/tab-bar-props-context';
@@ -54,7 +53,6 @@ export default function TabLayout() {
           <Tabs.Screen name="calendar" options={{ title: labels.calendar }} />
         </Tabs>
         {!isFullPlayerOpen ? <TabBarOverlay /> : null}
-        {isFullPlayerOpen ? <FullScreenPlayer /> : null}
       </View>
     </TabBarPropsProvider>
   );

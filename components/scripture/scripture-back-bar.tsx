@@ -24,35 +24,26 @@ export function ScriptureBackBar({ bookmark }: ScriptureBackBarProps) {
         <ThemedText type="seeAll">{t('settings.back')}</ThemedText>
       </OrthodoxPressable>
 
-      <View style={styles.actions}>
-        {bookmark ? (
+      {bookmark ? (
+        <View style={styles.actions}>
           <OrthodoxPressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               void toggleBookmark(bookmark);
             }}
             accessibilityRole="button"
-            accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark this page'}
+            accessibilityLabel={isBookmarked ? 'Remove Bookmark' : 'Bookmark this page'}
             accessibilityState={{ selected: isBookmarked }}
             hitSlop={10}
-            style={[styles.iconBtn, isBookmarked && styles.iconBtnActive]}>
+            style={styles.iconBtn}>
             <Icon
-              name="bookmark"
+              name={isBookmarked ? 'bookmark-filled' : 'bookmark'}
               size={20}
               color={isBookmarked ? Palette.gold : Palette.muted}
             />
           </OrthodoxPressable>
-        ) : null}
-
-        <OrthodoxPressable
-          onPress={() => router.push('/saved')}
-          accessibilityRole="button"
-          accessibilityLabel="View all saves"
-          hitSlop={10}
-          style={styles.iconBtn}>
-          <Icon name="list" size={20} color={Palette.gold} />
-        </OrthodoxPressable>
-      </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -75,8 +66,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 15,
-  },
-  iconBtnActive: {
-    backgroundColor: 'rgba(201, 147, 58, 0.14)',
   },
 });

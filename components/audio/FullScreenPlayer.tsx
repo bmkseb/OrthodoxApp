@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GoldProgressSlider } from '@/components/audio/gold-progress-slider';
 import { PlayerDetailsTabs } from '@/components/audio/player-details-tabs';
+import { PlayerQueueSheet } from '@/components/audio/player-queue-sheet';
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
@@ -35,18 +36,20 @@ import { Opacity, Palette, Space } from '@/constants/theme';
 import {
   useActiveTrack,
   useAudioPlayer,
-  useProgress,
+  usePlayerProgress,
 } from '@/contexts/audio-player-context';
 import { useTranslation } from '@/hooks/use-translation';
+import { useSavedHymns, toggleSavedHymn } from '@/hooks/use-saved-hymns';
+import { useTrackDescription } from '@/hooks/use-track-description';
 import { formatPlaybackTime } from '@/lib/audio-utils';
 import { resolvePlayerCopyFromTrack } from '@/lib/audio-track-display';
-import YoutubePlayer from 'react-native-youtube-iframe';
 
 const DISMISS_DISTANCE = 110;
 const DISMISS_VELOCITY = 850;
 const FLING_VELOCITY = 900;
 const COLLAPSE_MS = 220;
 const ARTWORK_MAX_WIDTH = 320;
+const VIDEO_ASPECT = 16 / 9;
 const CALM_SPRING = { damping: 28, stiffness: 170, mass: 1 };
 
 const V = {
@@ -73,7 +76,7 @@ export function FullScreenPlayer() {
   const insets = useSafeAreaInsets();
   const { height: screenH } = useWindowDimensions();
   const { mode } = useTranslation();
-  const { position, duration } = useProgress(250);
+  const { position, duration } = usePlayerProgress(250);
   const activeTrack = useActiveTrack();
   const progress = duration > 0 ? position / duration : 0;
 
@@ -88,11 +91,12 @@ export function FullScreenPlayer() {
     previousTrack,
     seekTo,
     skipSeconds,
-    syncPlayingState,
+    openQueue,
+    closeQueue,
+    isQueueOpen,
+    toggleShuffle,
+    isShuffleEnabled,
   } = useAudioPlayer();
-
-  const isYoutube = Boolean(currentTrack?.videoId);
-  const youtubeVideoId = currentTrack?.videoId ?? '';
 
   const trackForDisplay =
     currentTrack ??
@@ -114,6 +118,29 @@ export function FullScreenPlayer() {
     () => (trackForDisplay ? resolvePlayerCopyFromTrack(mode, trackForDisplay) : null),
     [trackForDisplay, mode]
   );
+
+  const { description: trackDescription, loading: descriptionLoading } = useTrackDescription(currentTrack);
+  const { isSaved } = useSavedHymns();
+
+  const saved = isSaved(currentTrack?.videoId);
+
+  const toggleSaved = useCallback(() => {
+    if (!currentTrack?.videoId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    void toggleSavedHymn({
+      videoId: currentTrack.videoId,
+      title: currentTrack.title,
+      artist: currentTrack.artist,
+      album: currentTrack.album ?? currentTrack.categoryLabel ?? '',
+      thumbnailUrl: currentTrack.artworkUri,
+      kind: currentTrack.saveKind ?? 'hymn',
+    });
+  }, [currentTrack]);
+
+  const onToggleShuffle = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    toggleShuffle();
+  }, [toggleShuffle]);
 
   const showCategory =
     (copy?.categoryLabel &&
@@ -248,7 +275,7 @@ export function FullScreenPlayer() {
   if (!isFullPlayerOpen || !trackForDisplay || !copy) return null;
 
   const elapsed = position;
-  const totalDuration = duration;
+  const remaining = duration > 0 ? Math.max(0, duration - position) : 0;
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
@@ -271,15 +298,15 @@ export function FullScreenPlayer() {
 
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.sheet, sheetStyle]}>
-          <View
-            style={[
-              styles.sheetInner,
-              {
-                paddingTop: insets.top + Space.s8,
-                paddingBottom: insets.bottom + Space.s16,
-              },
-            ]}>
-            <View style={styles.topBar}>
+            <View
+              style={[
+                styles.sheetInner,
+                {
+                  paddingTop: insets.top + Space.s8,
+                  paddingBottom: insets.bottom + Space.s16,
+                },
+              ]}>
+            <View style={[styles.topBar, styles.topBarFull]}>
               <Text style={styles.nowPlaying}>Now Playing</Text>
               <OrthodoxPressable
                 onPress={animateClose}
@@ -292,124 +319,108 @@ export function FullScreenPlayer() {
 
             <GestureDetector gesture={scrollGesture}>
               <Animated.ScrollView
+                style={styles.scrollView}
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
                 bounces
-                contentContainerStyle={styles.scrollContent}>
-                <Animated.View style={[styles.artworkColumn, artworkStyle]}>
-                  <View style={styles.artworkGlow} pointerEvents="none" />
-                  <View style={[styles.artworkFrame, isYoutube && styles.youtubeFrame]}>
-                    {isYoutube ? (
-                      <YoutubePlayer
-                        key={youtubeVideoId}
-                        height={Math.min(ARTWORK_MAX_WIDTH, 280)}
-                        width={ARTWORK_MAX_WIDTH}
-                        play={isPlaying}
-                        videoId={youtubeVideoId}
-                        onChangeState={(state) => {
-                          if (state === 'playing') syncPlayingState(true);
-                          else if (state === 'paused') syncPlayingState(false);
-                          else if (state === 'ended') {
-                            syncPlayingState(false);
-                            nextTrack();
-                          }
-                        }}
-                        webViewProps={{
-                          allowsInlineMediaPlayback: true,
-                          mediaPlaybackRequiresUserAction: false,
-                        }}
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  { minHeight: screenH - insets.top - insets.bottom - 56 },
+                ]}>
+                <View style={styles.contentColumn}>
+                  <View style={styles.playerCore}>
+                    <Animated.View style={[styles.artworkColumn, artworkStyle]}>
+                      <View style={styles.artworkGlow} pointerEvents="none" />
+                      <View style={styles.artworkFrame}>
+                        <SacredImage
+                          uri={trackForDisplay.artworkUri}
+                          style={styles.artworkImage}
+                          contentFit="cover"
+                        />
+                      </View>
+                    </Animated.View>
+
+                    <Animated.View style={[styles.block, metaStyle, { marginTop: V.artworkToTitle }]}>
+                      <ThemedText style={styles.trackTitle} numberOfLines={2}>
+                        {copy.title}
+                      </ThemedText>
+                      <ThemedText style={styles.trackArtist} numberOfLines={1}>
+                        {copy.artist}
+                      </ThemedText>
+                      {showCategory && categoryLabel ? (
+                        <Text style={styles.category}>{categoryLabel}</Text>
+                      ) : null}
+                    </Animated.View>
+
+                    <Animated.View style={[styles.block, progressStyle, { marginTop: V.titleToProgress }]}>
+                      <GoldProgressSlider progress={progress} onSeek={seekTo} />
+                      <View style={styles.timeRow}>
+                        <Text style={styles.time}>{formatPlaybackTime(elapsed)}</Text>
+                        <Text style={styles.time}>-{formatPlaybackTime(remaining)}</Text>
+                      </View>
+                    </Animated.View>
+
+                    <Animated.View
+                      style={[styles.controlsRow, controlsStyle, { marginTop: V.progressToControls }]}>
+                      <OrthodoxPressable
+                        onPress={() => skipSeconds(-15)}
+                        style={styles.sideControl}
+                        accessibilityLabel="Rewind 15 seconds">
+                        <Icon name="rewind" size={20} color={Palette.mutedGold} />
+                      </OrthodoxPressable>
+                      <OrthodoxPressable
+                        onPress={previousTrack}
+                        style={styles.sideControl}
+                        accessibilityLabel="Previous">
+                        <Icon name="skip-back" size={24} color={Palette.gold} />
+                      </OrthodoxPressable>
+                      <OrthodoxPressable
+                        onPress={playPause}
+                        style={styles.playMain}
+                        accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
+                        <Icon name={isPlaying ? 'pause' : 'play'} size={28} color={Palette.background} />
+                      </OrthodoxPressable>
+                      <OrthodoxPressable onPress={nextTrack} style={styles.sideControl} accessibilityLabel="Next">
+                        <Icon name="skip-forward" size={24} color={Palette.gold} />
+                      </OrthodoxPressable>
+                      <OrthodoxPressable
+                        onPress={() => skipSeconds(15)}
+                        style={styles.sideControl}
+                        accessibilityLabel="Forward 15 seconds">
+                        <Icon name="forward" size={20} color={Palette.mutedGold} />
+                      </OrthodoxPressable>
+                    </Animated.View>
+
+                    <Animated.View
+                      style={[styles.secondaryRow, actionsStyle, { marginTop: V.controlsToActions }]}>
+                      <SecondaryAction
+                        icon="shuffle"
+                        label="Shuffle"
+                        active={isShuffleEnabled}
+                        onPress={onToggleShuffle}
                       />
-                    ) : (
-                      <SacredImage
-                        uri={trackForDisplay.artworkUri}
-                        style={styles.artworkImage}
-                        contentFit="cover"
+                      <SecondaryAction icon="share" label="Share" />
+                      <SecondaryAction icon="list" label="Queue" onPress={openQueue} />
+                      <SecondaryAction
+                        icon={saved ? 'bookmark-filled' : 'bookmark'}
+                        label="Save"
+                        active={saved}
+                        onPress={toggleSaved}
                       />
-                    )}
+                    </Animated.View>
                   </View>
-                </Animated.View>
 
-                <Animated.View style={[styles.block, metaStyle, { marginTop: V.artworkToTitle }]}>
-                  <ThemedText style={styles.trackTitle} numberOfLines={2}>
-                    {copy.title}
-                  </ThemedText>
-                  <ThemedText style={styles.trackArtist} numberOfLines={1}>
-                    {copy.artist}
-                  </ThemedText>
-                  {showCategory && categoryLabel ? (
-                    <Text style={styles.category}>{categoryLabel}</Text>
-                  ) : null}
-                </Animated.View>
+                  <PlayerQueueSheet visible={isQueueOpen} onClose={closeQueue} />
 
-                {!isYoutube ? (
-                  <Animated.View style={[styles.block, progressStyle, { marginTop: V.titleToProgress }]}>
-                    <GoldProgressSlider progress={progress} onSeek={seekTo} />
-                    <View style={styles.timeRow}>
-                      <Text style={styles.time}>{formatPlaybackTime(elapsed)}</Text>
-                      <Text style={styles.time}>{formatPlaybackTime(totalDuration)}</Text>
-                    </View>
+                  <Animated.View style={[styles.tabsWrap, tabsStyle, { marginTop: V.actionsToTabs }]}>
+                    <PlayerDetailsTabs
+                      lyrics={`Sacred text for “${copy.title}” — manuscript lyrics and transliteration will appear here.`}
+                      about={trackDescription ?? undefined}
+                      aboutLoading={Boolean(currentTrack?.videoId) && descriptionLoading}
+                    />
                   </Animated.View>
-                ) : null}
-
-                <Animated.View
-                  style={[
-                    styles.controlsRow,
-                    controlsStyle,
-                    { marginTop: isYoutube ? V.artworkToTitle : V.progressToControls },
-                  ]}>
-                  {!isYoutube ? (
-                    <OrthodoxPressable
-                      onPress={() => skipSeconds(-15)}
-                      style={styles.sideControl}
-                      accessibilityLabel="Rewind 15 seconds">
-                      <Icon name="rewind" size={20} color={Palette.mutedGold} />
-                    </OrthodoxPressable>
-                  ) : (
-                    <View style={styles.sideControl} />
-                  )}
-                  <OrthodoxPressable
-                    onPress={previousTrack}
-                    style={styles.sideControl}
-                    accessibilityLabel="Previous">
-                    <Icon name="skip-back" size={24} color={Palette.gold} />
-                  </OrthodoxPressable>
-                  <OrthodoxPressable
-                    onPress={playPause}
-                    style={styles.playMain}
-                    accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
-                    <Icon name={isPlaying ? 'pause' : 'play'} size={28} color={Palette.background} />
-                  </OrthodoxPressable>
-                  <OrthodoxPressable onPress={nextTrack} style={styles.sideControl} accessibilityLabel="Next">
-                    <Icon name="skip-forward" size={24} color={Palette.gold} />
-                  </OrthodoxPressable>
-                  {!isYoutube ? (
-                    <OrthodoxPressable
-                      onPress={() => skipSeconds(15)}
-                      style={styles.sideControl}
-                      accessibilityLabel="Forward 15 seconds">
-                      <Icon name="forward" size={20} color={Palette.mutedGold} />
-                    </OrthodoxPressable>
-                  ) : (
-                    <View style={styles.sideControl} />
-                  )}
-                </Animated.View>
-
-                <Animated.View
-                  style={[styles.secondaryRow, actionsStyle, { marginTop: V.controlsToActions }]}>
-                  <SecondaryAction icon="heart" label="Favorite" />
-                  <SecondaryAction icon="share" label="Share" />
-                  <SecondaryAction icon="list" label="Queue" />
-                  <SecondaryAction icon="bookmark" label="Save" />
-                </Animated.View>
-
-                <Animated.View style={[styles.tabsWrap, tabsStyle, { marginTop: V.actionsToTabs }]}>
-                  <PlayerDetailsTabs
-                    lyrics={`Sacred text for “${copy.title}” — manuscript lyrics and transliteration will appear here.`}
-                    about={`${copy.title} · ${copy.artist}\n\nA sacred recording from the Orthodox tradition, offered for prayer and contemplation.`}
-                    related="Explore related hymns, sermons, and melodies from the Listen library."
-                  />
-                </Animated.View>
+                </View>
               </Animated.ScrollView>
             </GestureDetector>
           </View>
@@ -419,11 +430,25 @@ export function FullScreenPlayer() {
   );
 }
 
-function SecondaryAction({ icon, label }: { icon: Parameters<typeof Icon>[0]['name']; label: string }) {
+function SecondaryAction({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: Parameters<typeof Icon>[0]['name'];
+  label: string;
+  active?: boolean;
+  onPress?: () => void;
+}) {
   return (
-    <OrthodoxPressable style={styles.secondaryBtn} accessibilityLabel={label}>
-      <Icon name={icon} size={17} color={Palette.gold} />
-      <Text style={styles.secondaryLabel}>{label}</Text>
+    <OrthodoxPressable
+      style={styles.secondaryBtn}
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      onPress={onPress}>
+      <Icon name={icon} size={17} color={active ? Palette.gold : Palette.mutedGold} />
+      <Text style={[styles.secondaryLabel, active && styles.secondaryLabelActive]}>{label}</Text>
     </OrthodoxPressable>
   );
 }
@@ -453,6 +478,7 @@ const styles = StyleSheet.create({
   },
   sheetInner: {
     flex: 1,
+    alignItems: 'center',
   },
   topBar: {
     flexDirection: 'row',
@@ -461,6 +487,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Space.s16,
     paddingBottom: Space.s12,
     minHeight: 36,
+  },
+  topBarFull: {
+    width: '100%',
+    maxWidth: 420,
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 420,
   },
   nowPlaying: {
     fontSize: 10,
@@ -476,12 +511,22 @@ const styles = StyleSheet.create({
     padding: Space.s4,
   },
   scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: Space.s24,
     paddingBottom: Space.s32,
+  },
+  contentColumn: {
     width: '100%',
     maxWidth: 420,
-    alignSelf: 'center',
+    alignItems: 'center',
+  },
+  playerCore: {
+    width: '100%',
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: Space.s32,
   },
   artworkColumn: {
     width: '100%',
@@ -492,8 +537,9 @@ const styles = StyleSheet.create({
   artworkGlow: {
     position: 'absolute',
     width: '88%',
-    aspectRatio: 1,
-    borderRadius: 28,
+    aspectRatio: VIDEO_ASPECT,
+    alignSelf: 'center',
+    borderRadius: 20,
     backgroundColor: 'rgba(201, 147, 58, 0.08)',
     ...Platform.select({
       ios: {
@@ -508,8 +554,8 @@ const styles = StyleSheet.create({
   artworkFrame: {
     width: '100%',
     maxWidth: ARTWORK_MAX_WIDTH,
-    aspectRatio: 1,
-    borderRadius: 24,
+    aspectRatio: VIDEO_ASPECT,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: `rgba(201, 147, 58, ${Opacity.goldBorderSubtle})`,
@@ -523,10 +569,6 @@ const styles = StyleSheet.create({
       },
       android: { elevation: 12 },
     }),
-  },
-  youtubeFrame: {
-    aspectRatio: undefined,
-    minHeight: 220,
   },
   artworkImage: {
     width: '100%',
@@ -561,6 +603,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     marginTop: Space.s4,
+    textAlign: 'center',
   },
   timeRow: {
     flexDirection: 'row',
@@ -610,7 +653,7 @@ const styles = StyleSheet.create({
   secondaryRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: Space.s24,
+    gap: Space.s16,
     width: '100%',
   },
   secondaryBtn: {
@@ -623,6 +666,9 @@ const styles = StyleSheet.create({
     color: Palette.muted,
     fontWeight: '500',
     letterSpacing: 0.2,
+  },
+  secondaryLabelActive: {
+    color: Palette.gold,
   },
   tabsWrap: {
     width: '100%',

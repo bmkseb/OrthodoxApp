@@ -66,9 +66,7 @@ export const UpcomingFeasts = memo(function UpcomingFeasts({ feasts, onPressFeas
 });
 
 const styles = StyleSheet.create({
-  wrap: {
-    marginBottom: Layout.sectionGap,
-  },
+  wrap: {},
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

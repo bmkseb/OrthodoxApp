@@ -1,251 +1,163 @@
-import { router } from 'expo-router';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
-import { Icon } from '@/components/Icon';
+import { SavedChapterList, SavedVerseList } from '@/components/read/saved-read-content';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
-import { BorderRadius, Layout, Palette, Spacing, Space } from '@/constants/theme';
-import {
-  makeBookmarkId,
-  removeBookmark,
-  useBookmarks,
-} from '@/hooks/use-bookmarks';
-import { isPrayerBookId, prayerSlugFromBookId } from '@/hooks/use-reading-progress';
-import { removeSavedVerse, useSavedVerses } from '@/hooks/use-saved-verses';
-import { scriptureLangQuery } from '@/hooks/use-scripture-lang';
+import { Palette, Spacing } from '@/constants/theme';
+import { useBookmarks } from '@/hooks/use-bookmarks';
+import { useSavedVerses } from '@/hooks/use-saved-verses';
 import { useTranslation } from '@/hooks/use-translation';
-import type { ScriptureLang } from '@/types/scripture';
+import type { TranslationKey } from '@/lib/translations';
 
-/** Reader route for a saved page/verse — prayer books and scripture differ. */
-function readerRoute(bookId: string, chapter: number, lang: ScriptureLang): string {
-  if (isPrayerBookId(bookId)) {
-    return `/prayer/${prayerSlugFromBookId(bookId)}/${chapter}?lang=${lang}`;
-  }
-  return `/book/${bookId}/${chapter}${scriptureLangQuery(lang)}`;
+export type SavedReadSection = 'chapters' | 'verses';
+
+const SAVED_SECTIONS: {
+  id: SavedReadSection;
+  titleKey: TranslationKey;
+  geez: string;
+  description: string;
+  emptyTitle: string;
+  emptySuggestion: string;
+}[] = [
+  {
+    id: 'chapters',
+    titleKey: 'sections.savedChapters',
+    geez: 'ምዕራፎች',
+    description: 'Bookmarked pages from scripture and prayer books.',
+    emptyTitle: 'No saved chapters yet',
+    emptySuggestion: 'Tap the bookmark icon while reading to save a chapter here.',
+  },
+  {
+    id: 'verses',
+    titleKey: 'sections.savedVerses',
+    geez: 'ጥቅሶች እና ማስታወሻ',
+    description: 'Highlighted verses and personal notes from your reading.',
+    emptyTitle: 'No saved verses or notes yet',
+    emptySuggestion: 'Tap a verse while reading to highlight it or add a note.',
+  },
+];
+
+function parseSavedSection(value: string | string[] | undefined): SavedReadSection {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === 'verses' ? 'verses' : 'chapters';
+}
+
+function sectionForId(id: SavedReadSection) {
+  return SAVED_SECTIONS.find((section) => section.id === id) ?? SAVED_SECTIONS[0];
 }
 
 export default function SavedScreen() {
+  const { section: sectionParam } = useLocalSearchParams<{ section?: string }>();
+  const section = parseSavedSection(sectionParam);
+  const active = sectionForId(section);
+  const { t, mode } = useTranslation();
   const { saved } = useSavedVerses();
   const { bookmarks } = useBookmarks();
-  const { mode } = useTranslation();
 
-  const isEmpty = saved.length === 0 && bookmarks.length === 0;
+  const isEmpty =
+    section === 'chapters' ? bookmarks.length === 0 : saved.length === 0;
 
   return (
-    <ScreenScrollView>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} accessibilityRole="button">
-          <ThemedText type="seeAll">← Back</ThemedText>
-        </TouchableOpacity>
-      </View>
+    <ScreenScrollView includeFloatingChrome={false}>
+      <OrthodoxPressable
+        style={styles.topBar}
+        onPress={() => {
+          if (router.canGoBack()) router.back();
+          else router.push('/(tabs)/read');
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={t('settings.back')}>
+        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
+      </OrthodoxPressable>
 
-      <ThemedText style={styles.pageTitle}>Saved & Highlights</ThemedText>
-      {mode !== 'en' ? (
-        <ThemedText style={styles.pageGeez}>ምልክት የተደረገባቸው</ThemedText>
-      ) : null}
+      <ThemedText style={styles.eyebrow}>{t('sections.saved')}</ThemedText>
+      <ThemedText style={styles.pageTitle}>{t(active.titleKey)}</ThemedText>
+      {mode !== 'en' ? <ThemedText style={styles.pageGeez}>{active.geez}</ThemedText> : null}
       <ThemedText type="muted" style={styles.description}>
-        Bookmarked pages, highlighted verses, and your notes.
+        {active.description}
       </ThemedText>
 
-      {isEmpty ? (
-        <EmptyState
-          title="Nothing saved yet"
-          suggestion="Bookmark a page or tap a verse while reading to highlight it or add a note."
-        />
-      ) : null}
-
-      {bookmarks.length > 0 ? (
-        <>
-          <ThemedText style={styles.sectionTitle}>Bookmarked Pages</ThemedText>
-          {bookmarks.map((bm) => (
-            <TouchableOpacity
-              key={makeBookmarkId(bm.bookId, bm.chapter)}
-              style={styles.bookmarkRow}
+      <View style={styles.switcher}>
+        {SAVED_SECTIONS.map((option) => {
+          const selected = option.id === section;
+          return (
+            <OrthodoxPressable
+              key={option.id}
+              style={[styles.switchTab, selected && styles.switchTabActive]}
+              onPress={() => router.setParams({ section: option.id })}
               accessibilityRole="button"
-              onPress={() => router.push(readerRoute(bm.bookId, bm.chapter, bm.lang) as never)}>
-              <Icon name="bookmark" size={18} color={Palette.gold} />
-              <View style={styles.bookmarkText}>
-                <ThemedText style={styles.bookmarkTitle}>{bm.bookTitle}</ThemedText>
-                <ThemedText type="muted" style={styles.bookmarkSub}>
-                  Chapter {bm.chapter}
-                </ThemedText>
-              </View>
-              <OrthodoxPressable
-                hitSlop={10}
-                onPress={() => void removeBookmark(makeBookmarkId(bm.bookId, bm.chapter))}
-                accessibilityLabel="Remove bookmark"
-                style={styles.removeBtn}>
-                <Icon name="close" size={15} color={Palette.muted} />
-              </OrthodoxPressable>
-            </TouchableOpacity>
-          ))}
-        </>
-      ) : null}
-
-      {saved.length > 0 ? (
-        <ThemedText style={styles.sectionTitle}>Highlights & Notes</ThemedText>
-      ) : null}
-
-      {saved.map((item) => (
-          <TouchableOpacity
-            key={item.verseId}
-            style={styles.row}
-            accessibilityRole="button"
-            onPress={() => router.push(readerRoute(item.bookId, item.chapter, item.lang) as never)}>
-            <View style={styles.rowHeader}>
-              <View style={styles.refWrap}>
-                {item.color ? (
-                  <View style={[styles.colorDot, { backgroundColor: item.color }]} />
-                ) : null}
-                <ThemedText style={styles.reference}>
-                  {item.bookTitle} {item.chapter}:{item.verse}
-                </ThemedText>
-              </View>
-              <OrthodoxPressable
-                hitSlop={10}
-                onPress={() => void removeSavedVerse(item.verseId)}
-                accessibilityLabel="Remove"
-                style={styles.removeBtn}>
-                <Icon name="close" size={15} color={Palette.muted} />
-              </OrthodoxPressable>
-            </View>
-
-            <View
-              style={[styles.verseWrap, item.color ? { backgroundColor: item.color } : null]}>
-              <ThemedText style={styles.verseText} numberOfLines={4}>
-                {item.text}
+              accessibilityState={{ selected }}>
+              <ThemedText style={[styles.switchLabel, selected && styles.switchLabelActive]}>
+                {t(option.titleKey)}
               </ThemedText>
-            </View>
+            </OrthodoxPressable>
+          );
+        })}
+      </View>
 
-            {item.note ? (
-              <View style={styles.noteRow}>
-                <Icon name="bookmark" size={13} color={Palette.gold} />
-                <ThemedText style={styles.noteText}>{item.note}</ThemedText>
-              </View>
-            ) : null}
-          </TouchableOpacity>
-        ))}
+      {isEmpty ? (
+        <EmptyState title={active.emptyTitle} suggestion={active.emptySuggestion} />
+      ) : section === 'chapters' ? (
+        <SavedChapterList variant="catalog" />
+      ) : (
+        <SavedVerseList variant="catalog" />
+      )}
     </ScreenScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   topBar: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: Palette.mutedGold,
+    marginBottom: 4,
   },
   pageTitle: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: 'bold',
-    lineHeight: 40,
+    lineHeight: 36,
     marginBottom: 4,
   },
   pageGeez: {
-    fontSize: 18,
+    fontSize: 17,
     color: Palette.gold,
-    marginBottom: Spacing.sm,
+    marginBottom: 4,
   },
   description: {
-    marginBottom: Layout.sectionGap,
-    lineHeight: 22,
+    marginBottom: Spacing.md,
+    lineHeight: 21,
   },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: Palette.muted,
-    marginTop: Space.s12,
-    marginBottom: Space.s12,
-  },
-  bookmarkRow: {
+  switcher: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.s12,
-    padding: Spacing.md,
-    marginBottom: 10,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Layout.cardBorder,
-    backgroundColor: Palette.card,
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
   },
-  bookmarkText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  bookmarkTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  bookmarkSub: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  row: {
-    padding: Spacing.md,
-    marginBottom: 10,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Layout.cardBorder,
-    backgroundColor: Palette.card,
-  },
-  rowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Space.s8,
-  },
-  refWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.s8,
-    flex: 1,
-    minWidth: 0,
-  },
-  colorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  switchTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(201, 147, 58, 0.3)',
   },
-  reference: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Palette.gold,
+  switchTabActive: {
+    backgroundColor: 'rgba(201, 147, 58, 0.16)',
+    borderColor: Palette.gold,
   },
-  removeBtn: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+  switchLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Palette.muted,
   },
-  verseWrap: {
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    marginHorizontal: -6,
-    paddingVertical: 2,
-  },
-  verseText: {
-    fontSize: 16,
-    lineHeight: 24,
+  switchLabelActive: {
     color: Palette.text,
-  },
-  noteRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Space.s8,
-    marginTop: Space.s12,
-    paddingTop: Space.s12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(201, 147, 58, 0.18)',
-  },
-  noteText: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-    fontStyle: 'italic',
-    color: 'rgba(245, 236, 215, 0.82)',
   },
 });

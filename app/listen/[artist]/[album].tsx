@@ -1,27 +1,31 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { MezmurSongRow } from '@/components/listen/mezmur-song-row';
 import { ScriptureBackBar } from '@/components/scripture/scripture-back-bar';
 import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
-import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
-import { Layout, Palette, Spacing } from '@/constants/theme';
+import { SearchBar } from '@/components/ui/search-bar';
+import { Layout, Palette, Space, Spacing } from '@/constants/theme';
 import { useAudioPlayer } from '@/contexts/audio-player-context';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import {
   decodeRouteParam,
   fetchSongsByArtistAlbum,
+  filterByQuery,
   mezmurListToAudioTracks,
   mezmurToAudioTrack,
   type Mezmur,
 } from '@/lib/mezmur';
 
+const MUTED_GOLD = '#8A8070';
+
 export default function ListenSongsScreen() {
   const { t } = useTranslation();
-  const { playTrack, openFullPlayer } = useAudioPlayer();
+  const { playTrack } = useAudioPlayer();
   const { artist: artistParam, album: albumParam } = useLocalSearchParams<{
     artist: string;
     album: string;
@@ -30,8 +34,12 @@ export default function ListenSongsScreen() {
   const album = decodeRouteParam(albumParam);
 
   const [songs, setSongs] = useState<Mezmur[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { recentSearches, addRecentSearch } = useRecentSearches(
+    `listen-songs-${artist}-${album}`
+  );
 
   const load = useCallback(async () => {
     if (!artist || !album) return;
@@ -52,18 +60,22 @@ export default function ListenSongsScreen() {
     void load();
   }, [load]);
 
+  const filteredSongs = useMemo(
+    () => filterByQuery(songs, searchQuery, (song) => [song.title, song.language]),
+    [searchQuery, songs]
+  );
+
   const playSong = useCallback(
     (song: Mezmur) => {
       const queue = mezmurListToAudioTracks(songs);
-      playTrack(mezmurToAudioTrack(song), { queue, autoPlay: true });
-      openFullPlayer();
+      playTrack(mezmurToAudioTrack(song), { queue, autoPlay: true, openFullPlayer: true });
     },
-    [openFullPlayer, playTrack, songs]
+    [playTrack, songs]
   );
 
   if (!artist || !album) {
     return (
-      <ScreenScrollView includeFloatingChrome={false}>
+      <ScreenScrollView includeFloatingChrome>
         <ScriptureBackBar />
         <EmptyState title="Playlist not found" />
       </ScreenScrollView>
@@ -71,9 +83,23 @@ export default function ListenSongsScreen() {
   }
 
   return (
-    <ScreenScrollView includeFloatingChrome={false}>
+    <ScreenScrollView includeFloatingChrome>
       <ScriptureBackBar />
       <ScriptureBookHeader title={album} subtitle={artist} />
+
+      <View style={styles.searchWrap}>
+        <SearchBar
+          placeholder="Search songs"
+          placeholderTextColor={MUTED_GOLD}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSearchSubmit={(term) => {
+            setSearchQuery(term);
+            void addRecentSearch(term);
+          }}
+          recentSearches={recentSearches}
+        />
+      </View>
 
       {loading ? (
         <ActivityIndicator color={Palette.gold} style={styles.spinner} />
@@ -81,20 +107,20 @@ export default function ListenSongsScreen() {
         <EmptyState title={error} suggestion={t('scripture.tryAgain')} />
       ) : songs.length === 0 ? (
         <EmptyState title="No songs found" suggestion="Try again later." />
+      ) : filteredSongs.length === 0 ? (
+        <EmptyState title="No songs match your search" suggestion="Try a different term." />
       ) : (
         <View style={styles.list}>
-          {songs.map((song, index) => (
+          {filteredSongs.map((song, index) => (
             <View key={song.videoId}>
-              <OrthodoxPressable
-                style={styles.row}
+              <MezmurSongRow
+                title={song.title}
+                subtitle={song.language ?? undefined}
+                thumbnailUrl={song.thumbnailUrl}
+                audioTrack={mezmurToAudioTrack(song)}
                 onPress={() => playSong(song)}
-                accessibilityRole="button">
-                <ThemedText style={styles.rowTitle} numberOfLines={2}>
-                  {song.title}
-                </ThemedText>
-                <Text style={styles.chevron}>›</Text>
-              </OrthodoxPressable>
-              {index < songs.length - 1 ? <View style={styles.divider} /> : null}
+              />
+              {index < filteredSongs.length - 1 ? <View style={styles.divider} /> : null}
             </View>
           ))}
         </View>
@@ -104,26 +130,12 @@ export default function ListenSongsScreen() {
 }
 
 const styles = StyleSheet.create({
+  searchWrap: { marginBottom: Space.s16 },
   spinner: { marginTop: Spacing.xxl },
   list: { marginTop: 2 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 11,
-    paddingHorizontal: 2,
-    gap: 8,
-  },
-  rowTitle: {
-    fontSize: 15,
-    color: Palette.text,
-    flex: 1,
-    flexShrink: 1,
-    lineHeight: 21,
-  },
-  chevron: { color: Palette.muted, fontSize: 16 },
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Layout.cardBorder,
+    marginLeft: 60,
   },
 });

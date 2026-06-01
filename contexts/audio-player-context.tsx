@@ -7,13 +7,19 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  useSharedValue,
-  withSpring,
-  type SharedValue,
-} from 'react-native-reanimated';
+import { useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 
+import {
+  recordListeningProgress,
+} from '@/hooks/use-listening-progress';
 import type { TranslationKey } from '@/lib/translations';
+import { fetchRandomMezmur, mezmurToAudioTrack } from '@/lib/mezmur';
+import { shuffleQueueKeepingCurrent } from '@/lib/audio-utils';
+import {
+  useActiveTrack,
+  usePlaybackState,
+  useProgress as useTrackPlayerProgressHook,
+} from '@/lib/track-player/hooks';
 import { getTrackPlayerModule, isTrackPlayerNativeAvailable } from '@/lib/track-player/native-client';
 import { setupTrackPlayer } from '@/lib/track-player/setup';
 import { toTrackPlayerItem } from '@/lib/track-player/tracks';
@@ -23,44 +29,73 @@ export type AudioTrack = {
   title: string;
   artist: string;
   artworkUri: string;
-  /** Remote or local audio URL. Falls back to demo streams when omitted. */
   url?: string;
-  /** YouTube video ID — uses embedded player instead of TrackPlayer. */
   videoId?: string;
   album?: string;
+  description?: string;
   category?: string;
   categoryLabel?: string;
   titleKey?: TranslationKey;
   artistKey?: TranslationKey;
+  saveKind?: 'hymn' | 'sermon' | 'melody';
+};
+
+type YoutubeProgress = {
+  position: number;
+  duration: number;
+  buffered: number;
+};
+
+type PlayTrackOptions = {
+  autoPlay?: boolean;
+  queue?: AudioTrack[];
+  startSeconds?: number;
+  openFullPlayer?: boolean;
+};
+
+type YoutubeBridge = {
+  seekTo: (seconds: number) => void;
 };
 
 type AudioPlayerContextValue = {
   currentTrack: AudioTrack | null;
+  queue: AudioTrack[];
+  queueIndex: number;
+  isShuffleEnabled: boolean;
   isPlaying: boolean;
   isFullPlayerOpen: boolean;
+  isQueueOpen: boolean;
   isMiniPlayerVisible: boolean;
   expandProgress: SharedValue<number>;
-  playTrack: (track: AudioTrack, options?: { autoPlay?: boolean; queue?: AudioTrack[] }) => void;
+  youtubeProgress: YoutubeProgress;
+  youtubeStartSeconds: number;
+  playTrack: (track: AudioTrack, options?: PlayTrackOptions) => void;
   openFullPlayer: () => void;
   closeFullPlayer: () => void;
+  openQueue: () => void;
+  closeQueue: () => void;
+  addToQueue: (track: AudioTrack, options?: { playNext?: boolean }) => void;
+  removeFromQueue: (trackId: string) => void;
+  reorderQueue: (fromIndex: number, toIndex: number) => void;
+  playQueueItem: (index: number) => void;
+  toggleShuffle: () => void;
   playPause: () => void;
   nextTrack: () => void;
   previousTrack: () => void;
   seekTo: (progress: number) => void;
   skipSeconds: (delta: number) => void;
   dismissMiniPlayer: () => void;
-  /** Sync play state from embedded YouTube player UI. */
-  syncPlayingState: (playing: boolean) => void;
-  /** @deprecated use playPause */
+  registerYoutubeBridge: (bridge: YoutubeBridge | null) => void;
+  reportYoutubeProgress: (position: number, duration: number) => void;
+  handleYoutubeEnded: () => void;
   togglePlay: () => void;
-  /** @deprecated use playPause */
   skipBack: () => void;
-  /** @deprecated use nextTrack */
   skipForward: () => void;
 };
 
 const EXPAND_SPRING = { damping: 22, stiffness: 220, mass: 0.9 };
 const HAS_TRACK_PLAYER = isTrackPlayerNativeAvailable();
+const PROGRESS_SAVE_INTERVAL_SEC = 3;
 
 function isYoutubeTrack(track: AudioTrack | null | undefined): boolean {
   return Boolean(track?.videoId);
@@ -70,25 +105,108 @@ const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null);
+  const [queue, setQueue] = useState<AudioTrack[]>([]);
+  const [isShuffleEnabled, setIsShuffleEnabled] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
-  const [playerReady, setPlayerReady] = useState(!HAS_TRACK_PLAYER);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [nativePlayerReady, setNativePlayerReady] = useState(!HAS_TRACK_PLAYER);
+  const [youtubeProgress, setYoutubeProgress] = useState<YoutubeProgress>({
+    position: 0,
+    duration: 0,
+    buffered: 0,
+  });
+  const [youtubeStartSeconds, setYoutubeStartSeconds] = useState(0);
 
   const expandProgress = useSharedValue(0);
   const trackMetaRef = useRef<Map<string, AudioTrack>>(new Map());
   const queueOrderRef = useRef<string[]>([]);
+  const canonicalOrderRef = useRef<string[]>([]);
+  const isShuffleEnabledRef = useRef(false);
+  const currentTrackRef = useRef<AudioTrack | null>(null);
+  const isPlayingRef = useRef(false);
+  const youtubeBridgeRef = useRef<YoutubeBridge | null>(null);
+  const savedPositionsRef = useRef<Map<string, number>>(new Map());
+  const lastSavedProgressRef = useRef(0);
 
   const isMiniPlayerVisible = currentTrack != null && !isFullPlayerOpen;
+
+  const queueIndex = useMemo(() => {
+    if (!currentTrack) return -1;
+    return queue.findIndex((track) => track.id === currentTrack.id);
+  }, [currentTrack, queue]);
+
+  const syncQueueRefs = useCallback((tracks: AudioTrack[]) => {
+    for (const item of tracks) {
+      trackMetaRef.current.set(item.id, item);
+    }
+    queueOrderRef.current = tracks.map((item) => item.id);
+  }, []);
+
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    isShuffleEnabledRef.current = isShuffleEnabled;
+  }, [isShuffleEnabled]);
+
+  const rebuildNativeQueue = useCallback(
+    async (tracks: AudioTrack[], activeId: string | null, shouldPlay: boolean) => {
+      if (!HAS_TRACK_PLAYER || !nativePlayerReady) return;
+      const mod = getTrackPlayerModule();
+      if (!mod) return;
+      const TrackPlayer = mod.default;
+      const activeIndex = Math.max(0, tracks.findIndex((track) => track.id === activeId));
+
+      await TrackPlayer.reset();
+      if (tracks.length === 0) return;
+      await TrackPlayer.add(tracks.map((item, i) => toTrackPlayerItem(item, i)));
+      if (activeIndex > 0) await TrackPlayer.skip(activeIndex);
+      if (shouldPlay) await TrackPlayer.play();
+      else await TrackPlayer.pause();
+    },
+    [nativePlayerReady]
+  );
+
+  const applyDisplayQueue = useCallback(
+    (canonicalTracks: AudioTrack[], options?: { keepCurrentId?: string | null; syncNative?: boolean }) => {
+      canonicalOrderRef.current = canonicalTracks.map((item) => item.id);
+      for (const item of canonicalTracks) {
+        trackMetaRef.current.set(item.id, item);
+      }
+
+      const keepCurrentId = options?.keepCurrentId ?? currentTrackRef.current?.id ?? null;
+      const displayTracks =
+        isShuffleEnabledRef.current && canonicalTracks.length > 1
+          ? shuffleQueueKeepingCurrent(canonicalTracks, keepCurrentId)
+          : canonicalTracks;
+
+      syncQueueRefs(displayTracks);
+      setQueue(displayTracks);
+
+      if (options?.syncNative && !isYoutubeTrack(currentTrackRef.current)) {
+        void rebuildNativeQueue(displayTracks, keepCurrentId, isPlayingRef.current);
+      }
+
+      return displayTracks;
+    },
+    [rebuildNativeQueue, syncQueueRefs]
+  );
 
   useEffect(() => {
     if (!HAS_TRACK_PLAYER) return;
     setupTrackPlayer()
-      .then(() => setPlayerReady(true))
-      .catch(() => setPlayerReady(false));
+      .then(() => setNativePlayerReady(true))
+      .catch(() => setNativePlayerReady(false));
   }, []);
 
   useEffect(() => {
-    if (!HAS_TRACK_PLAYER || !playerReady) return;
+    if (!HAS_TRACK_PLAYER || !nativePlayerReady) return;
     const mod = getTrackPlayerModule();
     if (!mod) return;
 
@@ -96,68 +214,109 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     const { Event, State } = mod;
 
     const sub = TrackPlayer.addEventListener(Event.PlaybackState, async () => {
+      if (isYoutubeTrack(currentTrack)) return;
       const { state } = await TrackPlayer.getPlaybackState();
       setIsPlaying(state === State.Playing || state === State.Buffering);
     });
 
-    return () => {
-      sub.remove();
-    };
-  }, [playerReady]);
+    return () => sub.remove();
+  }, [nativePlayerReady, currentTrack]);
 
-  const syncActiveTrack = useCallback(async () => {
-    if (!HAS_TRACK_PLAYER || !playerReady) return;
-    const mod = getTrackPlayerModule();
-    if (!mod) return;
+  const registerYoutubeBridge = useCallback((bridge: YoutubeBridge | null) => {
+    youtubeBridgeRef.current = bridge;
+  }, []);
 
-    const TrackPlayer = mod.default;
-    const index = await TrackPlayer.getActiveTrackIndex();
-    if (index == null || index < 0) {
-      setCurrentTrack(null);
-      return;
-    }
-    const active = await TrackPlayer.getActiveTrack();
-    if (!active?.id) {
-      setCurrentTrack(null);
-      return;
-    }
-    const meta = trackMetaRef.current.get(String(active.id));
-    if (meta) {
-      setCurrentTrack(meta);
-      return;
-    }
-    setCurrentTrack({
-      id: String(active.id),
-      title: active.title ?? 'Unknown',
-      artist: active.artist ?? '',
-      artworkUri: typeof active.artwork === 'string' ? active.artwork : '',
+  const reportYoutubeProgress = useCallback((position: number, duration: number) => {
+    setYoutubeProgress((prev) => ({
+      position: Number.isFinite(position) ? position : prev.position,
+      duration: Number.isFinite(duration) && duration > 0 ? duration : prev.duration,
+      buffered: 0,
+    }));
+    if (!currentTrack?.videoId) return;
+
+    savedPositionsRef.current.set(currentTrack.videoId, position);
+    if (Math.abs(position - lastSavedProgressRef.current) < PROGRESS_SAVE_INTERVAL_SEC) return;
+    lastSavedProgressRef.current = position;
+
+    void recordListeningProgress({
+      videoId: currentTrack.videoId,
+      title: currentTrack.title,
+      artist: currentTrack.artist,
+      album: currentTrack.album ?? currentTrack.categoryLabel ?? '',
+      thumbnailUrl: currentTrack.artworkUri,
+      positionSeconds: position,
     });
-  }, [playerReady]);
+  }, [currentTrack]);
 
-  const playTrack = useCallback(
-    (track: AudioTrack, options?: { autoPlay?: boolean; queue?: AudioTrack[] }) => {
-      const autoPlay = options?.autoPlay ?? true;
-      const nextQueue = options?.queue?.length ? options.queue : [track];
-      const index = Math.max(0, nextQueue.findIndex((item) => item.id === track.id));
+  const resolveStartSeconds = useCallback(async (_track: AudioTrack, explicit?: number) => {
+    if (explicit != null) return Math.max(0, explicit);
+    return 0;
+  }, []);
 
-      for (const item of nextQueue) {
-        trackMetaRef.current.set(item.id, item);
-      }
-      queueOrderRef.current = nextQueue.map((item) => item.id);
+  const beginYoutubePlayback = useCallback(
+    (track: AudioTrack, autoPlay: boolean, startSeconds?: number) => {
+      const sameVideo = currentTrack?.videoId === track.videoId && Boolean(track.videoId);
 
-      const selected = nextQueue[index] ?? track;
-      setCurrentTrack(selected);
+      setCurrentTrack(track);
       setIsPlaying(autoPlay);
 
-      if (isYoutubeTrack(selected)) {
-        if (HAS_TRACK_PLAYER && playerReady) {
-          const mod = getTrackPlayerModule();
-          if (mod) void mod.default.reset();
+      void (async () => {
+        const seconds = await resolveStartSeconds(track, startSeconds);
+        setYoutubeStartSeconds(seconds);
+        setYoutubeProgress((prev) => ({ position: seconds, duration: prev.duration, buffered: 0 }));
+        lastSavedProgressRef.current = seconds;
+
+        if (sameVideo) {
+          youtubeBridgeRef.current?.seekTo(seconds);
         }
+
+        if (track.videoId) {
+          savedPositionsRef.current.set(track.videoId, seconds);
+        }
+
+        void recordListeningProgress({
+          videoId: track.videoId!,
+          title: track.title,
+          artist: track.artist,
+          album: track.album ?? track.categoryLabel ?? '',
+          thumbnailUrl: track.artworkUri,
+          positionSeconds: seconds,
+        });
+      })();
+
+      if (HAS_TRACK_PLAYER && nativePlayerReady) {
+        const mod = getTrackPlayerModule();
+        if (mod) void mod.default.reset();
+      }
+    },
+    [currentTrack, nativePlayerReady, resolveStartSeconds]
+  );
+
+  const playTrack = useCallback(
+    (track: AudioTrack, options?: PlayTrackOptions) => {
+      const autoPlay = options?.autoPlay ?? true;
+      const incomingQueue = options?.queue?.length ? options.queue : [track];
+      const index = Math.max(0, incomingQueue.findIndex((item) => item.id === track.id));
+      const selected = incomingQueue[index] ?? track;
+
+      applyDisplayQueue(incomingQueue, { keepCurrentId: selected.id });
+
+      if (options?.openFullPlayer) {
+        setIsFullPlayerOpen(true);
+        expandProgress.value = withSpring(1, EXPAND_SPRING);
+      }
+
+      if (isYoutubeTrack(selected)) {
+        beginYoutubePlayback(selected, autoPlay, options?.startSeconds);
         return;
       }
 
-      if (!HAS_TRACK_PLAYER || !playerReady) return;
+      setYoutubeStartSeconds(0);
+      setYoutubeProgress({ position: 0, duration: 0, buffered: 0 });
+      setCurrentTrack(selected);
+      setIsPlaying(autoPlay);
+
+      if (!HAS_TRACK_PLAYER || !nativePlayerReady) return;
 
       void (async () => {
         const mod = getTrackPlayerModule();
@@ -165,14 +324,17 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         const TrackPlayer = mod.default;
 
         await TrackPlayer.reset();
-        await TrackPlayer.add(nextQueue.map((item, i) => toTrackPlayerItem(item, i)));
-        if (index > 0) await TrackPlayer.skip(index);
+        const displayQueue = isShuffleEnabledRef.current && incomingQueue.length > 1
+          ? shuffleQueueKeepingCurrent(incomingQueue, selected.id)
+          : incomingQueue;
+        await TrackPlayer.add(displayQueue.map((item, i) => toTrackPlayerItem(item, i)));
+        const displayIndex = Math.max(0, displayQueue.findIndex((item) => item.id === selected.id));
+        if (displayIndex > 0) await TrackPlayer.skip(displayIndex);
         if (autoPlay) await TrackPlayer.play();
         else await TrackPlayer.pause();
-        await syncActiveTrack();
       })();
     },
-    [playerReady, syncActiveTrack]
+    [applyDisplayQueue, beginYoutubePlayback, expandProgress, nativePlayerReady]
   );
 
   const openFullPlayer = useCallback(() => {
@@ -186,38 +348,199 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     expandProgress.value = 0;
   }, [expandProgress]);
 
-  const dismissMiniPlayer = useCallback(() => {
-    closeFullPlayer();
-    setIsPlaying(false);
-    setCurrentTrack(null);
-    trackMetaRef.current.clear();
-    queueOrderRef.current = [];
-    if (HAS_TRACK_PLAYER && playerReady) {
-      const mod = getTrackPlayerModule();
-      if (mod) void mod.default.reset();
-    }
-  }, [closeFullPlayer, playerReady]);
+  const openQueue = useCallback(() => {
+    setIsQueueOpen(true);
 
-  const syncPlayingState = useCallback((playing: boolean) => {
-    setIsPlaying(playing);
+    void (async () => {
+      const song = await fetchRandomMezmur();
+      if (!song) return;
+
+      setQueue((prev) => {
+        if (prev.length > 0) return prev;
+
+        const randomTrack = mezmurToAudioTrack(song);
+        trackMetaRef.current.set(randomTrack.id, randomTrack);
+
+        let next: AudioTrack[];
+        if (currentTrack) {
+          trackMetaRef.current.set(currentTrack.id, currentTrack);
+          next =
+            currentTrack.id === randomTrack.id ? [currentTrack] : [currentTrack, randomTrack];
+        } else {
+          next = [randomTrack];
+        }
+
+        canonicalOrderRef.current = next.map((item) => item.id);
+        syncQueueRefs(next);
+        return next;
+      });
+    })();
+  }, [currentTrack, syncQueueRefs]);
+
+  const toggleShuffle = useCallback(() => {
+    const enabled = !isShuffleEnabledRef.current;
+    isShuffleEnabledRef.current = enabled;
+    setIsShuffleEnabled(enabled);
+
+    const canonicalTracks = canonicalOrderRef.current
+      .map((id) => trackMetaRef.current.get(id))
+      .filter((track): track is AudioTrack => Boolean(track));
+
+    applyDisplayQueue(canonicalTracks, {
+      keepCurrentId: currentTrackRef.current?.id ?? null,
+      syncNative: true,
+    });
+  }, [applyDisplayQueue]);
+
+  const closeQueue = useCallback(() => {
+    setIsQueueOpen(false);
   }, []);
+
+  const playQueueItem = useCallback(
+    (index: number) => {
+      const track = queue[index];
+      if (!track) return;
+
+      if (isYoutubeTrack(track)) {
+        beginYoutubePlayback(track, true);
+        return;
+      }
+
+      if (!HAS_TRACK_PLAYER || !nativePlayerReady) {
+        setCurrentTrack(track);
+        setIsPlaying(true);
+        return;
+      }
+
+      void (async () => {
+        const mod = getTrackPlayerModule();
+        if (!mod) return;
+        const TrackPlayer = mod.default;
+        await TrackPlayer.skip(index);
+        await TrackPlayer.play();
+        setCurrentTrack(track);
+        setIsPlaying(true);
+      })();
+    },
+    [beginYoutubePlayback, nativePlayerReady, queue]
+  );
+
+  const addToQueue = useCallback(
+    (track: AudioTrack, options?: { playNext?: boolean }) => {
+      trackMetaRef.current.set(track.id, track);
+
+      const canonicalTracks = canonicalOrderRef.current
+        .map((id) => trackMetaRef.current.get(id))
+        .filter((item): item is AudioTrack => Boolean(item))
+        .filter((item) => item.id !== track.id);
+
+      let nextCanonical: AudioTrack[];
+
+      if (options?.playNext && currentTrack) {
+        const currentIdx = canonicalTracks.findIndex((item) => item.id === currentTrack.id);
+        if (currentIdx >= 0) {
+          nextCanonical = [...canonicalTracks];
+          nextCanonical.splice(currentIdx + 1, 0, track);
+        } else {
+          nextCanonical = [...canonicalTracks, track];
+        }
+      } else {
+        nextCanonical = [...canonicalTracks, track];
+      }
+
+      applyDisplayQueue(nextCanonical, { keepCurrentId: currentTrack?.id ?? null });
+    },
+    [applyDisplayQueue, currentTrack]
+  );
+
+  const removeFromQueue = useCallback(
+    (trackId: string) => {
+      const canonicalTracks = canonicalOrderRef.current
+        .map((id) => trackMetaRef.current.get(id))
+        .filter((item): item is AudioTrack => Boolean(item));
+
+      const index = canonicalTracks.findIndex((item) => item.id === trackId);
+      if (index < 0) return;
+
+      const prevDisplayIndex = queueOrderRef.current.indexOf(trackId);
+      const nextCanonical = canonicalTracks.filter((item) => item.id !== trackId);
+      const displayQueue = applyDisplayQueue(nextCanonical, {
+        keepCurrentId: currentTrack?.id === trackId ? null : currentTrack?.id ?? null,
+      });
+
+      if (currentTrack?.id === trackId) {
+        const replacement =
+          displayQueue[prevDisplayIndex] ??
+          displayQueue[prevDisplayIndex - 1] ??
+          displayQueue[0] ??
+          null;
+
+        if (replacement) {
+          if (isYoutubeTrack(replacement)) {
+            beginYoutubePlayback(replacement, isPlaying);
+          } else {
+            setCurrentTrack(replacement);
+            void rebuildNativeQueue(displayQueue, replacement.id, isPlaying);
+          }
+        } else {
+          closeFullPlayer();
+          setIsPlaying(false);
+          setCurrentTrack(null);
+          setYoutubeStartSeconds(0);
+          setYoutubeProgress({ position: 0, duration: 0, buffered: 0 });
+          if (HAS_TRACK_PLAYER && nativePlayerReady) {
+            const mod = getTrackPlayerModule();
+            if (mod) void mod.default.reset();
+          }
+        }
+      }
+    },
+    [
+      applyDisplayQueue,
+      beginYoutubePlayback,
+      closeFullPlayer,
+      currentTrack,
+      isPlaying,
+      nativePlayerReady,
+      rebuildNativeQueue,
+    ]
+  );
+
+  const reorderQueue = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+
+      setQueue((prev) => {
+        if (fromIndex >= prev.length || toIndex >= prev.length) return prev;
+        const next = [...prev];
+        const [moved] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, moved);
+        canonicalOrderRef.current = next.map((item) => item.id);
+        syncQueueRefs(next);
+        return next;
+      });
+    },
+    [syncQueueRefs]
+  );
 
   const playPause = useCallback(() => {
     if (isYoutubeTrack(currentTrack)) {
-      setIsPlaying((p) => !p);
+      setIsPlaying((playing) => !playing);
       return;
     }
-    if (!HAS_TRACK_PLAYER || !playerReady) {
-      setIsPlaying((p) => !p);
+
+    if (!HAS_TRACK_PLAYER || !nativePlayerReady) {
+      setIsPlaying((playing) => !playing);
       return;
     }
+
     void (async () => {
       const mod = getTrackPlayerModule();
       if (!mod) return;
       const TrackPlayer = mod.default;
       const { State } = mod;
-
       const { state } = await TrackPlayer.getPlaybackState();
+
       if (state === State.Playing || state === State.Buffering) {
         await TrackPlayer.pause();
         setIsPlaying(false);
@@ -226,133 +549,245 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         setIsPlaying(true);
       }
     })();
-  }, [currentTrack, playerReady]);
+  }, [currentTrack, nativePlayerReady]);
 
-  const seekTo = useCallback(
-    (value: number) => {
-      if (isYoutubeTrack(currentTrack)) return;
-      if (!HAS_TRACK_PLAYER || !playerReady) return;
-      void (async () => {
-        const mod = getTrackPlayerModule();
-        if (!mod) return;
-        const TrackPlayer = mod.default;
+  const dismissMiniPlayer = useCallback(() => {
+    if (currentTrack?.videoId) {
+      youtubeBridgeRef.current?.seekTo(0);
+      savedPositionsRef.current.set(currentTrack.videoId, 0);
+      void recordListeningProgress({
+        videoId: currentTrack.videoId,
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        album: currentTrack.album ?? currentTrack.categoryLabel ?? '',
+        thumbnailUrl: currentTrack.artworkUri,
+        positionSeconds: 0,
+      });
+    }
 
-        const duration = await TrackPlayer.getDuration();
-        if (!Number.isFinite(duration) || duration <= 0) return;
-        const clamped = Math.min(Math.max(value, 0), 1);
-        await TrackPlayer.seekTo(clamped * duration);
-      })();
+    closeFullPlayer();
+    setIsPlaying(false);
+    setCurrentTrack(null);
+    setYoutubeStartSeconds(0);
+    setYoutubeProgress({ position: 0, duration: 0, buffered: 0 });
+    lastSavedProgressRef.current = 0;
+    trackMetaRef.current.clear();
+    queueOrderRef.current = [];
+    canonicalOrderRef.current = [];
+    setQueue([]);
+    setIsShuffleEnabled(false);
+    isShuffleEnabledRef.current = false;
+    setIsQueueOpen(false);
+
+    if (HAS_TRACK_PLAYER && nativePlayerReady) {
+      const mod = getTrackPlayerModule();
+      if (mod) void mod.default.reset();
+    }
+  }, [closeFullPlayer, currentTrack, nativePlayerReady]);
+
+  const switchYoutubeTrack = useCallback(
+    (track: AudioTrack) => {
+      beginYoutubePlayback(track, true);
     },
-    [currentTrack, playerReady]
-  );
-
-  const skipSeconds = useCallback(
-    (delta: number) => {
-      if (isYoutubeTrack(currentTrack)) return;
-      if (!HAS_TRACK_PLAYER || !playerReady) return;
-      void (async () => {
-        const mod = getTrackPlayerModule();
-        if (!mod) return;
-        const TrackPlayer = mod.default;
-
-        const progress = await TrackPlayer.getProgress();
-        const next = Math.min(Math.max(progress.position + delta, 0), progress.duration || 0);
-        await TrackPlayer.seekTo(next);
-      })();
-    },
-    [currentTrack, playerReady]
+    [beginYoutubePlayback]
   );
 
   const nextTrack = useCallback(() => {
-    if (isYoutubeTrack(currentTrack)) {
-      const ids = queueOrderRef.current;
-      const idx = currentTrack ? ids.indexOf(currentTrack.id) : -1;
-      if (idx < 0 || idx >= ids.length - 1) return;
-      const next = trackMetaRef.current.get(ids[idx + 1]);
-      if (!next) return;
-      setCurrentTrack(next);
+    if (!isYoutubeTrack(currentTrack)) {
+      if (!HAS_TRACK_PLAYER || !nativePlayerReady) return;
+      void (async () => {
+        const mod = getTrackPlayerModule();
+        if (!mod) return;
+        const TrackPlayer = mod.default;
+        const activeIndex = await TrackPlayer.getActiveTrackIndex();
+        const trackCount = (await TrackPlayer.getQueue()).length;
+
+        if (trackCount <= 1) {
+          await TrackPlayer.seekTo(0);
+          await TrackPlayer.play();
+          setIsPlaying(true);
+          return;
+        }
+
+        if (activeIndex != null && activeIndex >= trackCount - 1) {
+          await TrackPlayer.skip(0);
+        } else {
+          await TrackPlayer.skipToNext();
+        }
+        await TrackPlayer.play();
+        setIsPlaying(true);
+      })();
+      return;
+    }
+
+    if (!currentTrack) return;
+
+    const ids = queueOrderRef.current;
+    const idx = ids.indexOf(currentTrack.id);
+    if (idx < 0) return;
+
+    if (ids.length <= 1) {
+      youtubeBridgeRef.current?.seekTo(0);
       setIsPlaying(true);
       return;
     }
-    if (!HAS_TRACK_PLAYER || !playerReady) return;
-    void (async () => {
-      const mod = getTrackPlayerModule();
-      if (!mod) return;
-      const TrackPlayer = mod.default;
 
-      await TrackPlayer.skipToNext();
-      await syncActiveTrack();
-      await TrackPlayer.play();
-      setIsPlaying(true);
-    })();
-  }, [currentTrack, playerReady, syncActiveTrack]);
+    const nextId = idx >= ids.length - 1 ? ids[0] : ids[idx + 1];
+    const next = trackMetaRef.current.get(nextId);
+    if (next) switchYoutubeTrack(next);
+  }, [currentTrack, nativePlayerReady, switchYoutubeTrack]);
 
   const previousTrack = useCallback(() => {
     if (isYoutubeTrack(currentTrack)) {
+      if (youtubeProgress.position > 3) {
+        youtubeBridgeRef.current?.seekTo(0);
+        reportYoutubeProgress(0, youtubeProgress.duration);
+        return;
+      }
+      if (!currentTrack) return;
+
       const ids = queueOrderRef.current;
-      const idx = currentTrack ? ids.indexOf(currentTrack.id) : -1;
+      const idx = ids.indexOf(currentTrack.id);
       if (idx <= 0) return;
       const prev = trackMetaRef.current.get(ids[idx - 1]);
-      if (!prev) return;
-      setCurrentTrack(prev);
-      setIsPlaying(true);
+      if (prev) switchYoutubeTrack(prev);
       return;
     }
-    if (!HAS_TRACK_PLAYER || !playerReady) return;
+
+    if (!HAS_TRACK_PLAYER || !nativePlayerReady) return;
     void (async () => {
       const mod = getTrackPlayerModule();
       if (!mod) return;
       const TrackPlayer = mod.default;
-
       const progress = await TrackPlayer.getProgress();
       if (progress.position > 3) {
         await TrackPlayer.seekTo(0);
         return;
       }
       await TrackPlayer.skipToPrevious();
-      await syncActiveTrack();
       await TrackPlayer.play();
       setIsPlaying(true);
     })();
-  }, [currentTrack, playerReady, syncActiveTrack]);
+  }, [currentTrack, nativePlayerReady, reportYoutubeProgress, switchYoutubeTrack, youtubeProgress.duration, youtubeProgress.position]);
 
-  const value = useMemo(
+  const handleYoutubeEnded = useCallback(() => {
+    nextTrack();
+  }, [nextTrack]);
+
+  const seekTo = useCallback(
+    (value: number) => {
+      if (isYoutubeTrack(currentTrack)) {
+        const total = youtubeProgress.duration;
+        if (!Number.isFinite(total) || total <= 0) return;
+        const seconds = Math.min(Math.max(value, 0), 1) * total;
+        youtubeBridgeRef.current?.seekTo(seconds);
+        reportYoutubeProgress(seconds, total);
+        return;
+      }
+
+      if (!HAS_TRACK_PLAYER || !nativePlayerReady) return;
+      void (async () => {
+        const mod = getTrackPlayerModule();
+        if (!mod) return;
+        const TrackPlayer = mod.default;
+        const total = await TrackPlayer.getDuration();
+        if (!Number.isFinite(total) || total <= 0) return;
+        await TrackPlayer.seekTo(Math.min(Math.max(value, 0), 1) * total);
+      })();
+    },
+    [currentTrack, nativePlayerReady, reportYoutubeProgress, youtubeProgress.duration]
+  );
+
+  const skipSeconds = useCallback(
+    (delta: number) => {
+      if (isYoutubeTrack(currentTrack)) {
+        const total = youtubeProgress.duration;
+        const next = Math.min(Math.max(youtubeProgress.position + delta, 0), total || 0);
+        youtubeBridgeRef.current?.seekTo(next);
+        reportYoutubeProgress(next, total);
+        return;
+      }
+
+      if (!HAS_TRACK_PLAYER || !nativePlayerReady) return;
+      void (async () => {
+        const mod = getTrackPlayerModule();
+        if (!mod) return;
+        const TrackPlayer = mod.default;
+        const progress = await TrackPlayer.getProgress();
+        const next = Math.min(Math.max(progress.position + delta, 0), progress.duration || 0);
+        await TrackPlayer.seekTo(next);
+      })();
+    },
+    [currentTrack, nativePlayerReady, reportYoutubeProgress, youtubeProgress.duration, youtubeProgress.position]
+  );
+
+  const value = useMemo<AudioPlayerContextValue>(
     () => ({
       currentTrack,
+      queue,
+      queueIndex,
+      isShuffleEnabled,
       isPlaying,
       isFullPlayerOpen,
+      isQueueOpen,
       isMiniPlayerVisible,
       expandProgress,
+      youtubeProgress,
+      youtubeStartSeconds,
       playTrack,
       openFullPlayer,
       closeFullPlayer,
-      dismissMiniPlayer,
+      openQueue,
+      closeQueue,
+      addToQueue,
+      removeFromQueue,
+      reorderQueue,
+      playQueueItem,
+      toggleShuffle,
       playPause,
       nextTrack,
       previousTrack,
       seekTo,
       skipSeconds,
-      syncPlayingState,
+      dismissMiniPlayer,
+      registerYoutubeBridge,
+      reportYoutubeProgress,
+      handleYoutubeEnded,
       togglePlay: playPause,
       skipBack: previousTrack,
       skipForward: nextTrack,
     }),
     [
       currentTrack,
+      queue,
+      queueIndex,
+      isShuffleEnabled,
       isPlaying,
       isFullPlayerOpen,
+      isQueueOpen,
       isMiniPlayerVisible,
       expandProgress,
+      youtubeProgress,
+      youtubeStartSeconds,
       playTrack,
       openFullPlayer,
       closeFullPlayer,
-      dismissMiniPlayer,
+      openQueue,
+      closeQueue,
+      addToQueue,
+      removeFromQueue,
+      reorderQueue,
+      playQueueItem,
+      toggleShuffle,
       playPause,
       nextTrack,
       previousTrack,
       seekTo,
       skipSeconds,
-      syncPlayingState,
+      dismissMiniPlayer,
+      registerYoutubeBridge,
+      reportYoutubeProgress,
+      handleYoutubeEnded,
     ]
   );
 
@@ -365,12 +800,17 @@ export function useAudioPlayer() {
   return ctx;
 }
 
-/** Back-compat alias */
 export function usePlayback() {
   return useAudioPlayer();
 }
 
 export type PlaybackTrack = AudioTrack;
 
-/** Re-export TrackPlayer hooks for UI components (scrubber, play state, metadata). */
+export function usePlayerProgress(updateInterval?: number) {
+  const { currentTrack, youtubeProgress } = useAudioPlayer();
+  const nativeProgress = useTrackPlayerProgressHook(updateInterval);
+  if (currentTrack?.videoId) return youtubeProgress;
+  return nativeProgress;
+}
+
 export { useActiveTrack, usePlaybackState, useProgress } from '@/lib/track-player/hooks';

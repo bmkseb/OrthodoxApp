@@ -1,33 +1,32 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Palette, Space } from '@/constants/theme';
+import { Palette, Space } from '@/constants/theme';
 
-type DetailTab = 'lyrics' | 'about' | 'related';
+type DetailTab = 'lyrics' | 'about';
 
 const TABS: { key: DetailTab; label: string }[] = [
   { key: 'lyrics', label: 'Lyrics / Text' },
   { key: 'about', label: 'About' },
-  { key: 'related', label: 'Related' },
 ];
 
 type PlayerDetailsTabsProps = {
   lyrics?: string;
   about?: string;
-  related?: string;
+  aboutLoading?: boolean;
 };
 
-export function PlayerDetailsTabs({ lyrics, about, related }: PlayerDetailsTabsProps) {
+export function PlayerDetailsTabs({ lyrics, about, aboutLoading }: PlayerDetailsTabsProps) {
   const [active, setActive] = useState<DetailTab>('lyrics');
 
   const body =
     active === 'lyrics'
       ? lyrics ?? 'Sacred text for this recording will appear here when available.'
-      : active === 'about'
-        ? about ?? 'A brief introduction to this hymn, sermon, or chant from the Orthodox tradition.'
-        : related ?? 'Related recordings and readings from your library will appear here.';
+      : aboutLoading
+        ? null
+        : about ?? 'No description is available for this recording.';
 
   return (
     <View style={styles.wrap}>
@@ -46,7 +45,13 @@ export function PlayerDetailsTabs({ lyrics, about, related }: PlayerDetailsTabsP
           );
         })}
       </View>
-      <ThemedText style={styles.body}>{body}</ThemedText>
+      {active === 'about' && aboutLoading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator size="small" color={Palette.gold} />
+        </View>
+      ) : (
+        <ThemedText style={[styles.body, active === 'about' && styles.aboutBody]}>{body}</ThemedText>
+      )}
     </View>
   );
 }
@@ -95,5 +100,12 @@ const styles = StyleSheet.create({
     color: Palette.text,
     opacity: 0.88,
     textAlign: 'center',
+  },
+  aboutBody: {
+    textAlign: 'left',
+  },
+  loadingRow: {
+    paddingVertical: Space.s16,
+    alignItems: 'center',
   },
 });

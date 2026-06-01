@@ -18,8 +18,10 @@ export type IconName =
   | 'rewind'
   | 'forward'
   | 'heart'
+  | 'heart-filled'
   | 'list'
   | 'play'
+  | 'play-outline'
   | 'pause'
   | 'skip-back'
   | 'skip-forward'
@@ -28,7 +30,10 @@ export type IconName =
   | 'church'
   | 'moon'
   | 'bookmark'
+  | 'bookmark-filled'
+  | 'more-horizontal'
   | 'share'
+  | 'shuffle'
   | 'globe'
   | 'bell'
   | 'flame';
@@ -172,6 +177,15 @@ export function Icon({ name, size = 18, color = Palette.gold, strokeWidth = STRO
           <Path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 7 3.5C19 15.65 12 20 12 20z" />
         </Svg>
       );
+    case 'heart-filled':
+      return (
+        <Svg {...props}>
+          <Path
+            d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 7 3.5C19 15.65 12 20 12 20z"
+            fill={color}
+          />
+        </Svg>
+      );
     case 'list':
       return (
         <Svg {...props}>
@@ -187,6 +201,12 @@ export function Icon({ name, size = 18, color = Palette.gold, strokeWidth = STRO
       return (
         <Svg {...props}>
           <Polyline points="9 6 17 12 9 18 9 6" fill={color} />
+        </Svg>
+      );
+    case 'play-outline':
+      return (
+        <Svg {...props}>
+          <Polyline points="10 7 16 12 10 17 10 7" />
         </Svg>
       );
     case 'pause':
@@ -252,6 +272,20 @@ export function Icon({ name, size = 18, color = Palette.gold, strokeWidth = STRO
           <Path d="M6 4h12v16l-6-4-6 4V4z" />
         </Svg>
       );
+    case 'bookmark-filled':
+      return (
+        <Svg {...props}>
+          <Path d="M6 4h12v16l-6-4-6 4V4z" fill={color} />
+        </Svg>
+      );
+    case 'more-horizontal':
+      return (
+        <Svg {...props} fill={color} stroke="none">
+          <Circle cx="5" cy="12" r="1.75" />
+          <Circle cx="12" cy="12" r="1.75" />
+          <Circle cx="19" cy="12" r="1.75" />
+        </Svg>
+      );
     case 'share':
       return (
         <Svg {...props}>
@@ -259,6 +293,15 @@ export function Icon({ name, size = 18, color = Palette.gold, strokeWidth = STRO
           <Circle cx="6" cy="12" r="2" />
           <Circle cx="18" cy="8" r="2" />
           <Circle cx="18" cy="16" r="2" />
+        </Svg>
+      );
+    case 'shuffle':
+      return (
+        <Svg {...props}>
+          <Path d="M4 7H10L14.5 14" />
+          <Path d="M4 17H10L14.5 10" />
+          <Path d="M14.5 13.5L21 15.5L14.5 17.5Z" fill={color} stroke="none" />
+          <Path d="M14.5 6.5L21 9L14.5 11.5Z" fill={color} stroke="none" />
         </Svg>
       );
     case 'globe':

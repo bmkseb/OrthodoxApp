@@ -5,6 +5,7 @@ import { StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { GlobalAudioChrome } from '@/components/audio/global-audio-chrome';
 import { LanguageProvider } from '@/contexts/language-context';
 import { AudioPlayerProvider } from '@/contexts/audio-player-context';
 import { AuthProvider } from '@/contexts/auth-context';
@@ -87,6 +88,7 @@ export default function RootLayout() {
                   />
                   <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
                 </Stack>
+                <GlobalAudioChrome />
               </GestureHandlerRootView>
               <StatusBar style="light" />
             </ThemeProvider>
