@@ -112,7 +112,7 @@ export function FloatingMiniPlayer() {
         </View>
 
         {Platform.OS === 'ios' ? (
-          <BlurView intensity={56} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={72} tint="dark" style={StyleSheet.absoluteFill} />
         ) : null}
         <View style={styles.glass} />
 
@@ -208,22 +208,23 @@ const styles = StyleSheet.create({
   },
   glass: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(12, 10, 8, 0.88)',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(12, 10, 8, 0.74)' : 'rgba(12, 10, 8, 0.92)',
   },
   row: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Space.s12,
+    paddingLeft: Space.s8,
+    paddingRight: Space.s12,
     gap: Space.s12,
     zIndex: 2,
   },
   artwork: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    borderRadius: 9,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
+    borderColor: 'rgba(201, 147, 58, 0.28)',
   },
   meta: {
     flex: 1,

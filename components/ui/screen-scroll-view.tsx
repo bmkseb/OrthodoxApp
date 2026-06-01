@@ -9,7 +9,6 @@ import { ScrollView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
 import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
@@ -67,9 +66,8 @@ export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(
   });
 
   return (
-    <ThemedView style={[styles.screen, style]} pointerEvents="box-none">
-      {hideAtmosphere ? null : <SacredAtmosphere />}
-      <ParchmentGrainOverlay />
+      <ThemedView style={[styles.screen, style]} pointerEvents="box-none">
+        {hideAtmosphere ? null : <SacredAtmosphere />}
       <AnimatedScrollView
         ref={ref as React.Ref<React.ComponentRef<typeof AnimatedScrollView>>}
         style={styles.scroll}

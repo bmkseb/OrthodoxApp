@@ -6,9 +6,9 @@ export const FloatingBottom = {
   tabBarHeight: 72,
   tabBarRadius: 36,
   tabBarBottomGap: 8,
-  miniPlayerHeight: 64,
-  miniPlayerRadius: 24,
-  miniPlayerGap: 8,
+  miniPlayerHeight: 58,
+  miniPlayerRadius: 22,
+  miniPlayerGap: 10,
   contentExtraPadding: 16,
 } as const;
 

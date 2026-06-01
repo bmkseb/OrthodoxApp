@@ -418,7 +418,7 @@ export default function LearnScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchWrap: { marginBottom: Space.s12 },
+  searchWrap: { marginBottom: Space.s16 },
   filterWrap: { marginBottom: Layout.sectionHeaderBottom },
   section: { marginBottom: Layout.sectionContentBottom },
   rail: {

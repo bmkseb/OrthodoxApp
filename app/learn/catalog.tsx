@@ -96,11 +96,10 @@ export default function LearnCatalogScreen() {
         The doctrine and teachings of the Ethiopian Orthodox Tewahedo Church.
       </ThemedText>
 
-      {collectionsToRender.map((collection, index) => (
+      {collectionsToRender.map((collection) => (
         <LearnCollectionCard
           key={collection.id}
           collection={collection}
-          defaultExpanded={index === 0}
           onTopicPress={(topic) => openLesson(topic)}
         />
       ))}

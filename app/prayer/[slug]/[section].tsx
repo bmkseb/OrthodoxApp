@@ -55,8 +55,44 @@ import {
 const NAV_BAR_HEIGHT = 56;
 const SERIF = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
+// Recurring Wudase Mariam refrain — highlighted inline wherever it appears.
+const REFRAIN = /Pray for us,?\s*(?:O!?\s*)?the Holy One!?/gi;
+
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
+}
+
+/** Renders verse text, emphasizing the recurring refrain in gold without breaking the line. */
+function PrayerVerseText({ text }: { text: string }) {
+  const parts: { text: string; refrain: boolean }[] = [];
+  const re = new RegExp(REFRAIN);
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) parts.push({ text: text.slice(last, match.index), refrain: false });
+    parts.push({ text: match[0], refrain: true });
+    last = match.index + match[0].length;
+    if (re.lastIndex === match.index) re.lastIndex++;
+  }
+  if (last < text.length) parts.push({ text: text.slice(last), refrain: false });
+
+  if (parts.length <= 1) {
+    return <ThemedText style={styles.verse}>{text}</ThemedText>;
+  }
+
+  return (
+    <ThemedText style={styles.verse}>
+      {parts.map((part, i) =>
+        part.refrain ? (
+          <ThemedText key={i} style={styles.refrain}>
+            {part.text}
+          </ThemedText>
+        ) : (
+          part.text
+        )
+      )}
+    </ThemedText>
+  );
 }
 
 export default function PrayerSectionScreen() {
@@ -235,7 +271,7 @@ export default function PrayerSectionScreen() {
                       saved?.color ? { backgroundColor: saved.color } : null,
                       isSelected && styles.verseSelected,
                     ]}>
-                    <ThemedText style={styles.verse}>{text}</ThemedText>
+                    <PrayerVerseText text={text} />
                   </View>
                 </Pressable>
               );
@@ -308,6 +344,10 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 28,
     color: Palette.text,
+  },
+  refrain: {
+    color: Palette.gold,
+    fontStyle: 'italic',
   },
   navSlot: {
     position: 'absolute',
