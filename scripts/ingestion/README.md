@@ -1,58 +1,75 @@
-# PDF → JSON → Supabase ingestion
+# Book Ingestion Toolkit
 
-Pipeline for Orthodox scripture PDFs (Amharic / Ge'ez) without copy-paste.
+Repeatable pipeline to add any book's content (chaptered like the Bible, or flat like prayers)
+into Supabase via a spreadsheet. One template shape, both book types.
 
-## 1. Place PDFs
+## Where it lives
+Put this folder in your repo at `scripts/ingestion/`. It's standalone — it does not touch
+your app code and cannot break the frontend. Version-controlled so your teammate (and Claude Code)
+can run and extend it.
 
-Put text-selectable PDFs in `data/pdfs/` (e.g. `data/pdfs/enoch.pdf`).
-
-## 2. Python extraction
-
+## One-time setup
 ```bash
-pip install -r scripts/ingestion/requirements.txt
+pip install openpyxl psycopg2-binary
+export SUPABASE_DB_URL="postgresql://...your Supabase connection string..."
 ```
+(Get the connection string from Supabase dashboard → Project Settings → Database → Connection string.
+Use a direct or pooled URL. Keep it in an env var / .env — never commit it.)
 
-**Verify page 1 first:**
+## The workflow (every book, every time)
 
-```bash
-python scripts/ingestion/extract_bible.py --pdf data/pdfs/enoch.pdf --book-id enoch --lang geez --pages 1 --raw-out extracted_output/enoch_page1_raw.txt
-```
+1. **Register the source** (once per source document) in the `sources` table, with its
+   tradition, publisher, and `review_status='draft'`.
 
-Review `extracted_output/enoch_page1_raw.txt` and the JSON sample. Tune regexes in `extract_bible.py` (`CHAPTER_*`, `VERSE_*`) to match your PDF layout.
+2. **Generate the template** — pre-fills locked ID columns so the filler only types content:
+   ```bash
+   python generate_template.py --book-type prayer --book-slug daily-prayer --out daily.xlsx
+   ```
 
-**Full book:**
+3. **Fill it in.** Open the sheet, type content into `text_english` / `text_amharic` /
+   `text_geez` / `text_transliteration`, set `source_slug`, and `position` (1,2,3… per section).
+   - **Chaptered book?** Fill the `chapter` column on every row.
+   - **Flat book (prayers)?** Leave `chapter` blank on every row.
+   - Add rows by copying one and bumping `position`. Don't edit the grey columns.
+   - Blank languages are fine — they're added later.
 
-```bash
-python scripts/ingestion/extract_bible.py --pdf data/pdfs/enoch.pdf --book-id enoch --lang geez
-```
+4. **Validate** (mechanical checks; won't judge translation quality):
+   ```bash
+   python validate_sheet.py --file daily.xlsx
+   ```
+   Fix any ERRORS. Warnings about missing languages are OK.
 
-Output: `extracted_output/enoch.json`
+5. **Human review** — a qualified person checks translation/doctrinal fidelity and source.
+   This gate is NOT automated. A passing validator never means "approved to publish."
 
-Scanned PDFs need OCR (e.g. Tesseract with Amharic/Ge'ez language packs); this script targets selectable text.
+6. **Dry-run the load** (writes nothing, shows what would happen):
+   ```bash
+   python load_sheet.py --file daily.xlsx --book-type prayer
+   ```
 
-## 3. Supabase schema
+7. **Commit the load** when satisfied:
+   ```bash
+   python load_sheet.py --file daily.xlsx --book-type prayer --commit
+   ```
+   Runs in one transaction — all rows load or none do. The `available_languages` trigger
+   then auto-updates which language tabs appear.
 
-In the Supabase SQL Editor, run `scripts/ingestion/schema.sql`.
+## The column contract (`contract.py`)
+`section_id` · `section_name` · `chapter` · `position` · `text_english` · `text_amharic` ·
+`text_geez` · `text_transliteration` · `source_slug` · `review_notes`
 
-## 4. Seed database
+- Locked (pre-filled, don't edit): `section_id`, `section_name`
+- `chapter`: blank = flat book, filled = chaptered book. Must be all-or-nothing per book.
+- The loader writes BOTH new (`position`/`text_*`) and legacy (`verse_number`/`content_*`)
+  columns while your Phase 1/Phase 2 migration is in progress, so it works either way.
 
-Copy `.env.example` → `.env` and set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (service role, not anon).
+## Extending to new book types
+`generate_template.py` currently wires up `prayer`. To add `bible`/`doctrine`, add a branch in
+`fetch_sections()` that returns that hierarchy's parent rows. The loader and validator already
+understand all three via `LEAF_TABLE` in `contract.py`.
 
-```bash
-npm install
-npm run ingest:books
-npm run ingest:seed -- --file extracted_output/enoch.json
-```
-
-`--books` loads all **81** EOTC canon titles from `data/bibleCanon.json` (Amharic, Ge'ez, and English names). Verse upserts use `verse_id` so re-runs are safe.
-
-If you already created `books` without `title_geez`, run the `ALTER TABLE` notes in `schema.sql`, then `npm run ingest:books` again.
-
-## 5. Read scripture in the app
-
-1. Copy `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` into `.env` (see `.env.example`).
-2. Run `scripts/ingestion/schema-rls.sql` in Supabase so the anon key can **read** `books` and `verses`.
-3. Ingest verses: `npm run ingest:seed -- --file extracted_output/genesis.json`
-4. Restart Expo. Catalog → tap a book → chapter grid → verses.
-
-Until data is ingested, **Genesis** includes a built-in sample (chapters 1–2) for UI testing.
+## Safety properties
+- Generator and validator are read-only / local — they never write to the DB.
+- Loader defaults to DRY RUN; `--commit` required to write; single transaction; rolls back on any error.
+- Unregistered `source_slug` aborts the load.
+- Doctrinal correctness is always a human gate, never automated.

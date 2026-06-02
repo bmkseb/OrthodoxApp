@@ -81,6 +81,7 @@ export const Layout = {
   iconRailWidth: Space.s24,
   tabBarSafe: Space.s24,
   cardRadius: Space.s16,
+  featuredCardHeight: 176,
   cardBorder: `rgba(201, 147, 58, ${Opacity.goldBorder})`,
   cardBorderThin: `rgba(201, 147, 58, 0.08)`,
   listAccentBorder: 2,

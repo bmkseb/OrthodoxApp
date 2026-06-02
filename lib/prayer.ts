@@ -1,14 +1,23 @@
 import { getSupabase } from '@/lib/supabase';
 
-export type PrayerLanguage = 'english' | 'amharic' | 'geez';
+export type PrayerLanguage = 'english' | 'amharic' | 'geez' | 'transliteration';
 
 export const PRAYER_LANGUAGES: PrayerLanguage[] = ['english', 'amharic', 'geez'];
 
-/** Display labels for the language tabs (script + transliterated name). */
+/** Compact labels for the language tabs — kept short so up to four fit one row. */
 export const PRAYER_LANGUAGE_LABELS: Record<PrayerLanguage, string> = {
   english: 'English',
-  amharic: 'አማርኛ / Amharic',
-  geez: 'ግዕዝ / Geʼez',
+  amharic: 'አማርኛ',
+  geez: 'ግዕዝ',
+  transliteration: 'Translit.',
+};
+
+/** Full language names, used in prose (e.g. the "not yet available" message). */
+export const PRAYER_LANGUAGE_NAMES: Record<PrayerLanguage, string> = {
+  english: 'English',
+  amharic: 'Amharic',
+  geez: 'Geʼez',
+  transliteration: 'Transliteration',
 };
 
 export type PrayerBook = {
@@ -149,11 +158,17 @@ export async function fetchPrayerVerses(sectionId: string): Promise<PrayerVerse[
     .sort((a, b) => a.position - b.position);
 }
 
-/** Verse body text for the active language (no English fallback — null means absent). */
+/** Verse body text for the active language (no fallback — null means absent). */
 export function pickVerseText(verse: PrayerVerse, lang: PrayerLanguage): string | null {
   if (lang === 'amharic') return verse.amharic;
   if (lang === 'geez') return verse.geez;
+  if (lang === 'transliteration') return verse.transliteration;
   return verse.english;
+}
+
+/** Verse body for display: the active language, falling back to English when null. */
+export function pickVerseTextOrEnglish(verse: PrayerVerse, lang: PrayerLanguage): string | null {
+  return pickVerseText(verse, lang) ?? verse.english;
 }
 
 /** A section "has" a language when at least one of its verses has content for it. */
@@ -161,7 +176,11 @@ export function sectionHasLanguage(verses: PrayerVerse[], lang: PrayerLanguage):
   return verses.some((verse) => pickVerseText(verse, lang) !== null);
 }
 
-/** Pick a title for the active language, falling back to English when null. */
+/**
+ * Pick a title for the active language, falling back to English when null.
+ * Section/book titles have no transliteration column, so transliteration uses
+ * the English title.
+ */
 export function pickPrayerText(
   row: { en: string; am: string | null; geez: string | null },
   lang: PrayerLanguage
@@ -170,3 +189,4 @@ export function pickPrayerText(
   if (lang === 'geez') return row.geez || row.en;
   return row.en;
 }
+

@@ -10,14 +10,15 @@ import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { Layout, Palette, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/hooks/use-translation';
 import {
-  defaultPrayerLanguage,
   fetchPrayerBook,
   fetchPrayerSections,
   pickPrayerText,
+  PRAYER_LANGUAGES,
   type PrayerBook,
   type PrayerLanguage,
   type PrayerSection,
 } from '@/lib/prayer';
+import { usePrayerLanguagePreference } from '@/hooks/use-prayer-language';
 
 /** Reading route by 1-based section number (parallels scripture book/chapter). */
 function readingHref(slug: string, sectionNumber: number, lang: PrayerLanguage) {
@@ -32,7 +33,7 @@ export default function PrayerBookScreen() {
   const [book, setBook] = useState<PrayerBook | null>(null);
   const [sections, setSections] = useState<PrayerSection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lang, setLang] = useState<PrayerLanguage>('english');
+  const { language: lang, setLanguage } = usePrayerLanguagePreference();
 
   useEffect(() => {
     let active = true;
@@ -42,7 +43,6 @@ export default function PrayerBookScreen() {
         if (!active) return;
         setBook(fetchedBook);
         if (fetchedBook) {
-          setLang(defaultPrayerLanguage(fetchedBook.availableLanguages));
           const fetchedSections = await fetchPrayerSections(fetchedBook.id);
           if (active) setSections(fetchedSections);
         }
@@ -72,7 +72,7 @@ export default function PrayerBookScreen() {
       <ScriptureBookHeader title={headerTitle} subtitle={headerSubtitle} />
 
       {book ? (
-        <PrayerLanguageTabs available={book.availableLanguages} value={lang} onChange={setLang} />
+        <PrayerLanguageTabs available={PRAYER_LANGUAGES} value={lang} onChange={setLanguage} />
       ) : null}
 
       {loading ? (

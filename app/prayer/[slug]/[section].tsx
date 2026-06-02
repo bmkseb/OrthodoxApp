@@ -8,6 +8,7 @@ import {
   RefreshControl,
   StyleSheet,
   View,
+  type TextStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type Animated from 'react-native-reanimated';
@@ -37,13 +38,12 @@ import {
   type SavedVerseSeed,
 } from '@/hooks/use-saved-verses';
 import {
-  defaultPrayerLanguage,
   fetchPrayerBook,
   fetchPrayerSections,
   fetchPrayerVerses,
   pickPrayerText,
   pickVerseText,
-  PRAYER_LANGUAGE_LABELS,
+  PRAYER_LANGUAGE_NAMES,
   PRAYER_LANGUAGES,
   sectionHasLanguage,
   type PrayerBook,
@@ -51,6 +51,15 @@ import {
   type PrayerSection,
   type PrayerVerse,
 } from '@/lib/prayer';
+import { usePrayerLanguagePreference } from '@/hooks/use-prayer-language';
+import { useFontScale } from '@/hooks/use-font-scale';
+import type { ScriptureLang } from '@/types/scripture';
+
+/** Shared scripture persistence (progress/bookmarks/verses) only knows three
+ *  scripts; transliteration resumes in English since titles use English too. */
+function asScriptureLang(lang: PrayerLanguage): ScriptureLang {
+  return lang === 'transliteration' ? 'english' : lang;
+}
 
 const NAV_BAR_HEIGHT = 56;
 const SERIF = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
@@ -62,8 +71,11 @@ function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
 }
 
+const VERSE_BASE_FONT = 17;
+const VERSE_BASE_LINE = 28;
+
 /** Renders verse text, emphasizing the recurring refrain in gold without breaking the line. */
-function PrayerVerseText({ text }: { text: string }) {
+function PrayerVerseText({ text, style }: { text: string; style?: TextStyle }) {
   const parts: { text: string; refrain: boolean }[] = [];
   const re = new RegExp(REFRAIN);
   let last = 0;
@@ -77,11 +89,11 @@ function PrayerVerseText({ text }: { text: string }) {
   if (last < text.length) parts.push({ text: text.slice(last), refrain: false });
 
   if (parts.length <= 1) {
-    return <ThemedText style={styles.verse}>{text}</ThemedText>;
+    return <ThemedText style={[styles.verse, style]}>{text}</ThemedText>;
   }
 
   return (
-    <ThemedText style={styles.verse}>
+    <ThemedText style={[styles.verse, style]}>
       {parts.map((part, i) =>
         part.refrain ? (
           <ThemedText key={i} style={styles.refrain}>
@@ -99,7 +111,6 @@ export default function PrayerSectionScreen() {
   const params = useLocalSearchParams<{ slug: string; section: string; lang?: string }>();
   const slug = first(params.slug) || 'daily-prayer';
   const sectionNumber = Math.max(1, Number(first(params.section)) || 1);
-  const requestedLang = first(params.lang) as PrayerLanguage;
 
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<Animated.ScrollView>(null);
@@ -108,13 +119,21 @@ export default function PrayerSectionScreen() {
   const [sections, setSections] = useState<PrayerSection[]>([]);
   const [verses, setVerses] = useState<PrayerVerse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lang, setLang] = useState<PrayerLanguage>(
-    PRAYER_LANGUAGES.includes(requestedLang) ? requestedLang : 'english'
-  );
+  // The picker always offers every language; missing content shows a message.
+  const { language: lang, setLanguage } = usePrayerLanguagePreference();
   const [selected, setSelected] = useState<PrayerVerse | null>(null);
 
   const savedMap = useSavedVerseMap();
   const prayerBookId = makePrayerBookId(slug);
+
+  // Daily Prayer's baked-in reading size: 85% of the original 1.5× enlargement
+  // (0.85 × 1.5 = 1.275). The user's font setting (100% default) scales on top.
+  const { scale: fontScale } = useFontScale();
+  const bookBaseScale = slug === 'daily-prayer' ? 1.5 * 0.85 : 1;
+  const verseFontStyle: TextStyle = {
+    fontSize: VERSE_BASE_FONT * bookBaseScale * fontScale,
+    lineHeight: VERSE_BASE_LINE * bookBaseScale * fontScale,
+  };
 
   const section = sections[sectionNumber - 1] ?? null;
   const bookTitle = book
@@ -139,11 +158,6 @@ export default function PrayerSectionScreen() {
           setVerses([]);
           return;
         }
-        setLang((prev) =>
-          fetchedBook.availableLanguages.includes(prev)
-            ? prev
-            : defaultPrayerLanguage(fetchedBook.availableLanguages)
-        );
         const fetchedSections = await fetchPrayerSections(fetchedBook.id);
         if (!active) return;
         setSections(fetchedSections);
@@ -173,7 +187,7 @@ export default function PrayerSectionScreen() {
       bookId: prayerBookId,
       chapter: sectionNumber,
       totalChapters: sections.length,
-      lang,
+      lang: asScriptureLang(lang),
       updatedAt: Date.now(),
       title: bookTitle,
       subtitle: sectionTitle,
@@ -193,7 +207,7 @@ export default function PrayerSectionScreen() {
     bookId: prayerBookId,
     chapter: sectionNumber,
     verse: verse.position,
-    lang,
+    lang: asScriptureLang(lang),
     text: pickVerseText(verse, lang) ?? '',
     bookTitle,
   });
@@ -229,16 +243,17 @@ export default function PrayerSectionScreen() {
           { paddingTop: insets.top + Spacing.md, paddingBottom: bottomInset },
         ]}>
         <ScriptureBackBar
+          showTextSize
           bookmark={
             book && section
-              ? { bookId: prayerBookId, chapter: sectionNumber, lang, bookTitle }
+              ? { bookId: prayerBookId, chapter: sectionNumber, lang: asScriptureLang(lang), bookTitle }
               : undefined
           }
         />
         <ScriptureBookHeader title={sectionTitle || bookTitle} subtitle={bookTitle} />
 
         {book ? (
-          <PrayerLanguageTabs available={book.availableLanguages} value={lang} onChange={setLang} />
+          <PrayerLanguageTabs available={PRAYER_LANGUAGES} value={lang} onChange={setLanguage} />
         ) : null}
 
         {loading ? (
@@ -247,7 +262,8 @@ export default function PrayerSectionScreen() {
           <EmptyState title="Prayer not found" suggestion="Pull back and try again" />
         ) : !hasContent ? (
           <ThemedText style={styles.fallback}>
-            Not yet available in {PRAYER_LANGUAGE_LABELS[lang]}.
+            This prayer is not yet available in {PRAYER_LANGUAGE_NAMES[lang]}. Please select another
+            language.
           </ThemedText>
         ) : (
           <View style={styles.body}>
@@ -271,7 +287,7 @@ export default function PrayerSectionScreen() {
                       saved?.color ? { backgroundColor: saved.color } : null,
                       isSelected && styles.verseSelected,
                     ]}>
-                    <PrayerVerseText text={text} />
+                    <PrayerVerseText text={text} style={verseFontStyle} />
                   </View>
                 </Pressable>
               );

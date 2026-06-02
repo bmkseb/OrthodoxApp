@@ -17,10 +17,13 @@ import {
   useSavedVerseMap,
   type SavedVerseSeed,
 } from '@/hooks/use-saved-verses';
-import { parseFootnotes, pickVerseText } from '@/lib/scripture';
+import { useFontScale } from '@/hooks/use-font-scale';
+import { formatScriptureNumber, parseFootnotes, pickVerseText } from '@/lib/scripture';
 import type { Footnote, ScriptureLang, VerseRecord } from '@/types/scripture';
 
 const FOOTNOTE_MARKER = '\u2020'; // †
+const VERSE_BASE_FONT = 17;
+const VERSE_BASE_LINE = 28;
 
 type VerseListProps = {
   verses: VerseRecord[];
@@ -35,19 +38,22 @@ type VerseListProps = {
 };
 
 /** Renders verse text, turning inline † markers into styled superscript daggers. */
-function VerseText({ text }: { text: string }) {
+function VerseText({ text, scale }: { text: string; scale: number }) {
+  const dynamic = { fontSize: VERSE_BASE_FONT * scale, lineHeight: VERSE_BASE_LINE * scale };
   if (!text.includes(FOOTNOTE_MARKER)) {
-    return <ThemedText style={styles.verseText}>{text}</ThemedText>;
+    return <ThemedText style={[styles.verseText, dynamic]}>{text}</ThemedText>;
   }
 
   const segments = text.split(FOOTNOTE_MARKER);
   return (
-    <ThemedText style={styles.verseText}>
+    <ThemedText style={[styles.verseText, dynamic]}>
       {segments.map((segment, i) => (
         <Fragment key={i}>
           {segment}
           {i < segments.length - 1 ? (
-            <ThemedText style={styles.inlineMarker}>{FOOTNOTE_MARKER}</ThemedText>
+            <ThemedText style={[styles.inlineMarker, { lineHeight: dynamic.lineHeight }]}>
+              {FOOTNOTE_MARKER}
+            </ThemedText>
           ) : null}
         </Fragment>
       ))}
@@ -65,9 +71,10 @@ export function VerseList({
   registerVerseRef,
 }: VerseListProps) {
   const savedMap = useSavedVerseMap();
+  const { scale } = useFontScale();
   const [selected, setSelected] = useState<VerseRecord | null>(null);
 
-  const footnotes: Footnote[] = verses.flatMap((verse) => parseFootnotes(verse));
+  const footnotes: Footnote[] = verses.flatMap((verse) => parseFootnotes(verse, lang));
 
   const selectedId = selected ? makeVerseId(bookId, chapter, selected.verse) : null;
   const selectedSaved = selectedId ? savedMap[selectedId] : undefined;
@@ -112,7 +119,9 @@ export function VerseList({
               accessibilityRole="button"
               accessibilityHint="Press and hold to highlight or save this verse"
               accessibilityLabel={`${bookTitle} ${chapter}:${verse.verse}`}>
-              <ThemedText style={styles.verseNum}>{verse.verse}</ThemedText>
+              <ThemedText style={[styles.verseNum, { lineHeight: VERSE_BASE_LINE * scale }]}>
+                {formatScriptureNumber(verse.verse, lang)}
+              </ThemedText>
               <View style={styles.verseBody}>
                 <View
                   style={[
@@ -121,7 +130,7 @@ export function VerseList({
                     isSelected && styles.verseSelected,
                     isFocused && styles.verseFocused,
                   ]}>
-                  <VerseText text={pickVerseText(verse, lang)} />
+                  <VerseText text={pickVerseText(verse, lang)} scale={scale} />
                 </View>
                 {saved?.note ? (
                   <View style={styles.noteRow}>

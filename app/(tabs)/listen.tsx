@@ -633,6 +633,16 @@ export default function ListenScreen() {
                 <>
                   <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
 
+                  <View style={styles.section}>
+                    <SectionHeader title={t('sections.featured')} icon="sparkle" />
+                    <FeaturedCarousel
+                      items={featuredItems}
+                      width={featuredWidth}
+                      autoRotateMs={3200}
+                      cardHeight={Layout.featuredCardHeight}
+                    />
+                  </View>
+
                   {continueEntries.length > 0 ? (
                     <View style={styles.section}>
                       <SectionHeader
@@ -657,16 +667,6 @@ export default function ListenScreen() {
                       </ScrollView>
                     </View>
                   ) : null}
-
-                  <View style={styles.section}>
-                    <SectionHeader title={t('sections.featured')} icon="sparkle" />
-                    <FeaturedCarousel
-                      items={featuredItems}
-                      width={featuredWidth}
-                      autoRotateMs={3200}
-                      cardHeight={176}
-                    />
-                  </View>
 
                   <View style={[styles.section, !showSavedSection && styles.lastSection]}>
                     <SectionHeader

@@ -6,6 +6,7 @@ import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { scriptureLangQuery } from '@/hooks/use-scripture-lang';
+import { formatScriptureNumber } from '@/lib/scripture';
 import type { ScriptureLang } from '@/types/scripture';
 import { useTranslation } from '@/hooks/use-translation';
 import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
@@ -46,8 +47,8 @@ export function ChapterNavBar({ bookId, chapter, chapters, lang }: ChapterNavBar
       </OrthodoxPressable>
 
       <ThemedText type="muted" style={styles.center}>
-        {t('scripture.chapter')} {chapter}
-        {chapters.length > 1 ? ` / ${chapters.length}` : ''}
+        {t('scripture.chapter')} {formatScriptureNumber(chapter, lang)}
+        {chapters.length > 1 ? ` / ${formatScriptureNumber(chapters.length, lang)}` : ''}
       </ThemedText>
 
       <OrthodoxPressable

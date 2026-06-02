@@ -11,7 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { getBibleBook, getBookTitle } from '@/data/bibleCanon';
 import { useScriptureLang, scriptureLangQuery } from '@/hooks/use-scripture-lang';
 import { useTranslation } from '@/hooks/use-translation';
-import { fetchBookChapters, hasScriptureSample } from '@/lib/scripture';
+import { fetchBookChapters, formatScriptureNumber, hasScriptureSample } from '@/lib/scripture';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { BorderRadius, Layout, Palette } from '@/constants/theme';
 
@@ -83,7 +83,9 @@ export default function BookChaptersScreen() {
               key={chapter}
               style={styles.chapterCell}
               onPress={() => router.push(`/book/${bookId}/${chapter}${langQ}`)}>
-              <ThemedText style={styles.chapterNum}>{chapter}</ThemedText>
+              <ThemedText style={styles.chapterNum}>
+                {formatScriptureNumber(chapter, lang)}
+              </ThemedText>
               <ThemedText type="muted" style={styles.chapterLabel}>
                 {t('scripture.chapter')}
               </ThemedText>

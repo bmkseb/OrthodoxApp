@@ -5,22 +5,29 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type Animated from 'react-native-reanimated';
 
 import { ChapterNavBar } from '@/components/scripture/chapter-nav-bar';
+import { PrayerLanguageTabs } from '@/components/prayer/prayer-language-tabs';
 import { ScripturePageScroll } from '@/components/scripture/scripture-page-scroll';
 import { ScriptureBackBar } from '@/components/scripture/scripture-back-bar';
 import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
 import { VerseList } from '@/components/scripture/verse-list';
+import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
 import { getBibleBook, getBookTitle } from '@/data/bibleCanon';
-import { useScriptureLang } from '@/hooks/use-scripture-lang';
+import { usePrayerLanguagePreference } from '@/hooks/use-prayer-language';
 import { recordReadingProgress } from '@/hooks/use-reading-progress';
 import { useTranslation } from '@/hooks/use-translation';
-import { fetchBookChapters, fetchChapterVerses } from '@/lib/scripture';
+import { defaultPrayerLanguage, PRAYER_LANGUAGE_NAMES, type PrayerLanguage } from '@/lib/prayer';
+import { fetchBookChapters, fetchChapterVerses, formatScriptureNumber } from '@/lib/scripture';
 import { parseScrollTarget, useScrollToTarget } from '@/hooks/use-scroll-to-target';
 import { Layout, Palette, Spacing } from '@/constants/theme';
-import type { VerseRecord } from '@/types/scripture';
+import type { ScriptureLang, VerseRecord } from '@/types/scripture';
+
+const hasText = (value: string | null | undefined) => Boolean(value && value.trim());
+// The scripture reader always offers these three; missing text shows a message.
+const SCRIPTURE_LANGS: PrayerLanguage[] = ['english', 'amharic', 'geez'];
 
 const NAV_BAR_HEIGHT = 56;
 
@@ -30,7 +37,6 @@ export default function ChapterReaderScreen() {
     chapter: string;
     verse?: string;
   }>();
-  const lang = useScriptureLang();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const chapter = Number(chapterParam);
@@ -44,6 +50,18 @@ export default function ChapterReaderScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [highlightVerse, setHighlightVerse] = useState<number | undefined>(scrollToVerse);
+
+  // Same trilingual picker as the prayer reader: the choice persists app-wide,
+  // the picker always shows all three languages, and a chapter missing the
+  // selected language shows a message instead of silently using another.
+  const { language: langPreference, setLanguage } = usePrayerLanguagePreference();
+  const effectiveLang = SCRIPTURE_LANGS.includes(langPreference)
+    ? langPreference
+    : defaultPrayerLanguage(SCRIPTURE_LANGS);
+  const lang: ScriptureLang = effectiveLang === 'transliteration' ? 'english' : effectiveLang;
+  const langHasContent = verses.some((v) =>
+    hasText(lang === 'amharic' ? v.text_amharic : lang === 'geez' ? v.text_geez : v.text_english)
+  );
 
   const contentReady = !loading && verses.length > 0;
   const { registerTargetRef } = useScrollToTarget(
@@ -129,10 +147,16 @@ export default function ChapterReaderScreen() {
           },
         ]}>
         <View ref={contentRef} collapsable={false}>
-          <ScriptureBackBar bookmark={{ bookId, chapter, lang, bookTitle }} />
+          <ScriptureBackBar bookmark={{ bookId, chapter, lang, bookTitle }} showTextSize />
           <ScriptureBookHeader
             title={bookTitle}
-            subtitle={`${t('scripture.chapter')} ${chapter}`}
+            subtitle={`${t('scripture.chapter')} ${formatScriptureNumber(chapter, lang)}`}
+          />
+
+          <PrayerLanguageTabs
+            available={SCRIPTURE_LANGS}
+            value={effectiveLang}
+            onChange={setLanguage}
           />
 
           {loading ? (
@@ -144,6 +168,11 @@ export default function ChapterReaderScreen() {
               title={t('scripture.noVersesTitle')}
               suggestion={t('scripture.noChaptersIngest')}
             />
+          ) : !langHasContent ? (
+            <ThemedText style={styles.fallback}>
+              This chapter is not yet available in {PRAYER_LANGUAGE_NAMES[lang]}. Please select
+              another language.
+            </ThemedText>
           ) : (
             <View style={styles.body}>
               <VerseList
@@ -179,6 +208,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.pagePadding,
   },
   spinner: { marginTop: 32 },
+  fallback: {
+    color: Palette.muted,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingVertical: Spacing.xl,
+  },
   body: { paddingBottom: Layout.headerContentGap },
   navSlot: {
     position: 'absolute',

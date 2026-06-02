@@ -34,20 +34,79 @@ export function pickVerseText(verse: VerseRecord, lang: ScriptureLang): string {
   );
 }
 
-/** Parse the JSON-encoded footnotes for a verse (returns [] when absent or malformed). */
-export function parseFootnotes(verse: VerseRecord): Footnote[] {
-  if (!verse.footnote) return [];
+/** The footnote column for a language. Footnotes are edition-specific, so each
+ *  language carries its own independent Footnote[] with no cross-language fallback. */
+function footnoteSource(verse: VerseRecord, lang: ScriptureLang): string | null | undefined {
+  if (lang === 'amharic') return verse.footnote_amharic;
+  if (lang === 'geez') return verse.footnote_geez;
+  return verse.footnote;
+}
+
+/**
+ * Parse the JSON-encoded footnotes for a verse in the active language
+ * (returns [] when absent or malformed). No fallback to another language —
+ * an empty column means that language simply has no notes for the verse.
+ */
+export function parseFootnotes(verse: VerseRecord, lang: ScriptureLang): Footnote[] {
+  const raw = footnoteSource(verse, lang);
+  if (!raw) return [];
   try {
-    const parsed = JSON.parse(verse.footnote);
+    const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
       .map((f) => ({ ref: String(f?.ref ?? '').trim(), text: String(f?.text ?? '').trim() }))
       .filter((f) => f.text.length > 0);
   } catch {
     // Legacy rows stored a plain string note.
-    const text = verse.footnote.trim();
+    const text = raw.trim();
     return text ? [{ ref: '', text }] : [];
   }
+}
+
+const ETHIOPIC_ONES = ['', '፩', '፪', '፫', '፬', '፭', '፮', '፯', '፰', '፱'];
+const ETHIOPIC_TENS = ['', '፲', '፳', '፴', '፵', '፶', '፷', '፸', '፹', '፺'];
+
+/**
+ * Render a positive integer in Geʼez (Ethiopic) numerals — e.g. 119 → "፻፲፱".
+ * Used for chapter/verse numbers when reading in Amharic or Geʼez. Falls back to
+ * the plain decimal string for zero/negative/non-integer input.
+ */
+export function toEthiopicNumeral(input: number): string {
+  if (!Number.isInteger(input) || input <= 0) return String(input);
+
+  const digits = String(input);
+  const padded = digits.length % 2 === 1 ? `0${digits}` : digits;
+  const groups: number[] = [];
+  for (let i = 0; i < padded.length; i += 2) {
+    groups.push(Number(padded.slice(i, i + 2)));
+  }
+
+  let result = '';
+  const count = groups.length;
+  for (let i = 0; i < count; i++) {
+    const value = groups[i]; // 0..99
+    const power = count - 1 - i; // group position from the right (0 = ones)
+    if (value === 0) continue; // empty groups are skipped in Geʼez
+
+    // A leading "1" on an odd power (hundreds) is written as the separator alone
+    // (100 → ፻, not ፩፻); other values keep their tens+units glyphs.
+    const omitOne = value === 1 && power % 2 === 1;
+    const chunk = omitOne ? '' : ETHIOPIC_TENS[Math.floor(value / 10)] + ETHIOPIC_ONES[value % 10];
+
+    let separator = '';
+    if (power > 0) {
+      separator =
+        power % 2 === 1 ? `፻${'፼'.repeat((power - 1) / 2)}` : '፼'.repeat(power / 2);
+    }
+    result += chunk + separator;
+  }
+  return result;
+}
+
+/** Chapter/verse number formatted for the active language: Geʼez numerals for
+ *  Amharic/Geʼez tabs, plain decimal for English. */
+export function formatScriptureNumber(value: number, lang: ScriptureLang): string {
+  return lang === 'english' ? String(value) : toEthiopicNumeral(value);
 }
 
 function uniqueSortedChapters(rows: { chapter: number }[]): number[] {
@@ -74,7 +133,9 @@ async function fetchVersesFromSupabase(bookId: string, chapter: number): Promise
 
   const { data, error } = await supabase
     .from('verses')
-    .select('verse_id, book_id, chapter, verse, text_amharic, text_geez, text_english, footnote')
+    .select(
+      'verse_id, book_id, chapter, verse, text_amharic, text_geez, text_english, footnote, footnote_amharic, footnote_geez'
+    )
     .eq('book_id', bookId)
     .eq('chapter', chapter)
     .order('verse', { ascending: true });

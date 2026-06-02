@@ -26,4 +26,11 @@ CREATE TABLE IF NOT EXISTS public.verses (
     text_english TEXT
 );
 
+-- Per-language footnotes (JSON-encoded Footnote[] each). Notes are edition-specific,
+-- so every language keeps its own independent array — there is no cross-language fallback.
+-- `footnote` holds the English (WEBBE) notes; the other two are filled per translation.
+ALTER TABLE public.verses ADD COLUMN IF NOT EXISTS footnote TEXT;
+ALTER TABLE public.verses ADD COLUMN IF NOT EXISTS footnote_amharic TEXT;
+ALTER TABLE public.verses ADD COLUMN IF NOT EXISTS footnote_geez TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_verses_lookup ON public.verses (book_id, chapter, verse);

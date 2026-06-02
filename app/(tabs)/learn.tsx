@@ -263,6 +263,16 @@ export default function LearnScreen() {
 
       {showLibrary ? (
         <>
+          <View style={styles.section}>
+            <SectionHeader headerKey="featured" icon="sparkle" />
+            <FeaturedCarousel
+              items={featuredItems}
+              width={width - Layout.pagePadding * 2}
+              autoRotateMs={3200}
+              cardHeight={Layout.featuredCardHeight}
+            />
+          </View>
+
           {continueEntries.length > 0 ? (
             <View style={styles.section}>
               <SectionHeader title={t('learn.continueLearning')} icon="book" />
@@ -290,16 +300,6 @@ export default function LearnScreen() {
               </ScrollView>
             </View>
           ) : null}
-
-          <View style={styles.section}>
-            <SectionHeader headerKey="featured" icon="sparkle" />
-            <FeaturedCarousel
-              items={featuredItems}
-              width={width - Layout.pagePadding * 2}
-              autoRotateMs={3200}
-              cardHeight={176}
-            />
-          </View>
 
           <View style={styles.section}>
             <SectionHeader
@@ -337,18 +337,18 @@ export default function LearnScreen() {
           </View>
 
           {dailyTopic ? (
-            <>
+            <View style={styles.section}>
               <SectionHeader title={t('learn.dailyTeaching')} icon="sun" />
               <LearnTeachingCard
                 label={t('learn.dailyTeaching')}
                 title={learnText(dailyTopic.topic.titleEn, dailyTopic.topic.titleAm, mode)}
                 readMin={dailyTopic.topic.readMin}
               />
-            </>
+            </View>
           ) : null}
 
           {savedItems.length > 0 ? (
-            <>
+            <View style={[styles.section, styles.lastSection]}>
               <SectionHeader title={t('learn.savedTeachings')} icon="bookmark" />
               <View style={styles.savedList}>
                 {savedItems.map(({ topic, collection }) => (
@@ -360,7 +360,7 @@ export default function LearnScreen() {
                   />
                 ))}
               </View>
-            </>
+            </View>
           ) : null}
         </>
       ) : (
@@ -421,6 +421,7 @@ const styles = StyleSheet.create({
   searchWrap: { marginBottom: Space.s16 },
   filterWrap: { marginBottom: Layout.sectionHeaderBottom },
   section: { marginBottom: Layout.sectionContentBottom },
+  lastSection: { marginBottom: 0 },
   rail: {
     gap: Layout.cardGap,
     paddingRight: Layout.pagePadding,

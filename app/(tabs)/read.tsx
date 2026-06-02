@@ -182,6 +182,12 @@ export default function ReadScreen() {
         </>
       ) : null}
 
+      {/* Featured — daily discovery */}
+      <View style={styles.section}>
+        <SectionHeader headerKey="featured" icon="sparkle" />
+        <FeaturedCarousel items={featuredItems} width={featuredWidth} autoRotateMs={3200} cardHeight={Layout.featuredCardHeight} />
+      </View>
+
       {/* Continue reading — pick up where you left off */}
       {entries.length > 0 ? (
         <View style={styles.section}>
@@ -251,12 +257,6 @@ export default function ReadScreen() {
           />
         </View>
       )}
-
-      {/* Featured — daily discovery */}
-      <View style={styles.section}>
-        <SectionHeader headerKey="featured" icon="sparkle" />
-        <FeaturedCarousel items={featuredItems} width={featuredWidth} autoRotateMs={3200} cardHeight={198} />
-      </View>
 
       {/* Orthodox catalog — organized into genre shelves */}
       <View style={styles.section}>
