@@ -3,19 +3,26 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { MezmurPlaylistRow } from '@/components/listen/mezmur-playlist-row';
+import { MezmurSongRow } from '@/components/listen/mezmur-song-row';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
 import { Layout, Palette, Space, Spacing } from '@/constants/theme';
+import { isMezmurSongsOnlyChannel } from '@/data/mezmurCatalog';
+import { useAudioPlayer } from '@/contexts/audio-player-context';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 import {
   decodeRouteParam,
   encodeRouteParam,
   fetchAlbumsByArtist,
+  fetchSongsByArtist,
   filterByQuery,
+  mezmurListToAudioTracks,
+  mezmurToAudioTrack,
+  type Mezmur,
   type MezmurAlbum,
 } from '@/lib/mezmur';
 
@@ -23,29 +30,39 @@ const MUTED_GOLD = '#8A8070';
 
 export default function ListenAlbumsScreen() {
   const { t, mode } = useTranslation();
+  const { playTrack } = useAudioPlayer();
   const { artist: artistParam } = useLocalSearchParams<{ artist: string }>();
   const artist = decodeRouteParam(artistParam);
+  const songsOnly = artist ? isMezmurSongsOnlyChannel(artist) : false;
 
   const [albums, setAlbums] = useState<MezmurAlbum[]>([]);
+  const [songs, setSongs] = useState<Mezmur[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { recentSearches, addRecentSearch } = useRecentSearches(`listen-playlists-${artist}`);
+  const recentKey = songsOnly ? `listen-songs-${artist}` : `listen-playlists-${artist}`;
+  const { recentSearches, addRecentSearch } = useRecentSearches(recentKey);
 
   const load = useCallback(async () => {
     if (!artist) return;
     setLoading(true);
     setError(null);
     try {
-      const rows = await fetchAlbumsByArtist(artist);
-      setAlbums(rows);
+      if (songsOnly) {
+        setSongs(await fetchSongsByArtist(artist));
+        setAlbums([]);
+      } else {
+        setAlbums(await fetchAlbumsByArtist(artist));
+        setSongs([]);
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load playlists.');
+      setError(e instanceof Error ? e.message : 'Could not load channel.');
       setAlbums([]);
+      setSongs([]);
     } finally {
       setLoading(false);
     }
-  }, [artist]);
+  }, [artist, songsOnly]);
 
   useEffect(() => {
     void load();
@@ -54,6 +71,19 @@ export default function ListenAlbumsScreen() {
   const filteredAlbums = useMemo(
     () => filterByQuery(albums, searchQuery, (album) => [album.name]),
     [albums, searchQuery]
+  );
+
+  const filteredSongs = useMemo(
+    () => filterByQuery(songs, searchQuery, (song) => [song.title, song.language]),
+    [searchQuery, songs]
+  );
+
+  const playSong = useCallback(
+    (song: Mezmur) => {
+      const queue = mezmurListToAudioTracks(songs);
+      playTrack(mezmurToAudioTrack(song), { queue, autoPlay: true, openFullPlayer: true });
+    },
+    [playTrack, songs]
   );
 
   if (!artist) {
@@ -83,12 +113,12 @@ export default function ListenAlbumsScreen() {
       <ThemedText style={styles.pageTitle}>{artist}</ThemedText>
       {mode !== 'en' ? <ThemedText style={styles.pageGeez}>መዝሙር</ThemedText> : null}
       <ThemedText type="muted" style={styles.description}>
-        Playlists from this channel.
+        {songsOnly ? 'Songs from this channel.' : 'Playlists from this channel.'}
       </ThemedText>
 
       <View style={styles.searchWrap}>
         <SearchBar
-          placeholder="Search playlists"
+          placeholder={songsOnly ? 'Search songs' : 'Search playlists'}
           placeholderTextColor={MUTED_GOLD}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -104,6 +134,27 @@ export default function ListenAlbumsScreen() {
         <ActivityIndicator color={Palette.gold} style={styles.spinner} />
       ) : error ? (
         <EmptyState title={error} suggestion={t('scripture.tryAgain')} />
+      ) : songsOnly ? (
+        songs.length === 0 ? (
+          <EmptyState title="No songs found" suggestion="Try again later." />
+        ) : filteredSongs.length === 0 ? (
+          <EmptyState title="No songs match your search" suggestion="Try a different term." />
+        ) : (
+          <View style={styles.list}>
+            {filteredSongs.map((song, index) => (
+              <View key={song.videoId}>
+                <MezmurSongRow
+                  title={song.title}
+                  subtitle={song.language ?? undefined}
+                  thumbnailUrl={song.thumbnailUrl}
+                  audioTrack={mezmurToAudioTrack(song)}
+                  onPress={() => playSong(song)}
+                />
+                {index < filteredSongs.length - 1 ? <View style={styles.songDivider} /> : null}
+              </View>
+            ))}
+          </View>
+        )
       ) : albums.length === 0 ? (
         <EmptyState title="No playlists found" suggestion="Try again later." />
       ) : filteredAlbums.length === 0 ? (
@@ -158,6 +209,11 @@ const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Layout.cardBorder,
-    marginLeft: 64,
+    marginLeft: 124,
+  },
+  songDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Layout.cardBorder,
+    marginLeft: 60,
   },
 });

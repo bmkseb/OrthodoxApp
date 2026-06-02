@@ -1,7 +1,7 @@
 /**
- * Reads approved/rejected rows from Google Sheet and syncs to Supabase.
+ * Reads approved rows from Google Sheet → pushes to Supabase.
  * Run: node scripts/sync-approvals.mjs
- * Auto-runs daily via GitHub Actions
+ * Auto-runs every 6 hours via GitHub Actions.
  */
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
@@ -28,9 +28,9 @@ function loadEnv() {
 }
 loadEnv();
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_URL              = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SHEET_ID = '1DVezMntiTGyRw4lR5oZf4G-JqcKX42si54YPx9SvTPI';
+const SHEET_ID                  = '1Gt_rSQlEd6R4EpZv3fR1KW6gx5-gJqSFpyj87zaUFpE';
 
 const GOOGLE_SERVICE_ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
   ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON)
@@ -47,70 +47,85 @@ async function getSheetsClient() {
 }
 
 async function main() {
-  console.log('📋 Syncing approvals from Google Sheet to Supabase...\n');
+  console.log('📋 Syncing approvals from Google Sheet → Supabase...\n');
   const sheets = await getSheetsClient();
 
-  // Read all rows from sheet
+  // Columns: title(A) artist(B) channel(C) youtube_link(D) thumbnail(E)
+  //          type(F) language(G) video_id(H) status(I) notes(J)
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'Sheet1!A2:H',
+    range: 'Mezmur Catalog!A2:J',
   });
 
   const rows = res.data.values ?? [];
-  if (rows.length === 0) {
-    console.log('No rows found in sheet.');
-    return;
-  }
+  if (rows.length === 0) { console.log('No rows in sheet.'); return; }
 
-  // Columns: video_id(0), title(1), artist(2), album(3),
-  //          youtube_link(4), thumbnail(5), published_at(6), status(7)
   const approved = [];
   const rejected = [];
 
   for (const row of rows) {
-    const [videoId, title, artist, album, , thumbnail, publishedAt, status] = row;
+    const [title, artist, channel, , thumbnail, type, language, videoId, status] = row;
     if (!videoId || !status) continue;
     const s = status.trim().toLowerCase();
+    const t = (type || '').trim().toLowerCase();
+    const lang = (language || 'english').trim().toLowerCase();
+
     if (s === 'approved') {
+      const channelName = (channel || '').trim();
+      const artistName = (artist || '').trim();
+      const isEgeziharya = /egeziharya/i.test(channelName) || /egeziharya/i.test(artistName);
+      const isMezmurDebter = /mezmur debter|debter zetewahedo/i.test(channelName) ||
+        /mezmur debter|debter zetewahedo/i.test(artistName);
+      const isYotcChoir = /\by\.?\s*o\.?\s*t\.?\s*c\b/i.test(channelName) ||
+        /\by\.?\s*o\.?\s*t\.?\s*c\b/i.test(artistName) ||
+        /young orthodox tewahedo/i.test(channelName) ||
+        /young orthodox tewahedo/i.test(artistName);
+      let resolvedArtist = artistName || channelName || 'Unknown';
+      let resolvedAlbum = (channelName || artistName || 'Discovered').trim();
+      if (isEgeziharya) {
+        resolvedArtist = 'Egeziharya Yilma';
+        resolvedAlbum = '';
+      } else if (isMezmurDebter) {
+        resolvedArtist = 'Mezmur Debter Zetewahedo';
+      } else if (isYotcChoir) {
+        resolvedArtist = 'Y.O.T.C. Choir';
+        resolvedAlbum = '';
+      }
       approved.push({
-        video_id: videoId,
-        title: title || '',
-        artist: artist || 'Unknown',
-        album: album || 'Discovered',
+        video_id:      videoId,
+        title:         title || '',
+        artist:        resolvedArtist,
+        album:         resolvedAlbum,
         thumbnail_url: thumbnail || '',
-        published_at: publishedAt || null,
-        language: 'english',
-        status: 'approved',
+        language:      lang,
+        type:          ['nisiha','praise','maryam','fasting','other'].includes(t) ? t : 'other',
+        status:        'approved',
       });
     } else if (s === 'rejected') {
       rejected.push(videoId);
     }
   }
 
-  console.log(`  Found ${approved.length} approved, ${rejected.length} rejected in sheet.\n`);
+  console.log(`Found ${approved.length} approved, ${rejected.length} rejected.\n`);
 
-  // Upsert approved into Supabase
   if (approved.length > 0) {
-    const { error } = await sb
-      .from('mezmur')
-      .upsert(approved, { onConflict: 'video_id' });
-    if (error) console.error('  Error upserting approved:', error.message);
-    else console.log(`  ✓ ${approved.length} approved mezmur synced to Supabase.`);
+    const unique = new Map();
+    for (const r of approved) unique.set(r.video_id, r);
+    const { error } = await sb.from('mezmur')
+      .upsert([...unique.values()], { onConflict: 'video_id' });
+    if (error) console.error('Upsert error:', error.message);
+    else console.log(`✓ ${unique.size} approved mezmur live in Supabase.`);
   }
 
-  // Mark rejected in Supabase
   if (rejected.length > 0) {
-    const { error } = await sb
-      .from('mezmur')
-      .upsert(
-        rejected.map(id => ({ video_id: id, status: 'rejected' })),
-        { onConflict: 'video_id' }
-      );
-    if (error) console.error('  Error marking rejected:', error.message);
-    else console.log(`  ✓ ${rejected.length} rejected mezmur updated in Supabase.`);
+    for (const videoId of rejected) {
+      await sb.from('mezmur')
+        .upsert({ video_id: videoId, status: 'rejected' }, { onConflict: 'video_id' });
+    }
+    console.log(`✓ ${rejected.length} rejected.`);
   }
 
-  console.log('\nDone! Approved mezmur are now live in the app.');
+  console.log('\nDone!');
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

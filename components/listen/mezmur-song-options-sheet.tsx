@@ -123,12 +123,15 @@ export function MezmurSongOptionsSheet({
           />
         </Animated.View>
 
-        <GestureDetector gesture={panGesture}>
-          <Animated.View
-            style={[styles.sheet, { paddingBottom: 20 + Math.max(insets.bottom, 8) }, sheetStyle]}>
-            <View style={styles.handle} />
+        <Animated.View
+          style={[styles.sheet, { paddingBottom: 20 + Math.max(insets.bottom, 8) }, sheetStyle]}>
+          <GestureDetector gesture={panGesture}>
+            <View style={styles.handleHitArea}>
+              <View style={styles.handle} />
+            </View>
+          </GestureDetector>
 
-            <View style={styles.header}>
+          <View style={styles.header}>
               {thumbnailUrl ? (
                 <Image source={{ uri: thumbnailUrl }} style={styles.thumb} contentFit="cover" />
               ) : (
@@ -185,8 +188,7 @@ export function MezmurSongOptionsSheet({
               accessibilityLabel="Cancel">
               <ThemedText style={styles.cancelLabel}>Cancel</ThemedText>
             </OrthodoxPressable>
-          </Animated.View>
-        </GestureDetector>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -207,13 +209,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
   },
+  handleHitArea: {
+    alignItems: 'center',
+    paddingTop: 4,
+    paddingBottom: 14,
+    marginBottom: 4,
+  },
   handle: {
-    alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
     backgroundColor: 'rgba(201, 147, 58, 0.3)',
-    marginBottom: 18,
   },
   header: {
     flexDirection: 'row',

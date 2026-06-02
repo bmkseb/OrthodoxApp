@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import type { SavedListenKind } from '@/hooks/use-saved-hymns';
+
 const STORAGE_KEY = '@orthodox/listening-progress';
 const MAX_ENTRIES = 15;
 
@@ -12,6 +14,7 @@ export type ListeningProgressEntry = {
   thumbnailUrl: string;
   positionSeconds?: number;
   updatedAt: number;
+  kind: SavedListenKind;
 };
 
 let cache: ListeningProgressEntry[] = [];
@@ -23,7 +26,12 @@ function emit() {
   for (const listener of listeners) listener();
 }
 
-function isValidEntry(value: unknown): value is ListeningProgressEntry {
+function normalizeKind(raw: string | undefined): SavedListenKind {
+  if (raw === 'sermon' || raw === 'melody') return raw;
+  return 'hymn';
+}
+
+function isValidEntry(value: unknown): value is ListeningProgressEntry & { kind?: string } {
   if (!value || typeof value !== 'object') return false;
   const e = value as Record<string, unknown>;
   return (
@@ -32,6 +40,19 @@ function isValidEntry(value: unknown): value is ListeningProgressEntry {
     typeof e.artist === 'string' &&
     typeof e.album === 'string'
   );
+}
+
+function normalizeEntry(raw: ListeningProgressEntry & { kind?: string }): ListeningProgressEntry {
+  return {
+    videoId: raw.videoId,
+    title: raw.title,
+    artist: raw.artist,
+    album: raw.album,
+    thumbnailUrl: raw.thumbnailUrl ?? '',
+    positionSeconds: raw.positionSeconds,
+    updatedAt: raw.updatedAt ?? Date.now(),
+    kind: normalizeKind(raw.kind),
+  };
 }
 
 function ensureLoaded(): Promise<void> {
@@ -44,7 +65,8 @@ function ensureLoaded(): Promise<void> {
       const valid = Array.isArray(parsed)
         ? parsed
             .filter(isValidEntry)
-            .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+            .map(normalizeEntry)
+            .sort((a, b) => b.updatedAt - a.updatedAt)
         : [];
       cache = valid.slice(0, MAX_ENTRIES);
       if (valid.length > MAX_ENTRIES) await persist();
@@ -75,6 +97,7 @@ export async function recordListeningProgress(
   const next: ListeningProgressEntry = {
     ...existing,
     ...entry,
+    kind: entry.kind ?? existing?.kind ?? 'hymn',
     positionSeconds: entry.positionSeconds ?? existing?.positionSeconds,
     updatedAt: Date.now(),
   };

@@ -1,7 +1,15 @@
 import { getSupabase } from '@/lib/supabase';
 import type { AudioTrack } from '@/contexts/audio-player-context';
 import { resolveMezmurChannelThumbnail } from '@/constants/mezmur-channel-art';
-import { MEZMUR_CHANNEL_LANGUAGE, type MezmurLanguage } from '@/data/mezmurCatalog';
+import {
+  EGEZIHARYA_YILMA_CHANNEL,
+  isMezmurSongsOnlyChannel,
+  MEZMUR_CHANNEL_LANGUAGE,
+  MEZMUR_DEBTER_ALBUMS,
+  MEZMUR_DEBTER_CHANNEL,
+  type MezmurCategory,
+  type MezmurLanguage,
+} from '@/data/mezmurCatalog';
 
 export type Mezmur = {
   videoId: string;
@@ -11,6 +19,7 @@ export type Mezmur = {
   thumbnailUrl: string;
   publishedAt: string | null;
   language: string | null;
+  type: string | null;
   description: string | null;
 };
 
@@ -27,6 +36,13 @@ export type MezmurAlbum = {
   thumbnailUrl: string | null;
 };
 
+export type MezmurPlaylistCard = {
+  artist: string;
+  album: string;
+  songCount: number;
+  thumbnailUrl: string | null;
+};
+
 type MezmurRow = {
   video_id: string;
   title: string;
@@ -35,6 +51,7 @@ type MezmurRow = {
   thumbnail_url: string | null;
   published_at: string | null;
   language: string | null;
+  type?: string | null;
   description?: string | null;
 };
 
@@ -42,7 +59,7 @@ let cachedSongs: Mezmur[] | null = null;
 let cachePromise: Promise<Mezmur[]> | null = null;
 
 function mapRow(row: MezmurRow): Mezmur {
-  return {
+  const song = normalizeMezmurCatalogEntry({
     videoId: row.video_id,
     title: row.title,
     artist: row.artist,
@@ -50,8 +67,44 @@ function mapRow(row: MezmurRow): Mezmur {
     thumbnailUrl: row.thumbnail_url ?? '',
     publishedAt: row.published_at,
     language: row.language,
+    type: row.type ?? null,
     description: row.description ?? null,
-  };
+  });
+  if (isMezmurSongsOnlyChannel(song.artist)) {
+    return { ...song, album: '' };
+  }
+  return song;
+}
+
+/** Correct channel ownership when Supabase still has stale artist values. */
+export function normalizeMezmurCatalogEntry(song: Mezmur): Mezmur {
+  if (
+    song.artist === EGEZIHARYA_YILMA_CHANNEL &&
+    MEZMUR_DEBTER_ALBUMS.has(song.album)
+  ) {
+    return { ...song, artist: MEZMUR_DEBTER_CHANNEL };
+  }
+
+  if (MEZMUR_DEBTER_ALBUMS.has(song.album)) {
+    if (
+      song.artist === EGEZIHARYA_YILMA_CHANNEL ||
+      song.artist === 'Ahadu Studios'
+    ) {
+      return { ...song, artist: MEZMUR_DEBTER_CHANNEL };
+    }
+    return song;
+  }
+
+  return song;
+}
+
+export function formatMezmurChannelSubtitle(artist: string, albumCount: number, songCount: number): string {
+  if (isMezmurSongsOnlyChannel(artist)) {
+    return `${songCount} ${songCount === 1 ? 'song' : 'songs'}`;
+  }
+  const playlistLabel = albumCount === 1 ? 'playlist' : 'playlists';
+  const songLabel = songCount === 1 ? 'song' : 'songs';
+  return `${albumCount} ${playlistLabel} · ${songCount} ${songLabel}`;
 }
 
 export function decodeRouteParam(value: string | string[] | undefined): string {
@@ -78,12 +131,12 @@ async function fetchAllMezmurRows(): Promise<Mezmur[]> {
   const supabase = getSupabase();
   if (!supabase) return [];
 
-  const baseColumns =
-    'video_id, title, artist, album, thumbnail_url, published_at, language';
+  const coreColumns = 'video_id, title, artist, album, thumbnail_url, published_at, language';
+  const typedColumns = `${coreColumns}, type`;
 
   let { data, error } = await supabase
     .from('mezmur')
-    .select(`${baseColumns}, description`)
+    .select(`${typedColumns}, description`)
     .order('artist', { ascending: true })
     .order('album', { ascending: true })
     .order('title', { ascending: true });
@@ -91,7 +144,16 @@ async function fetchAllMezmurRows(): Promise<Mezmur[]> {
   if (error) {
     ({ data, error } = await supabase
       .from('mezmur')
-      .select(baseColumns)
+      .select(typedColumns)
+      .order('artist', { ascending: true })
+      .order('album', { ascending: true })
+      .order('title', { ascending: true }));
+  }
+
+  if (error) {
+    ({ data, error } = await supabase
+      .from('mezmur')
+      .select(coreColumns)
       .order('artist', { ascending: true })
       .order('album', { ascending: true })
       .order('title', { ascending: true }));
@@ -127,6 +189,160 @@ export function resolveMezmurLanguage(song: Mezmur): MezmurLanguage {
   return 'amharic';
 }
 
+/** Normalize DB / sheet type values into catalog category shelves. */
+export function resolveMezmurCategory(type: string | null | undefined): MezmurCategory {
+  const value = type?.trim().toLowerCase();
+  if (value === 'nisiha' || value === 'praise' || value === 'maryam' || value === 'fasting') {
+    return value;
+  }
+  return 'other';
+}
+
+function emptyCategoryPlaylists(): Record<MezmurCategory, MezmurPlaylistCard[]> {
+  return { nisiha: [], praise: [], maryam: [], fasting: [], other: [] };
+}
+
+/** Unique playlists grouped by language shelf and category shelf. */
+export function groupPlaylistsByLanguageAndCategory(
+  songs: Mezmur[]
+): Record<MezmurLanguage, Record<MezmurCategory, MezmurPlaylistCard[]>> {
+  const result: Record<MezmurLanguage, Record<MezmurCategory, MezmurPlaylistCard[]>> = {
+    english: emptyCategoryPlaylists(),
+    amharic: emptyCategoryPlaylists(),
+  };
+
+  const byAlbum = new Map<string, Mezmur[]>();
+  for (const song of songs) {
+    const key = `${song.artist}\0${song.album}`;
+    const list = byAlbum.get(key) ?? [];
+    list.push(song);
+    byAlbum.set(key, list);
+  }
+
+  for (const albumSongs of byAlbum.values()) {
+    const first = albumSongs[0];
+    if (!first) continue;
+    const language = resolveMezmurLanguage(first);
+    const category = resolveMezmurCategory(first.type);
+    result[language][category].push({
+      artist: first.artist,
+      album: first.album,
+      songCount: albumSongs.length,
+      thumbnailUrl: albumSongs.find((s) => s.thumbnailUrl)?.thumbnailUrl ?? null,
+    });
+  }
+
+  for (const language of ['english', 'amharic'] as MezmurLanguage[]) {
+    for (const category of Object.keys(result[language]) as MezmurCategory[]) {
+      result[language][category].sort((a, b) => a.album.localeCompare(b.album));
+    }
+  }
+
+  return result;
+}
+
+export async function fetchPlaylistsGroupedByLanguageAndCategory(): Promise<
+  Record<MezmurLanguage, Record<MezmurCategory, MezmurPlaylistCard[]>>
+> {
+  return groupPlaylistsByLanguageAndCategory(await fetchAllMezmur());
+}
+
+function playlistsFromSongs(songs: Mezmur[]): MezmurPlaylistCard[] {
+  const byAlbum = new Map<string, Mezmur[]>();
+  for (const song of songs) {
+    const key = `${song.artist}\0${song.album}`;
+    const list = byAlbum.get(key) ?? [];
+    list.push(song);
+    byAlbum.set(key, list);
+  }
+
+  return Array.from(byAlbum.values())
+    .map((albumSongs) => {
+      const first = albumSongs[0];
+      if (!first) return null;
+      return {
+        artist: first.artist,
+        album: first.album,
+        songCount: albumSongs.length,
+        thumbnailUrl: albumSongs.find((s) => s.thumbnailUrl)?.thumbnailUrl ?? null,
+      };
+    })
+    .filter((item): item is MezmurPlaylistCard => Boolean(item))
+    .sort((a, b) => a.album.localeCompare(b.album));
+}
+
+/** All playlists for one language — one bookshelf, any channel or theme. */
+export function groupPlaylistsByLanguage(
+  songs: Mezmur[]
+): Record<MezmurLanguage, MezmurPlaylistCard[]> {
+  const english = playlistsFromSongs(songs.filter((song) => resolveMezmurLanguage(song) === 'english'));
+  const amharic = playlistsFromSongs(songs.filter((song) => resolveMezmurLanguage(song) === 'amharic'));
+  return { english, amharic };
+}
+
+export async function fetchPlaylistsByLanguage(): Promise<
+  Record<MezmurLanguage, MezmurPlaylistCard[]>
+> {
+  return groupPlaylistsByLanguage(await fetchAllMezmur());
+}
+
+/** Merge theme playlists from English and Amharic into one catalog per type. */
+export function mergePlaylistsByCategory(
+  grouped: Record<MezmurLanguage, Record<MezmurCategory, MezmurPlaylistCard[]>>
+): Record<MezmurCategory, MezmurPlaylistCard[]> {
+  const merged = emptyCategoryPlaylists();
+  for (const language of ['english', 'amharic'] as MezmurLanguage[]) {
+    for (const category of Object.keys(merged) as MezmurCategory[]) {
+      merged[category].push(...grouped[language][category]);
+    }
+  }
+  for (const category of Object.keys(merged) as MezmurCategory[]) {
+    merged[category].sort((a, b) => a.album.localeCompare(b.album));
+  }
+  return merged;
+}
+
+export async function fetchPlaylistsByCategory(): Promise<
+  Record<MezmurCategory, MezmurPlaylistCard[]>
+> {
+  const grouped = await fetchPlaylistsGroupedByLanguageAndCategory();
+  return mergePlaylistsByCategory(grouped);
+}
+
+function emptyCategorySongs(): Record<MezmurCategory, Mezmur[]> {
+  return { nisiha: [], praise: [], maryam: [], fasting: [], other: [] };
+}
+
+/** Songs grouped by language and theme — any channel, for the hymns See All catalog. */
+export function groupSongsByLanguageAndCategory(
+  songs: Mezmur[]
+): Record<MezmurLanguage, Record<MezmurCategory, Mezmur[]>> {
+  const result: Record<MezmurLanguage, Record<MezmurCategory, Mezmur[]>> = {
+    english: emptyCategorySongs(),
+    amharic: emptyCategorySongs(),
+  };
+
+  for (const song of songs) {
+    const language = resolveMezmurLanguage(song);
+    const category = resolveMezmurCategory(song.type);
+    result[language][category].push(song);
+  }
+
+  for (const language of ['english', 'amharic'] as MezmurLanguage[]) {
+    for (const category of Object.keys(result[language]) as MezmurCategory[]) {
+      result[language][category].sort((a, b) => a.title.localeCompare(b.title));
+    }
+  }
+
+  return result;
+}
+
+export async function fetchSongsGroupedByLanguageAndCategory(): Promise<
+  Record<MezmurLanguage, Record<MezmurCategory, Mezmur[]>>
+> {
+  return groupSongsByLanguageAndCategory(await fetchAllMezmur());
+}
+
 function artistsFromSongs(songs: Mezmur[]): MezmurArtist[] {
   const byArtist = new Map<string, Mezmur[]>();
 
@@ -139,7 +355,9 @@ function artistsFromSongs(songs: Mezmur[]): MezmurArtist[] {
   return Array.from(byArtist.entries())
     .map(([name, artistSongs]) => ({
       name,
-      albumCount: new Set(artistSongs.map((s) => s.album)).size,
+      albumCount: isMezmurSongsOnlyChannel(name)
+        ? 0
+        : new Set(artistSongs.map((s) => s.album).filter(Boolean)).size,
       songCount: artistSongs.length,
       thumbnailUrl: resolveMezmurChannelThumbnail(
         name,
@@ -179,12 +397,22 @@ export async function fetchArtistsGroupedByLanguage(): Promise<
   };
 }
 
+/** All songs for a channel (used for songs-only artists). */
+export async function fetchSongsByArtist(artist: string): Promise<Mezmur[]> {
+  const songs = await fetchAllMezmur();
+  return songs
+    .filter((s) => s.artist === artist)
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
 /** Albums for one artist, sorted alphabetically. */
 export async function fetchAlbumsByArtist(artist: string): Promise<MezmurAlbum[]> {
+  if (isMezmurSongsOnlyChannel(artist)) return [];
+
   const songs = await fetchAllMezmur();
   const byAlbum = new Map<string, Mezmur[]>();
 
-  for (const song of songs.filter((s) => s.artist === artist)) {
+  for (const song of songs.filter((s) => s.artist === artist && s.album)) {
     const list = byAlbum.get(song.album) ?? [];
     list.push(song);
     byAlbum.set(song.album, list);

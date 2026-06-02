@@ -58,8 +58,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm + 2,
   },
   thumb: {
-    width: 52,
-    height: 52,
+    width: 112,
+    height: 63,
     borderRadius: BorderRadius.md,
     backgroundColor: Palette.card,
     borderWidth: StyleSheet.hairlineWidth,

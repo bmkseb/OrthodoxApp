@@ -5,6 +5,30 @@ export function formatPlaybackTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+export function youtubeWatchUrl(videoId: string): string {
+  return `https://www.youtube.com/watch?v=${videoId}`;
+}
+
+/** Plain-text payload for the system share sheet. */
+export function buildAudioTrackShareMessage(track: {
+  title: string;
+  artist?: string;
+  album?: string;
+  videoId?: string;
+  url?: string;
+}): string {
+  const lines: string[] = [];
+  const artist = track.artist?.trim();
+  lines.push(artist ? `${track.title} — ${artist}` : track.title);
+  if (track.album?.trim()) lines.push(track.album.trim());
+  if (track.videoId) {
+    lines.push(youtubeWatchUrl(track.videoId));
+  } else if (track.url?.trim()) {
+    lines.push(track.url.trim());
+  }
+  return lines.join('\n');
+}
+
 /** Fisher–Yates shuffle (returns a new array). */
 export function shuffleArray<T>(items: T[]): T[] {
   const arr = [...items];

@@ -11,6 +11,7 @@ import { useSharedValue, withSpring, type SharedValue } from 'react-native-reani
 
 import {
   recordListeningProgress,
+  type ListeningProgressEntry,
 } from '@/hooks/use-listening-progress';
 import type { TranslationKey } from '@/lib/translations';
 import { fetchRandomMezmur, mezmurToAudioTrack } from '@/lib/mezmur';
@@ -99,6 +100,21 @@ const PROGRESS_SAVE_INTERVAL_SEC = 3;
 
 function isYoutubeTrack(track: AudioTrack | null | undefined): boolean {
   return Boolean(track?.videoId);
+}
+
+function listeningProgressFromTrack(
+  track: AudioTrack,
+  positionSeconds?: number
+): Omit<ListeningProgressEntry, 'updatedAt'> {
+  return {
+    videoId: track.videoId!,
+    title: track.title,
+    artist: track.artist,
+    album: track.album ?? track.categoryLabel ?? '',
+    thumbnailUrl: track.artworkUri,
+    positionSeconds,
+    kind: track.saveKind ?? 'hymn',
+  };
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
@@ -238,14 +254,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     if (Math.abs(position - lastSavedProgressRef.current) < PROGRESS_SAVE_INTERVAL_SEC) return;
     lastSavedProgressRef.current = position;
 
-    void recordListeningProgress({
-      videoId: currentTrack.videoId,
-      title: currentTrack.title,
-      artist: currentTrack.artist,
-      album: currentTrack.album ?? currentTrack.categoryLabel ?? '',
-      thumbnailUrl: currentTrack.artworkUri,
-      positionSeconds: position,
-    });
+    void recordListeningProgress(listeningProgressFromTrack(currentTrack, position));
   }, [currentTrack]);
 
   const resolveStartSeconds = useCallback(async (_track: AudioTrack, explicit?: number) => {
@@ -274,14 +283,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
           savedPositionsRef.current.set(track.videoId, seconds);
         }
 
-        void recordListeningProgress({
-          videoId: track.videoId!,
-          title: track.title,
-          artist: track.artist,
-          album: track.album ?? track.categoryLabel ?? '',
-          thumbnailUrl: track.artworkUri,
-          positionSeconds: seconds,
-        });
+        void recordListeningProgress(listeningProgressFromTrack(track, seconds));
       })();
 
       if (HAS_TRACK_PLAYER && nativePlayerReady) {
@@ -429,28 +431,53 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     (track: AudioTrack, options?: { playNext?: boolean }) => {
       trackMetaRef.current.set(track.id, track);
 
-      const canonicalTracks = canonicalOrderRef.current
-        .map((id) => trackMetaRef.current.get(id))
-        .filter((item): item is AudioTrack => Boolean(item))
-        .filter((item) => item.id !== track.id);
+      setQueue((prevQueue) => {
+        const fromRef = canonicalOrderRef.current
+          .map((id) => trackMetaRef.current.get(id))
+          .filter((item): item is AudioTrack => Boolean(item));
 
-      let nextCanonical: AudioTrack[];
+        let base = fromRef.length > 0 ? fromRef : [...prevQueue];
 
-      if (options?.playNext && currentTrack) {
-        const currentIdx = canonicalTracks.findIndex((item) => item.id === currentTrack.id);
-        if (currentIdx >= 0) {
-          nextCanonical = [...canonicalTracks];
-          nextCanonical.splice(currentIdx + 1, 0, track);
-        } else {
-          nextCanonical = [...canonicalTracks, track];
+        const playing = currentTrackRef.current;
+        if (playing) {
+          trackMetaRef.current.set(playing.id, playing);
+          if (!base.some((item) => item.id === playing.id)) {
+            base = [playing, ...base];
+          }
         }
-      } else {
-        nextCanonical = [...canonicalTracks, track];
-      }
 
-      applyDisplayQueue(nextCanonical, { keepCurrentId: currentTrack?.id ?? null });
+        for (const item of base) {
+          trackMetaRef.current.set(item.id, item);
+        }
+
+        const withoutDup = base.filter((item) => item.id !== track.id);
+        let nextCanonical: AudioTrack[];
+
+        if (options?.playNext && playing) {
+          const currentIdx = withoutDup.findIndex((item) => item.id === playing.id);
+          if (currentIdx >= 0) {
+            nextCanonical = [...withoutDup];
+            nextCanonical.splice(currentIdx + 1, 0, track);
+          } else {
+            nextCanonical = [...withoutDup, track];
+          }
+        } else {
+          nextCanonical = [...withoutDup, track];
+        }
+
+        canonicalOrderRef.current = nextCanonical.map((item) => item.id);
+
+        const keepCurrentId = playing?.id ?? null;
+        const displayTracks =
+          isShuffleEnabledRef.current && nextCanonical.length > 1
+            ? shuffleQueueKeepingCurrent(nextCanonical, keepCurrentId)
+            : nextCanonical;
+
+        syncQueueRefs(displayTracks);
+        return displayTracks;
+      });
     },
-    [applyDisplayQueue, currentTrack]
+    [syncQueueRefs]
   );
 
   const removeFromQueue = useCallback(
@@ -555,14 +582,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     if (currentTrack?.videoId) {
       youtubeBridgeRef.current?.seekTo(0);
       savedPositionsRef.current.set(currentTrack.videoId, 0);
-      void recordListeningProgress({
-        videoId: currentTrack.videoId,
-        title: currentTrack.title,
-        artist: currentTrack.artist,
-        album: currentTrack.album ?? currentTrack.categoryLabel ?? '',
-        thumbnailUrl: currentTrack.artworkUri,
-        positionSeconds: 0,
-      });
+      void recordListeningProgress(listeningProgressFromTrack(currentTrack, 0));
     }
 
     closeFullPlayer();

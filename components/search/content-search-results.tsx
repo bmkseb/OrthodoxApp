@@ -13,6 +13,10 @@ export type ContentSearchHit = {
   snippet?: string;
   /** When set (including null), renders a leading thumbnail on the left. */
   imageUri?: string | null;
+  /** Renders a circular thumbnail (e.g. mezmur channels). */
+  circularImage?: boolean;
+  /** 16:9 landscape thumbnail (e.g. mezmur playlists). */
+  wideImage?: boolean;
   /** Header rows (books, topics, chapters) omit the quote snippet. */
   isHeader?: boolean;
   onPress: () => void;
@@ -54,6 +58,8 @@ export function ContentSearchResults({
       <View style={styles.list}>
         {hits.map((hit, index) => {
           const showImage = hit.imageUri !== undefined;
+          const circular = showImage && hit.circularImage;
+          const wide = showImage && hit.wideImage && !circular;
           return (
           <View key={hit.id}>
             <OrthodoxPressable
@@ -66,9 +72,19 @@ export function ContentSearchResults({
               accessibilityLabel={`${hit.title}. ${hit.isHeader ? hit.subtitle ?? hit.title : hit.snippet ?? hit.title}`}>
               {showImage ? (
                 hit.imageUri ? (
-                  <Image source={{ uri: hit.imageUri }} style={styles.thumb} contentFit="cover" />
+                  <Image
+                    source={{ uri: hit.imageUri }}
+                    style={[styles.thumb, circular && styles.thumbCircle, wide && styles.thumbWide]}
+                    contentFit="cover"
+                  />
                 ) : (
-                  <View style={[styles.thumb, styles.thumbPlaceholder]}>
+                  <View
+                    style={[
+                      styles.thumb,
+                      circular && styles.thumbCircle,
+                      wide && styles.thumbWide,
+                      styles.thumbPlaceholder,
+                    ]}>
                     <ThemedText style={styles.thumbGlyph}>{hit.title.charAt(0)}</ThemedText>
                   </View>
                 )
@@ -91,7 +107,17 @@ export function ContentSearchResults({
               <ThemedText style={styles.chevron}>›</ThemedText>
             </OrthodoxPressable>
             {index < hits.length - 1 ? (
-              <View style={[styles.divider, showImage && styles.dividerWithImage]} />
+              <View
+                style={[
+                  styles.divider,
+                  showImage &&
+                    (wide
+                      ? styles.dividerWithWideImage
+                      : circular
+                        ? styles.dividerWithCircleImage
+                        : styles.dividerWithImage),
+                ]}
+              />
             ) : null}
           </View>
         );
@@ -136,6 +162,16 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(201, 147, 58, 0.2)',
   },
+  thumbCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  thumbWide: {
+    width: 80,
+    height: 45,
+    borderRadius: BorderRadius.md,
+  },
   thumbPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -176,6 +212,12 @@ const styles = StyleSheet.create({
   },
   dividerWithImage: {
     marginLeft: Spacing.md + 44 + Spacing.sm,
+  },
+  dividerWithCircleImage: {
+    marginLeft: Spacing.md + 52 + Spacing.sm,
+  },
+  dividerWithWideImage: {
+    marginLeft: Spacing.md + 80 + Spacing.sm,
   },
   loadingWrap: {
     paddingVertical: Spacing.lg,

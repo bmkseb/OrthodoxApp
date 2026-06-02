@@ -8,24 +8,42 @@ import {
   HorizontalScrollIndicator,
   useHorizontalScrollIndicator,
 } from '@/components/ui/scroll-indicator';
-import { SoftRailCard } from '@/components/ui/soft-rail-card';
+import { ChannelRailCard } from '@/components/listen/channel-rail-card';
+import { PlaylistRailCard } from '@/components/listen/playlist-rail-card';
 import { SacredImagery } from '@/constants/sacred-imagery';
 import { Palette, Space } from '@/constants/theme';
 import { useTranslation } from '@/hooks/use-translation';
-import { encodeRouteParam, type MezmurArtist } from '@/lib/mezmur';
+import {
+  encodeRouteParam,
+  formatMezmurChannelSubtitle,
+  type MezmurArtist,
+  type MezmurPlaylistCard,
+} from '@/lib/mezmur';
+
+export type MezmurCatalogRailItem = {
+  key: string;
+  title: string;
+  subtitle: string;
+  imageUri?: string | null;
+  onPress: () => void;
+};
 
 type MezmurCatalogShelfProps = {
   title: string;
-  artists: MezmurArtist[];
-  onSeeAll: () => void;
+  artists?: MezmurArtist[];
+  playlists?: MezmurPlaylistCard[];
+  items?: MezmurCatalogRailItem[];
+  onSeeAll?: () => void;
   /** Drop bottom margin when another section follows immediately. */
   compactBottom?: boolean;
 };
 
-/** A single language shelf within the Hymns Catalog preview (mirrors CatalogShelf on Read). */
+/** A catalog shelf — themes, channels, or playlists in a horizontal rail. */
 export function MezmurCatalogShelf({
   title,
-  artists,
+  artists = [],
+  playlists = [],
+  items = [],
   onSeeAll,
   compactBottom = false,
 }: MezmurCatalogShelfProps) {
@@ -33,7 +51,35 @@ export function MezmurCatalogShelf({
   const { t } = useTranslation();
   const { values, scrollHandler, onLayout, onContentSizeChange } = useHorizontalScrollIndicator();
 
-  if (artists.length === 0) return null;
+  const isChannelRail = artists.length > 0;
+
+  const railItems: MezmurCatalogRailItem[] =
+    items.length > 0
+      ? items
+      : playlists.length > 0
+        ? playlists.map((playlist) => ({
+            key: `${playlist.artist}-${playlist.album}`,
+            title: playlist.album,
+            subtitle: `${playlist.artist} · ${playlist.songCount} songs`,
+            imageUri: playlist.thumbnailUrl,
+            onPress: () =>
+              router.push(
+                `/listen/${encodeRouteParam(playlist.artist)}/${encodeRouteParam(playlist.album)}` as never
+              ),
+          }))
+        : artists.map((channel) => ({
+            key: channel.name,
+            title: channel.name,
+            subtitle: formatMezmurChannelSubtitle(
+              channel.name,
+              channel.albumCount,
+              channel.songCount
+            ),
+            imageUri: channel.thumbnailUrl,
+            onPress: () => router.push(`/listen/${encodeRouteParam(channel.name)}` as never),
+          }));
+
+  if (railItems.length === 0) return null;
 
   return (
     <View style={[styles.wrap, compactBottom && styles.wrapCompact]}>
@@ -42,14 +88,16 @@ export function MezmurCatalogShelf({
           <View style={styles.accent} />
           <ThemedText style={styles.title}>{title}</ThemedText>
         </View>
-        <TouchableOpacity
-          onPress={onSeeAll}
-          accessibilityRole="button"
-          accessibilityLabel={`See all ${title}`}>
-          <ThemedText type="seeAll" style={styles.seeAll}>
-            {t('common.seeAll')}
-          </ThemedText>
-        </TouchableOpacity>
+        {onSeeAll ? (
+          <TouchableOpacity
+            onPress={onSeeAll}
+            accessibilityRole="button"
+            accessibilityLabel={`See all ${title}`}>
+            <ThemedText type="seeAll" style={styles.seeAll}>
+              {t('common.seeAll')}
+            </ThemedText>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <BookshelfSection
@@ -59,18 +107,29 @@ export function MezmurCatalogShelf({
           onLayout,
           onContentSizeChange,
         }}>
-        {artists.map((channel) => (
-          <SoftRailCard
-            key={channel.name}
-            title={channel.name}
-            subtitle={`${channel.albumCount} playlists · ${channel.songCount} songs`}
-            imageUri={channel.thumbnailUrl ?? SacredImagery.listenHymns}
-            onPress={() => router.push(`/listen/${encodeRouteParam(channel.name)}` as never)}
-          />
-        ))}
+        {railItems.map((item) =>
+          isChannelRail ? (
+            <ChannelRailCard
+              key={item.key}
+              title={item.title}
+              subtitle={item.subtitle}
+              imageUri={item.imageUri}
+              onPress={item.onPress}
+            />
+          ) : (
+            <PlaylistRailCard
+              key={item.key}
+              title={item.title}
+              subtitle={item.subtitle}
+              imageUri={item.imageUri}
+              fallbackImageUri={SacredImagery.listenHymns}
+              onPress={item.onPress}
+            />
+          )
+        )}
       </BookshelfSection>
 
-      {artists.length > 2 ? (
+      {railItems.length > 2 ? (
         <View style={styles.hint}>
           <HorizontalScrollIndicator values={values} />
         </View>

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -41,7 +42,7 @@ import {
 import { useTranslation } from '@/hooks/use-translation';
 import { useSavedHymns, toggleSavedHymn } from '@/hooks/use-saved-hymns';
 import { useTrackDescription } from '@/hooks/use-track-description';
-import { formatPlaybackTime } from '@/lib/audio-utils';
+import { formatPlaybackTime, buildAudioTrackShareMessage } from '@/lib/audio-utils';
 import { resolvePlayerCopyFromTrack } from '@/lib/audio-track-display';
 
 const DISMISS_DISTANCE = 110;
@@ -141,6 +142,23 @@ export function FullScreenPlayer() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     toggleShuffle();
   }, [toggleShuffle]);
+
+  const handleShare = useCallback(async () => {
+    if (!trackForDisplay) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    const message = buildAudioTrackShareMessage({
+      title: copy?.title ?? trackForDisplay.title,
+      artist: copy?.artist ?? trackForDisplay.artist,
+      album: currentTrack?.album ?? currentTrack?.categoryLabel,
+      videoId: currentTrack?.videoId,
+      url: currentTrack?.url,
+    });
+    try {
+      await Share.share({ message });
+    } catch {
+      // User dismissed the sheet or share is unavailable.
+    }
+  }, [copy?.artist, copy?.title, currentTrack, trackForDisplay]);
 
   const showCategory =
     (copy?.categoryLabel &&
@@ -400,7 +418,7 @@ export function FullScreenPlayer() {
                         active={isShuffleEnabled}
                         onPress={onToggleShuffle}
                       />
-                      <SecondaryAction icon="share" label="Share" />
+                      <SecondaryAction icon="share" label="Share" onPress={handleShare} />
                       <SecondaryAction icon="list" label="Queue" onPress={openQueue} />
                       <SecondaryAction
                         icon={saved ? 'bookmark-filled' : 'bookmark'}

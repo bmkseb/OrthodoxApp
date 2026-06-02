@@ -2,7 +2,7 @@ name: Sync Mezmur Approvals
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours — check sheet for approvals
+    - cron: '0 */6 * * *'  # Every 6 hours
   workflow_dispatch:
 
 jobs:
@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: '20'
       - run: npm install --legacy-peer-deps
-      - name: Sync approvals from Google Sheet
+      - name: Push sheet approvals to Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
