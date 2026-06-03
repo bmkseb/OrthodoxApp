@@ -3,6 +3,8 @@ import { Fragment } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { CatalogBookRow } from '@/components/read/catalog-book-row';
+import { CatalogListDivider } from '@/components/ui/catalog-list-divider';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
@@ -33,16 +35,10 @@ export default function CatalogScreen() {
 
   return (
     <ScreenScrollView includeFloatingChrome={false}>
-      <OrthodoxPressable
+      <AppBackButton
         style={styles.topBar}
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.push('/(tabs)/read');
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={t('settings.back')}>
-        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+        onFallback={() => router.push('/(tabs)/read')}
+      />
 
       <ThemedText style={styles.eyebrow}>Orthodox Catalog</ThemedText>
       <ThemedText style={styles.pageTitle}>{shelf.title}</ThemedText>
@@ -76,16 +72,18 @@ export default function CatalogScreen() {
               {group}
             </ThemedText>
           ) : null}
-          {books.map((book) => (
-            <CatalogBookRow
-              key={book.id}
-              title={book.title}
-              subtitle={book.subtitle}
-              geez={book.geez}
-              showGeez={mode !== 'en'}
-              icon={book.icon}
-              onPress={() => router.push(book.route)}
-            />
+          {books.map((book, bookIndex) => (
+            <View key={book.id}>
+              <CatalogBookRow
+                title={book.title}
+                subtitle={book.subtitle}
+                geez={book.geez}
+                showGeez={mode !== 'en'}
+                icon={book.icon}
+                onPress={() => router.push(book.route)}
+              />
+              {bookIndex < books.length - 1 ? <CatalogListDivider /> : null}
+            </View>
           ))}
         </Fragment>
       ))}

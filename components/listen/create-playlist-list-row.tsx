@@ -5,7 +5,7 @@ import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { MEZMUR_ALBUM_LIST_FRAME } from '@/constants/mezmur-album-art';
-import { BorderRadius, Palette, Spacing } from '@/constants/theme';
+import { Palette, Spacing } from '@/constants/theme';
 
 type CreatePlaylistListRowProps = {
   title: string;
@@ -60,16 +60,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm + 2,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.35)',
-    backgroundColor: 'rgba(201, 147, 58, 0.08)',
+    paddingVertical: Spacing.md - 2,
+    paddingHorizontal: 2,
+    minHeight: 56,
   },
   rowCompact: {
-    paddingVertical: Spacing.sm + 2,
-    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md - 2,
   },
   thumb: {
     width: MEZMUR_ALBUM_LIST_FRAME.width,
@@ -79,8 +75,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     backgroundColor: 'rgba(201, 147, 58, 0.1)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.28)',
   },
   thumbCompact: {
     width: 42,

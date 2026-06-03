@@ -1,9 +1,11 @@
 // app/learn/catalog.tsx
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { LearnCollectionCard } from '@/components/learn/learn-collection-card';
+import { CatalogListDivider } from '@/components/ui/catalog-list-divider';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
@@ -79,16 +81,10 @@ export default function LearnCatalogScreen() {
 
   return (
     <ScreenScrollView includeFloatingChrome={false}>
-      <OrthodoxPressable
+      <AppBackButton
         style={styles.topBar}
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.push('/(tabs)/learn');
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={t('settings.back')}>
-        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+        onFallback={() => router.push('/(tabs)/learn')}
+      />
 
       <ThemedText style={styles.pageTitle}>Catechism Catalog</ThemedText>
       {mode !== 'en' ? <ThemedText style={styles.pageGeez}>ትምህርት</ThemedText> : null}
@@ -96,12 +92,16 @@ export default function LearnCatalogScreen() {
         The doctrine and teachings of the Ethiopian Orthodox Tewahedo Church.
       </ThemedText>
 
-      {collectionsToRender.map((collection) => (
-        <LearnCollectionCard
-          key={collection.id}
-          collection={collection}
-          onTopicPress={(topic) => openLesson(topic)}
-        />
+      {collectionsToRender.map((collection, index) => (
+        <View key={collection.id}>
+          <LearnCollectionCard
+            collection={collection}
+            onTopicPress={(topic) => openLesson(topic)}
+          />
+          {index < collectionsToRender.length - 1 ? (
+            <CatalogListDivider marginLeft={0} />
+          ) : null}
+        </View>
       ))}
     </ScreenScrollView>
   );

@@ -1,14 +1,14 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
+import { ChannelAvatarImage } from '@/components/listen/channel-avatar-image';
 import { MezmurAlbumThumbnail } from '@/components/listen/mezmur-album-thumbnail';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { ThemedText } from '@/components/themed-text';
 import { UserAvatarBadge } from '@/components/ui/user-avatar-badge';
-import { resolveMezmurChannelThumbnail } from '@/constants/mezmur-channel-art';
 import { MEZMUR_ALBUM_HERO_FRAME } from '@/constants/mezmur-album-art';
 import { Palette, Space, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/hooks/use-translation';
@@ -19,6 +19,8 @@ type MezmurAlbumHeroProps = {
   album: string;
   songCount: number;
   thumbnailUrl?: string | null;
+  /** 2×2 YouTube thumbnails when no custom cover (user playlists). */
+  collageUris?: string[];
   /** Override channel row navigation (e.g. user playlists → /listen). */
   channelHref?: string;
   /** Playlist settings (rename, cover, delete). */
@@ -37,6 +39,7 @@ export const MezmurAlbumHero = memo(function MezmurAlbumHero({
   album,
   songCount,
   thumbnailUrl,
+  collageUris,
   channelHref,
   onMenuPress,
   useProfileChannel = false,
@@ -45,27 +48,14 @@ export const MezmurAlbumHero = memo(function MezmurAlbumHero({
   const { width } = useWindowDimensions();
   const stackCopy = width < 360;
 
-  const artistAvatar = useMemo(
-    () =>
-      useProfileChannel ? null : resolveMezmurChannelThumbnail(artist, thumbnailUrl ?? null),
-    [artist, thumbnailUrl, useProfileChannel]
-  );
-
   const metaLine = formatSongCount(songCount);
 
   return (
     <View style={styles.wrap}>
-      <OrthodoxPressable
+      <AppBackButton
         style={styles.backBtn}
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.push('/(tabs)/listen');
-        }}
-        hitSlop={12}
-        accessibilityRole="button"
-        accessibilityLabel={t('settings.back')}>
-        <Icon name="chevron-left" size={22} color={Palette.text} />
-      </OrthodoxPressable>
+        onFallback={() => router.push('/(tabs)/listen')}
+      />
 
       <View style={[styles.main, stackCopy && styles.mainStacked]}>
         <View
@@ -74,16 +64,19 @@ export const MezmurAlbumHero = memo(function MezmurAlbumHero({
             stackCopy ? styles.artFrameStacked : styles.artFrameRow,
           ]}>
           <MezmurAlbumThumbnail
-            artist={artist}
+            artist={useProfileChannel ? undefined : artist}
             album={album}
             thumbnailUrl={thumbnailUrl}
+            collageUris={useProfileChannel ? collageUris : undefined}
             style={StyleSheet.absoluteFill}
           />
         </View>
 
         <View style={[styles.copy, stackCopy && styles.copyStacked]}>
           <View style={styles.titleRow}>
-            <ThemedText style={styles.kindLabel}>Album</ThemedText>
+            <ThemedText style={styles.kindLabel}>
+              {useProfileChannel ? t('listen.contentKindPlaylist') : t('listen.contentKindAlbum')}
+            </ThemedText>
             {onMenuPress ? (
               <OrthodoxPressable
                 style={styles.menuBtn}
@@ -108,12 +101,12 @@ export const MezmurAlbumHero = memo(function MezmurAlbumHero({
             accessibilityLabel={useProfileChannel ? artist : `Channel ${artist}`}>
             {useProfileChannel ? (
               <UserAvatarBadge size={22} />
-            ) : artistAvatar ? (
-              <Image source={{ uri: artistAvatar }} style={styles.artistAvatar} contentFit="cover" />
             ) : (
-              <View style={[styles.artistAvatar, styles.artistAvatarPlaceholder]}>
-                <Icon name="music" size={12} color={Palette.gold} />
-              </View>
+              <ChannelAvatarImage
+                channelName={artist}
+                size={22}
+                imageUri={thumbnailUrl}
+              />
             )}
             <ThemedText style={styles.artistName} numberOfLines={1}>
               {artist}
@@ -136,13 +129,9 @@ const styles = StyleSheet.create({
     marginBottom: Space.s16,
   },
   backBtn: {
-    alignSelf: 'flex-start',
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: Space.s12,
-    marginLeft: -4,
+    marginLeft: 0,
+    paddingVertical: 0,
   },
   main: {
     flexDirection: 'row',
@@ -210,18 +199,6 @@ const styles = StyleSheet.create({
     gap: Space.s8,
     marginTop: Space.s4,
     alignSelf: 'flex-start',
-  },
-  artistAvatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Palette.card,
-  },
-  artistAvatarPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.35)',
   },
   artistName: {
     fontSize: 13,

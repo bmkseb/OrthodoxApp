@@ -62,7 +62,11 @@ import {
 
 } from '@/lib/mezmur';
 
-import { resolveUserPlaylistSongs, userPlaylistThumbnail } from '@/lib/user-playlists';
+import {
+  resolveUserPlaylistSongs,
+  userPlaylistCollageUris,
+  userPlaylistCoverUri,
+} from '@/lib/user-playlists';
 
 
 
@@ -196,18 +200,19 @@ export default function ListenSongsScreen() {
 
 
   const albumThumbnailUrl = useMemo(() => {
-
     if (isUserPlaylist && userPlaylist) {
-
-      return userPlaylistThumbnail(userPlaylist);
-
+      return userPlaylistCoverUri(userPlaylist);
     }
-
     if (artist && album) return pickAlbumThumbnailUrl(artist, album, songs);
-
     return null;
-
   }, [album, artist, isUserPlaylist, songs, userPlaylist]);
+
+  const albumCollageUris = useMemo(() => {
+    if (isUserPlaylist && userPlaylist) {
+      return userPlaylistCollageUris(userPlaylist);
+    }
+    return undefined;
+  }, [isUserPlaylist, userPlaylist]);
 
 
 
@@ -215,13 +220,15 @@ export default function ListenSongsScreen() {
 
     (song: Mezmur) => {
 
-      const queue = mezmurListToAudioTracks(songs);
+      const saveKind = userPlaylist?.kind;
 
-      playTrack(mezmurToAudioTrack(song), { queue, autoPlay: true, openFullPlayer: true });
+      const queue = mezmurListToAudioTracks(songs, saveKind);
+
+      playTrack(mezmurToAudioTrack(song, saveKind), { queue, autoPlay: true, openFullPlayer: true });
 
     },
 
-    [playTrack, songs]
+    [playTrack, songs, userPlaylist?.kind]
 
   );
 
@@ -268,6 +275,7 @@ export default function ListenSongsScreen() {
         songCount={songs.length}
 
         thumbnailUrl={albumThumbnailUrl}
+        collageUris={albumCollageUris}
 
         channelHref={isUserPlaylist ? '/profile' : undefined}
 
@@ -291,7 +299,9 @@ export default function ListenSongsScreen() {
 
             accessibilityRole="button"
 
-            accessibilityLabel="Play album">
+            accessibilityLabel={
+              isUserPlaylist ? t('listen.playPlaylist') : t('listen.playAlbum')
+            }>
 
             <Icon name="play" size={20} color={Palette.background} />
 

@@ -16,6 +16,7 @@ import {
 } from '@/hooks/use-user-playlists';
 import { useTranslation } from '@/hooks/use-translation';
 import type { Mezmur } from '@/lib/mezmur';
+import { userPlaylistCollageUris } from '@/lib/user-playlists';
 
 const SHEET_BG = '#1A1815';
 
@@ -117,7 +118,7 @@ export function MezmurPlaylistManageSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             <View style={styles.card}>
-              <ThemedText style={styles.fieldLabel}>{t('listen.playlistNameLabel')}</ThemedText>
+              <ThemedText style={styles.fieldLabel}>{t('listen.playlistTitleLabel')}</ThemedText>
               <TextInput
                 value={renameDraft}
                 onChangeText={setRenameDraft}
@@ -135,6 +136,7 @@ export function MezmurPlaylistManageSheet({
               <ThemedText style={styles.fieldLabel}>{t('listen.playlistCoverOptional')}</ThemedText>
               <PlaylistCoverPicker
                 imageUri={coverUri}
+                collageUris={playlist ? userPlaylistCollageUris(playlist) : undefined}
                 hasCustomCover={Boolean(coverUri)}
                 onImageChange={setCoverUri}
                 ui="settings"

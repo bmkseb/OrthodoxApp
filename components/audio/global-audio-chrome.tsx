@@ -33,6 +33,7 @@ export function GlobalAudioChrome() {
           thumbnailUrl={picker.thumbnailUrl ?? currentTrack?.artworkUri}
           videoId={picker.videoId}
           videoIdForPlaylist={picker.videoId}
+          playlistKind={currentTrack?.saveKind ?? 'hymn'}
           startInPlaylistMode
           onClose={closeAddToPlaylistPicker}
           onPlayNow={() => {

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ContentSearchResults } from '@/components/search/content-search-results';
 import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
@@ -192,9 +193,7 @@ export default function CatalogScreen() {
 
   return (
     <ScreenScrollView includeFloatingChrome={false}>
-      <OrthodoxPressable style={styles.topBar} onPress={() => router.back()}>
-        <ThemedText type="seeAll">{t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+      <AppBackButton style={styles.topBar} />
 
       <ScriptureBookHeader title="Holy Bible" subtitle="መጽሐፍ ቅዱስ" />
 

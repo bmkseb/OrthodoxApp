@@ -4,15 +4,17 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { CreatePlaylistListRow } from '@/components/listen/create-playlist-list-row';
 import { HymnsCatalogListRow } from '@/components/listen/hymns-catalog-list-row';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
+import { CatalogListDivider } from '@/components/ui/catalog-list-divider';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { Palette, Spacing } from '@/constants/theme';
 import { HYMNS_CATALOG_SECTIONS, shelfForHymnsSection } from '@/data/hymnsCatalog';
-import { USER_PLAYLIST_ARTIST } from '@/data/userPlaylists';
+import { userPlaylistArtistForKind } from '@/data/userPlaylists';
 import { useUserPlaylists } from '@/hooks/use-user-playlists';
-import { userPlaylistThumbnail } from '@/lib/user-playlists';
+import { userPlaylistCollageUris, userPlaylistCoverUri } from '@/lib/user-playlists';
 import { useTranslation } from '@/hooks/use-translation';
 import {
   clearMezmurCache,
@@ -30,7 +32,7 @@ export default function HymnsCatalogScreen() {
   const isPlaylists = shelf.section === 'playlists';
 
   const { playlists: userPlaylists, ready: playlistsReady, refresh: refreshPlaylists } =
-    useUserPlaylists();
+    useUserPlaylists('hymn');
   const [channels, setChannels] = useState<MezmurArtist[]>([]);
   const [channelsLoading, setChannelsLoading] = useState(!isPlaylists);
   const [channelsError, setChannelsError] = useState<string | null>(null);
@@ -90,16 +92,10 @@ export default function HymnsCatalogScreen() {
       includeFloatingChrome={false}
       refreshing={refreshing}
       onRefresh={() => void onRefresh()}>
-      <OrthodoxPressable
+      <AppBackButton
         style={styles.topBar}
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.push('/(tabs)/listen');
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={t('settings.back')}>
-        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+        onFallback={() => router.push('/(tabs)/listen')}
+      />
 
       <ThemedText style={styles.eyebrow}>Hymns Catalog</ThemedText>
       <ThemedText style={styles.pageTitle}>{t(shelf.titleKey)}</ThemedText>
@@ -134,31 +130,42 @@ export default function HymnsCatalogScreen() {
             <CreatePlaylistListRow
               compact
               title={t('listen.createYourPlaylist')}
-              onPress={() => router.push('/listen/my-playlist/new' as never)}
+              onPress={() =>
+                router.push({
+                  pathname: '/listen/my-playlist/new',
+                  params: { kind: 'hymn' },
+                } as never)
+              }
             />
             {sortedPlaylists.length === 0 ? (
               <ThemedText type="muted" style={styles.inlineEmpty}>
                 {t('listen.noPlaylistsYet')}
               </ThemedText>
             ) : (
-              sortedPlaylists.map((playlist) => {
-                const count = playlist.videoIds.length;
-                const countLabel = `${count} ${count === 1 ? 'song' : 'songs'}`;
-                return (
-                  <HymnsCatalogListRow
-                    key={playlist.id}
-                    title={playlist.title}
-                    subtitle={countLabel}
-                    leadingShape="cover"
-                    imageUri={userPlaylistThumbnail(playlist)}
-                    onPress={() =>
-                      router.push(
-                        `/listen/${encodeRouteParam(USER_PLAYLIST_ARTIST)}/${encodeRouteParam(playlist.id)}` as never
-                      )
-                    }
-                  />
-                );
-              })
+              <>
+                <CatalogListDivider />
+                {sortedPlaylists.map((playlist, index) => {
+                  const count = playlist.videoIds.length;
+                  const countLabel = `${count} ${count === 1 ? 'song' : 'songs'}`;
+                  return (
+                    <View key={playlist.id}>
+                      <HymnsCatalogListRow
+                        title={playlist.title}
+                        subtitle={countLabel}
+                        leadingShape="cover"
+                        imageUri={userPlaylistCoverUri(playlist)}
+                        collageUris={userPlaylistCollageUris(playlist)}
+                        onPress={() =>
+                          router.push(
+                            `/listen/${encodeRouteParam(userPlaylistArtistForKind('hymn'))}/${encodeRouteParam(playlist.id)}` as never
+                          )
+                        }
+                      />
+                      {index < sortedPlaylists.length - 1 ? <CatalogListDivider /> : null}
+                    </View>
+                  );
+                })}
+              </>
             )}
           </>
         )
@@ -176,19 +183,21 @@ export default function HymnsCatalogScreen() {
           }
         />
       ) : (
-        sortedChannels.map((channel) => (
-          <HymnsCatalogListRow
-            key={channel.name}
-            title={channel.name}
-            subtitle={formatMezmurChannelSubtitle(
-              channel.name,
-              channel.albumCount,
-              channel.songCount
-            )}
-            leadingShape="circle"
-            imageUri={channel.thumbnailUrl}
-            onPress={() => router.push(`/listen/${encodeRouteParam(channel.name)}` as never)}
-          />
+        sortedChannels.map((channel, index) => (
+          <View key={channel.name}>
+            <HymnsCatalogListRow
+              title={channel.name}
+              subtitle={formatMezmurChannelSubtitle(
+                channel.name,
+                channel.albumCount,
+                channel.songCount
+              )}
+              leadingShape="circle"
+              imageUri={channel.thumbnailUrl}
+              onPress={() => router.push(`/listen/${encodeRouteParam(channel.name)}` as never)}
+            />
+            {index < sortedChannels.length - 1 ? <CatalogListDivider /> : null}
+          </View>
         ))
       )}
     </ScreenScrollView>

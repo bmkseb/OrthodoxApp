@@ -7,6 +7,7 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
+import { ListenFeaturedCard } from '@/components/listen/listen-featured-card';
 import { EditorialFeaturedCard } from '@/components/sacred/editorial-featured-card';
 import { Palette, Space } from '@/constants/theme';
 
@@ -27,12 +28,20 @@ type FeaturedCarouselProps = {
   autoRotateMs?: number;
   /** Overrides the default featured card height for a more compact slot. */
   cardHeight?: number;
+  /** Listen tab — streaming hero with play control. */
+  listenHero?: boolean;
 };
 
 // How long after a user interaction before auto-rotation resumes.
 const RESUME_DELAY_MS = 2000;
 
-export function FeaturedCarousel({ items, width, autoRotateMs = 5000, cardHeight }: FeaturedCarouselProps) {
+export function FeaturedCarousel({
+  items,
+  width,
+  autoRotateMs = 5000,
+  cardHeight,
+  listenHero = false,
+}: FeaturedCarouselProps) {
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const indexRef = useRef(0);
@@ -101,15 +110,26 @@ export function FeaturedCarousel({ items, width, autoRotateMs = 5000, cardHeight
         }}>
         {items.map((item) => (
           <View key={item.id} style={{ width }}>
-            <EditorialFeaturedCard
-              title={item.title}
-              subtitle={item.subtitle}
-              badgeLabel={item.badgeLabel}
-              imageUri={item.imageUri}
-              height={cardHeight}
-              onPress={item.onPress}
-              style={{ width }}
-            />
+            {listenHero ? (
+              <ListenFeaturedCard
+                title={item.title}
+                subtitle={item.subtitle}
+                imageUri={item.imageUri}
+                height={cardHeight}
+                onPress={item.onPress}
+                style={{ width }}
+              />
+            ) : (
+              <EditorialFeaturedCard
+                title={item.title}
+                subtitle={item.subtitle}
+                badgeLabel={item.badgeLabel}
+                imageUri={item.imageUri}
+                height={cardHeight}
+                onPress={item.onPress}
+                style={{ width }}
+              />
+            )}
           </View>
         ))}
       </ScrollView>

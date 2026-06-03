@@ -5,6 +5,7 @@ import { memo } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Icon } from '@/components/Icon';
+import { ThumbnailCollage } from '@/components/listen/thumbnail-collage';
 import { mezmurAlbumImageSource } from '@/constants/mezmur-album-art';
 import { Layout, Palette } from '@/constants/theme';
 
@@ -17,6 +18,9 @@ type MezmurAlbumThumbnailProps = {
   album: string;
 
   thumbnailUrl?: string | null;
+
+  /** 2×2 automatic art when no custom thumbnail (e.g. user playlists). */
+  collageUris?: string[];
 
   style?: StyleProp<ImageStyle | ViewStyle>;
 
@@ -34,6 +38,8 @@ export const MezmurAlbumThumbnail = memo(function MezmurAlbumThumbnail({
 
   thumbnailUrl,
 
+  collageUris,
+
   style,
 
 }: MezmurAlbumThumbnailProps) {
@@ -42,9 +48,14 @@ export const MezmurAlbumThumbnail = memo(function MezmurAlbumThumbnail({
 
   const remoteUri = !artist && thumbnailUrl ? thumbnailUrl : null;
 
+  const collage = collageUris?.filter(Boolean) ?? [];
+
 
 
   if (!source && !remoteUri) {
+    if (collage.length > 0) {
+      return <ThumbnailCollage uris={collage} style={style} />;
+    }
     return (
       <View style={[styles.placeholder, style]}>
         <Icon name="music" size={28} color={Palette.gold} />

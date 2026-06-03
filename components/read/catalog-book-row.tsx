@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Icon, type IconName } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+import { BorderRadius, Palette, Spacing } from '@/constants/theme';
 
 type CatalogBookRowProps = {
   title: string;
@@ -55,12 +55,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Layout.cardBorder,
-    backgroundColor: Palette.card,
+    paddingVertical: Spacing.md - 2,
+    paddingHorizontal: 2,
+    minHeight: 56,
   },
   iconWrap: {
     width: 42,
@@ -70,8 +67,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: Spacing.md,
     backgroundColor: 'rgba(201, 147, 58, 0.1)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
   },
   rowText: {
     flex: 1,

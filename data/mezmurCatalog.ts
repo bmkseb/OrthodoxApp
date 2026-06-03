@@ -1,4 +1,10 @@
 import type { TranslationKey } from '@/lib/translations';
+import { MEDIA_21_CHANNEL } from '@/data/media21Catalog';
+import {
+  ZEHOHITE_BIRHAN_AMHARIC_ALBUM,
+  ZEHOHITE_BIRHAN_CHANNEL,
+  ZEHOHITE_BIRHAN_ENGLISH_ALBUM,
+} from '@/data/zehohiteBirhanCatalog';
 
 export type MezmurLanguage = 'english' | 'amharic';
 
@@ -73,7 +79,15 @@ export const YOTC_ALBUMS = new Set([YOTC_NATION_OF_THE_CROSS_ALBUM]);
 export const MAHIBERE_KIDUSAN_CHANNEL = 'Mahibere Kidusan';
 
 /** Channels that show songs directly — no playlist step in the app. */
-export const MEZMUR_SONGS_ONLY_CHANNELS = new Set<string>([]);
+export const MEZMUR_SONGS_ONLY_CHANNELS = new Set<string>([MEDIA_21_CHANNEL]);
+
+/** Curated playlists on ዘኆኅተ ብርሃን ሚዲያ. */
+export const ZEHOHITE_BIRHAN_ALBUMS = new Set([
+  ZEHOHITE_BIRHAN_ENGLISH_ALBUM,
+  ZEHOHITE_BIRHAN_AMHARIC_ALBUM,
+]);
+
+export { ZEHOHITE_BIRHAN_CHANNEL };
 
 export function isMezmurSongsOnlyChannel(artist: string): boolean {
   return MEZMUR_SONGS_ONLY_CHANNELS.has(artist);
@@ -102,4 +116,5 @@ export const MEZMUR_CHANNEL_LANGUAGE: Record<string, MezmurLanguage> = {
   [EGEZIHARYA_YILMA_CHANNEL]: 'english',
   [YOTC_CHOIR_CHANNEL]: 'english',
   [MAHIBERE_KIDUSAN_CHANNEL]: 'english',
+  [MEDIA_21_CHANNEL]: 'amharic',
 };

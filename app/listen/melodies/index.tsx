@@ -2,6 +2,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { CatalogBookRow } from '@/components/read/catalog-book-row';
+import { CatalogListDivider } from '@/components/ui/catalog-list-divider';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
@@ -16,16 +18,10 @@ export default function YaredMelodiesCatalogScreen() {
 
   return (
     <ScreenScrollView includeFloatingChrome>
-      <OrthodoxPressable
+      <AppBackButton
         style={styles.topBar}
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.push('/(tabs)/listen');
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={t('settings.back')}>
-        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+        onFallback={() => router.push('/(tabs)/listen')}
+      />
 
       <ThemedText style={styles.eyebrow}>{t('listen.melodiesCatalog')}</ThemedText>
       <ThemedText style={styles.pageTitle}>{t(shelf.titleKey)}</ThemedText>
@@ -53,16 +49,18 @@ export default function YaredMelodiesCatalogScreen() {
       </View>
 
       <View style={styles.list}>
-        {shelf.playlists.map((playlist) => (
-          <CatalogBookRow
-            key={playlist.id}
-            title={t(playlist.titleKey)}
-            subtitle={t('listen.yaredMelodySubtitle')}
-            geez={playlist.geez}
-            showGeez={mode !== 'en'}
-            icon="music"
-            onPress={() => router.push(`/listen/melodies/${playlist.id}` as never)}
-          />
+        {shelf.playlists.map((playlist, index) => (
+          <View key={playlist.id}>
+            <CatalogBookRow
+              title={t(playlist.titleKey)}
+              subtitle={t('listen.yaredMelodySubtitle')}
+              geez={playlist.geez}
+              showGeez={mode !== 'en'}
+              icon="music"
+              onPress={() => router.push(`/listen/melodies/${playlist.id}` as never)}
+            />
+            {index < shelf.playlists.length - 1 ? <CatalogListDivider /> : null}
+          </View>
         ))}
       </View>
     </ScreenScrollView>

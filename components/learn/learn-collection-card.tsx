@@ -95,25 +95,19 @@ export function LearnCollectionCard({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 12 },
+  wrap: { marginBottom: 0 },
   card: {
     height: COLLAPSED_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 2,
     gap: 14,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.18)',
-    backgroundColor: 'rgba(28, 24, 20, 0.85)',
   },
   iconWrap: {
     width: 40,
     height: 40,
     borderRadius: 12,
     backgroundColor: 'rgba(201, 147, 58, 0.12)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { isBundledSermonChannel } from '@/lib/sermon-catalog';
+
 const STORAGE_KEY = '@orthodox/saved-hymns';
 const LEGACY_STORAGE_KEY = '@orthodox/favorited-hymns';
 
@@ -42,6 +44,8 @@ function normalizeKind(raw: string | undefined): SavedListenKind {
 }
 
 function normalizeEntry(raw: SavedHymn & { favoritedAt?: number; kind?: string }): SavedHymn {
+  let kind = normalizeKind(raw.kind);
+  if (kind === 'hymn' && isBundledSermonChannel(raw.artist)) kind = 'sermon';
   return {
     videoId: raw.videoId,
     title: raw.title,
@@ -49,7 +53,7 @@ function normalizeEntry(raw: SavedHymn & { favoritedAt?: number; kind?: string }
     album: raw.album,
     thumbnailUrl: raw.thumbnailUrl ?? '',
     savedAt: raw.savedAt ?? raw.favoritedAt ?? Date.now(),
-    kind: normalizeKind(raw.kind),
+    kind,
   };
 }
 

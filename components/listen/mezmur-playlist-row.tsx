@@ -9,6 +9,7 @@ import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 
 import { MezmurAlbumThumbnail } from '@/components/listen/mezmur-album-thumbnail';
+import { ThumbnailCollage } from '@/components/listen/thumbnail-collage';
 import { isUserPlaylistArtist } from '@/data/userPlaylists';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
@@ -34,6 +35,8 @@ type MezmurPlaylistRowProps = {
 
   thumbnailUrl?: string | null;
 
+  collageUris?: string[];
+
   onPress: () => void;
 
   /** Smaller cover and type — used on channel playlist screens. */
@@ -55,6 +58,8 @@ export const MezmurPlaylistRow = memo(function MezmurPlaylistRow({
 
   thumbnailUrl,
 
+  collageUris,
+
   onPress,
 
   compact = false,
@@ -66,7 +71,9 @@ export const MezmurPlaylistRow = memo(function MezmurPlaylistRow({
 
   const isUserPlaylist = Boolean(artist && isUserPlaylistArtist(artist));
   const useRemoteThumb = Boolean(thumbnailUrl) && (!artist || isUserPlaylist);
-  const hasThumb = useRemoteThumb || (Boolean(artist) && !isUserPlaylist);
+  const collage = collageUris?.filter(Boolean) ?? [];
+  const useCollage = isUserPlaylist && !thumbnailUrl && collage.length > 0;
+  const hasThumb = useRemoteThumb || useCollage || (Boolean(artist) && !isUserPlaylist);
 
 
 
@@ -90,6 +97,8 @@ export const MezmurPlaylistRow = memo(function MezmurPlaylistRow({
               style={StyleSheet.absoluteFill}
               contentFit="cover"
             />
+          ) : useCollage ? (
+            <ThumbnailCollage uris={collage} style={StyleSheet.absoluteFill} />
           ) : (
             <MezmurAlbumThumbnail
               artist={artist}

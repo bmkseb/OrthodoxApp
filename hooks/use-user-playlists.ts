@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { newUserPlaylistId } from '@/data/userPlaylists';
+import type { SavedListenKind } from '@/hooks/use-saved-hymns';
 
 const STORAGE_KEY = '@orthodox/user-playlists';
 
@@ -11,6 +12,7 @@ export type UserPlaylist = {
   videoIds: string[];
   /** Local file URI from image picker, or null for the default music-note cover. */
   coverImageUri?: string | null;
+  kind: SavedListenKind;
   createdAt: number;
   updatedAt: number;
 };
@@ -35,7 +37,12 @@ function isValidPlaylist(value: unknown): value is UserPlaylist {
   );
 }
 
-function normalizePlaylist(raw: UserPlaylist): UserPlaylist {
+function normalizePlaylistKind(raw: string | undefined): SavedListenKind {
+  if (raw === 'sermon' || raw === 'melody') return raw;
+  return 'hymn';
+}
+
+function normalizePlaylist(raw: UserPlaylist & { kind?: string }): UserPlaylist {
   const now = Date.now();
   const cover =
     typeof raw.coverImageUri === 'string' && raw.coverImageUri.trim()
@@ -46,6 +53,7 @@ function normalizePlaylist(raw: UserPlaylist): UserPlaylist {
     title: raw.title.trim() || 'Untitled playlist',
     videoIds: [...new Set(raw.videoIds.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean))],
     coverImageUri: cover,
+    kind: normalizePlaylistKind(raw.kind),
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,
   };
@@ -79,15 +87,18 @@ async function persist(): Promise<void> {
   }
 }
 
-export async function fetchUserPlaylists(): Promise<UserPlaylist[]> {
+export async function fetchUserPlaylists(kind?: SavedListenKind): Promise<UserPlaylist[]> {
   await ensureLoaded();
-  return [...cache];
+  const rows = [...cache];
+  if (!kind) return rows;
+  return rows.filter((playlist) => playlist.kind === kind);
 }
 
 export async function createUserPlaylist(
   title: string,
   videoIds: string[] = [],
-  coverImageUri?: string | null
+  coverImageUri?: string | null,
+  kind: SavedListenKind = 'hymn'
 ): Promise<UserPlaylist> {
   await ensureLoaded();
   const now = Date.now();
@@ -98,6 +109,7 @@ export async function createUserPlaylist(
     title: title.trim() || 'Untitled playlist',
     videoIds: [...new Set(videoIds.map((id) => id.trim()).filter(Boolean))],
     coverImageUri: cover,
+    kind: normalizePlaylistKind(kind),
     createdAt: now,
     updatedAt: now,
   };
@@ -175,7 +187,7 @@ export async function removeSongFromUserPlaylist(id: string, videoId: string): P
   emit();
 }
 
-export function useUserPlaylists() {
+export function useUserPlaylists(kind?: SavedListenKind) {
   const [playlists, setPlaylists] = useState<UserPlaylist[]>([]);
   const [ready, setReady] = useState(false);
 
@@ -200,5 +212,10 @@ export function useUserPlaylists() {
     setPlaylists([...cache]);
   }, []);
 
-  return { playlists, ready, refresh };
+  const filtered = useMemo(
+    () => (kind ? playlists.filter((playlist) => playlist.kind === kind) : playlists),
+    [kind, playlists]
+  );
+
+  return { playlists: filtered, ready, refresh };
 }

@@ -4,7 +4,7 @@ import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Icon } from '@/components/Icon';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { EthiopicCrossWatermark } from '@/components/sacred/ethiopic-cross-watermark';
 import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
@@ -54,15 +54,9 @@ export default function ProfileScreen() {
       <EthiopicCrossWatermark />
 
       <View style={[styles.topBar, { paddingTop: insets.top + Space.s8 }]}>
-        <OrthodoxPressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={handleBack}
-          style={styles.iconBtn}>
-          <Icon name="chevron-down" size={22} color={Palette.text} />
-        </OrthodoxPressable>
+        <AppBackButton onPress={handleBack} style={styles.backBtn} />
         <Text style={styles.topTitle}>Account</Text>
-        <View style={styles.iconBtn} />
+        <View style={styles.topBarSpacer} />
       </View>
 
       <View style={styles.scrollArea}>
@@ -132,6 +126,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  backBtn: {
+    marginLeft: -2,
+    paddingVertical: 0,
+    maxWidth: '40%',
+  },
+  topBarSpacer: {
+    width: 72,
   },
   iconBtn: {
     width: 36,

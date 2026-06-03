@@ -107,9 +107,7 @@ const styles = StyleSheet.create({
     width: THUMB,
     height: THUMB,
     borderRadius: BorderRadius.md,
-    backgroundColor: Palette.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
+    backgroundColor: 'rgba(201, 147, 58, 0.08)',
   },
   thumbPlaceholder: {
     alignItems: 'center',

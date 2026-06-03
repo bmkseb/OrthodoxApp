@@ -80,7 +80,7 @@ export function SavedChapterList({ limit, variant = 'list' }: SavedChapterListPr
           }
           onRemove={() => void removeBookmark(id)}
         />
-        {!isCatalog && index < items.length - 1 ? <ListDivider /> : null}
+        {index < items.length - 1 ? <ListDivider /> : null}
       </View>
     );
   });
@@ -145,7 +145,7 @@ export function SavedVerseList({ limit, variant = 'list' }: SavedVerseListProps)
         }}
         onRemove={() => void removeSavedVerse(verse.verseId)}
       />
-      {!isCatalog && index < items.length - 1 ? <ListDivider /> : null}
+      {index < items.length - 1 ? <ListDivider /> : null}
     </View>
   ));
 

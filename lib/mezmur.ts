@@ -1,4 +1,6 @@
+import type { SavedListenKind } from '@/hooks/use-saved-hymns';
 import { getSupabase } from '@/lib/supabase';
+import { translate, type LanguageMode } from '@/lib/translations';
 import type { AudioTrack } from '@/contexts/audio-player-context';
 import { youtubeListThumbnailUrl } from '@/lib/youtube-thumbnail';
 import { resolveMezmurAlbumThumbnail } from '@/constants/mezmur-album-art';
@@ -12,6 +14,7 @@ import {
   MEZMUR_DEBTER_CHANNEL,
   YOTC_CHOIR_CHANNEL,
   YOTC_NATION_OF_THE_CROSS_ALBUM,
+  ZEHOHITE_BIRHAN_CHANNEL,
   type MezmurCategory,
   type MezmurLanguage,
 } from '@/data/mezmurCatalog';
@@ -30,6 +33,24 @@ import {
   pickSongsForMahibereKidusanAlbum,
 } from '@/lib/mahibere-kidusan-albums';
 import { MAHIBERE_KIDUSAN_CHANNEL } from '@/data/mezmurCatalog';
+import { buildMedia21Mezmur } from '@/lib/media-21';
+import {
+  buildZehohiteBirhanMezmur,
+  buildZehohiteBirhanAlbums,
+  isZehohiteBirhanChannel,
+  pickSongsForZehohiteAlbum,
+} from '@/lib/zehohite-birhan';
+import {
+  buildAllBundledSermonMezmur,
+  fetchSermonArtists,
+  isBundledSermonChannel,
+  isSermonCatalogSong,
+} from '@/lib/sermon-catalog';
+import {
+  buildSpotChurchAlbums,
+  isSpotChurchChannel,
+  pickSongsForSpotAlbum,
+} from '@/lib/spot-church';
 
 export type Mezmur = {
   videoId: string;
@@ -134,13 +155,36 @@ export function normalizeMezmurCatalogEntry(song: Mezmur): Mezmur {
   return song;
 }
 
-export function formatMezmurChannelSubtitle(artist: string, albumCount: number, songCount: number): string {
+function formatListenItemCountLabel(
+  count: number,
+  kind: SavedListenKind,
+  mode: LanguageMode
+): string {
+  if (kind === 'sermon') {
+    return count === 1
+      ? translate('listen.oneSermon', mode)
+      : translate('listen.nSermons', mode).replace('{n}', String(count));
+  }
+  return count === 1
+    ? translate('listen.oneSong', mode)
+    : translate('listen.nSongs', mode).replace('{n}', String(count));
+}
+
+export function formatMezmurChannelSubtitle(
+  artist: string,
+  albumCount: number,
+  songCount: number,
+  options?: { kind?: SavedListenKind; mode?: LanguageMode }
+): string {
+  const kind = options?.kind ?? 'hymn';
+  const mode = options?.mode ?? 'en';
+
   if (isMezmurSongsOnlyChannel(artist)) {
-    return `${songCount} ${songCount === 1 ? 'song' : 'songs'}`;
+    return formatListenItemCountLabel(songCount, kind, mode);
   }
   const playlistLabel = albumCount === 1 ? 'playlist' : 'playlists';
-  const songLabel = songCount === 1 ? 'song' : 'songs';
-  return `${albumCount} ${playlistLabel} · ${songCount} ${songLabel}`;
+  const itemLabel = formatListenItemCountLabel(songCount, kind, mode);
+  return `${albumCount} ${playlistLabel} · ${itemLabel}`;
 }
 
 export function decodeRouteParam(value: string | string[] | undefined): string {
@@ -204,8 +248,20 @@ export async function fetchAllMezmur(): Promise<Mezmur[]> {
   if (cachedSongs) return cachedSongs;
   if (!cachePromise) {
     cachePromise = fetchAllMezmurRows().then((rows) => {
-      cachedSongs = rows;
-      return rows;
+      const hymns = rows.filter(
+        (song) =>
+          !isSermonCatalogSong(song) &&
+          song.artist !== ZEHOHITE_BIRHAN_CHANNEL &&
+          song.artist !== 'Zehohite Birhan'
+      );
+      const merged = [
+        ...hymns,
+        ...buildMedia21Mezmur(),
+        ...buildZehohiteBirhanMezmur(),
+        ...buildAllBundledSermonMezmur(),
+      ];
+      cachedSongs = merged;
+      return merged;
     });
   }
   return cachePromise;
@@ -249,6 +305,7 @@ export function groupPlaylistsByLanguageAndCategory(
 
   const byAlbum = new Map<string, Mezmur[]>();
   for (const song of songs) {
+    if (isSermonCatalogSong(song)) continue;
     if (isAhaduStudiosChannel(song.artist)) continue;
     const key = `${song.artist}\0${song.album}`;
     const list = byAlbum.get(key) ?? [];
@@ -290,7 +347,9 @@ export async function fetchPlaylistsGroupedByLanguageAndCategory(): Promise<
 }
 
 function playlistsFromSongs(songs: Mezmur[]): MezmurPlaylistCard[] {
-  const nonAhadu = songs.filter((song) => !isAhaduStudiosChannel(song.artist));
+  const nonAhadu = songs.filter(
+    (song) => !isSermonCatalogSong(song) && !isAhaduStudiosChannel(song.artist)
+  );
   const byAlbum = new Map<string, Mezmur[]>();
   for (const song of nonAhadu) {
     const key = `${song.artist}\0${song.album}`;
@@ -381,6 +440,7 @@ export function groupSongsByLanguageAndCategory(
   };
 
   for (const song of songs) {
+    if (isSermonCatalogSong(song)) continue;
     const language = resolveMezmurLanguage(song);
     const category = resolveMezmurCategory(song.type);
     result[language][category].push(song);
@@ -425,9 +485,10 @@ function artistsFromSongs(songs: Mezmur[]): MezmurArtist[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Artists with album and song counts, sorted alphabetically. */
+/** Artists with album and song counts, sorted alphabetically (hymns only). */
 export async function fetchArtists(): Promise<MezmurArtist[]> {
-  return artistsFromSongs(await fetchAllMezmur());
+  const songs = (await fetchAllMezmur()).filter((song) => !isSermonCatalogSong(song));
+  return artistsFromSongs(songs);
 }
 
 /** Artists that have at least one song in the given language shelf. */
@@ -468,6 +529,12 @@ export async function fetchAlbumsByArtist(artist: string): Promise<MezmurAlbum[]
   if (isMezmurSongsOnlyChannel(artist)) return [];
 
   const songs = await fetchAllMezmur();
+  if (isSpotChurchChannel(artist)) {
+    return buildSpotChurchAlbums();
+  }
+  if (isZehohiteBirhanChannel(artist)) {
+    return buildZehohiteBirhanAlbums();
+  }
   if (isAhaduStudiosChannel(artist)) {
     return buildAhaduAlbumCards(songs);
   }
@@ -505,6 +572,12 @@ export async function fetchSongsByArtistAlbum(artist: string, album: string): Pr
   if (artist === MAHIBERE_KIDUSAN_CHANNEL && hasMahibereKidusanTrackOrder(album)) {
     return pickSongsForMahibereKidusanAlbum(songs, album);
   }
+  if (isSpotChurchChannel(artist)) {
+    return pickSongsForSpotAlbum(songs, album);
+  }
+  if (isZehohiteBirhanChannel(artist)) {
+    return pickSongsForZehohiteAlbum(songs, album);
+  }
   return songs.filter((s) => s.artist === artist && s.album === album);
 }
 
@@ -528,8 +601,16 @@ export async function fetchMezmurDescription(videoId: string): Promise<string | 
   return data.description.trim();
 }
 
+function defaultSaveKindForMezmur(song: Mezmur): AudioTrack['saveKind'] {
+  if (isSermonCatalogSong(song)) return 'sermon';
+  return 'hymn';
+}
+
 /** Map a mezmur row to the shared audio player track shape. */
-export function mezmurToAudioTrack(song: Mezmur): AudioTrack {
+export function mezmurToAudioTrack(
+  song: Mezmur,
+  saveKind?: AudioTrack['saveKind']
+): AudioTrack {
   return {
     id: song.videoId,
     title: song.title,
@@ -538,12 +619,15 @@ export function mezmurToAudioTrack(song: Mezmur): AudioTrack {
     artworkUri: song.thumbnailUrl,
     videoId: song.videoId,
     categoryLabel: song.album,
-    saveKind: 'hymn',
+    saveKind: saveKind ?? defaultSaveKindForMezmur(song),
   };
 }
 
-export function mezmurListToAudioTracks(songs: Mezmur[]): AudioTrack[] {
-  return songs.map(mezmurToAudioTrack);
+export function mezmurListToAudioTracks(
+  songs: Mezmur[],
+  saveKind?: AudioTrack['saveKind']
+): AudioTrack[] {
+  return songs.map((song) => mezmurToAudioTrack(song, saveKind));
 }
 
 /** Pick a random catalog song (uses in-memory cache when available). */
@@ -591,13 +675,30 @@ export type MezmurSearchResults = {
   songs: Mezmur[];
 };
 
-/** Search channels, playlists, and songs across the full mezmur catalog. */
-export async function searchMezmurCatalog(query: string): Promise<MezmurSearchResults> {
+export type MezmurSearchScope = 'hymns' | 'sermons' | 'all';
+
+function filterSongsBySearchScope(songs: Mezmur[], scope: MezmurSearchScope): Mezmur[] {
+  if (scope === 'all') return songs;
+  if (scope === 'sermons') return songs.filter(isSermonCatalogSong);
+  return songs.filter((song) => !isSermonCatalogSong(song));
+}
+
+/** Search channels, playlists, and songs across the mezmur catalog. */
+export async function searchMezmurCatalog(
+  query: string,
+  scope: MezmurSearchScope = 'all'
+): Promise<MezmurSearchResults> {
   const q = query.trim().toLowerCase();
   if (!q) return { channels: [], playlists: [], songs: [] };
 
-  const songs = await fetchAllMezmur();
-  const channels = (await fetchArtists()).filter((artist) => artist.name.toLowerCase().includes(q));
+  const songs = filterSongsBySearchScope(await fetchAllMezmur(), scope);
+  const artists =
+    scope === 'sermons'
+      ? await fetchSermonArtists()
+      : scope === 'hymns'
+        ? await fetchArtists()
+        : [...(await fetchArtists()), ...(await fetchSermonArtists())];
+  const channels = artists.filter((artist) => artist.name.toLowerCase().includes(q));
 
   const playlistMap = new Map<string, { artist: string; album: MezmurAlbum }>();
   for (const song of songs) {

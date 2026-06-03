@@ -11,14 +11,20 @@ import {
 import { ChannelRailCard } from '@/components/listen/channel-rail-card';
 import { CreatePlaylistRailCard } from '@/components/listen/create-playlist-rail-card';
 import { PlaylistRailCard } from '@/components/listen/playlist-rail-card';
+import {
+  LISTEN_CHANNEL_RAIL_SCROLL_CONTENT,
+  LISTEN_RAIL_SCROLL_CONTENT,
+} from '@/constants/listen-layout';
 import { SacredImagery } from '@/constants/sacred-imagery';
 import { Space } from '@/constants/theme';
+import type { SavedListenKind } from '@/hooks/use-saved-hymns';
 import {
   encodeRouteParam,
   formatMezmurChannelSubtitle,
   type MezmurArtist,
   type MezmurPlaylistCard,
 } from '@/lib/mezmur';
+import type { LanguageMode } from '@/lib/translations';
 
 export type MezmurCatalogRailItem = {
   key: string;
@@ -26,6 +32,7 @@ export type MezmurCatalogRailItem = {
   subtitle?: string;
   artist?: string;
   imageUri?: string | null;
+  collageUris?: string[];
   onPress: () => void;
   variant?: 'create' | 'playlist';
 };
@@ -38,6 +45,11 @@ type MezmurCatalogShelfProps = {
   onSeeAll?: () => void;
   /** Drop bottom margin when another section follows immediately. */
   compactBottom?: boolean;
+  /** Wording for channel subtitles (songs vs sermons). */
+  channelKind?: SavedListenKind;
+  languageMode?: LanguageMode;
+  /** When `items` are channel cards (circular avatars), set to `channel`. */
+  railKind?: 'channel' | 'playlist';
 };
 
 /** A catalog shelf — themes, channels, or playlists in a horizontal rail. */
@@ -48,11 +60,14 @@ export function MezmurCatalogShelf({
   items = [],
   onSeeAll,
   compactBottom = false,
+  channelKind = 'hymn',
+  languageMode = 'en',
+  railKind,
 }: MezmurCatalogShelfProps) {
   const router = useRouter();
   const { values, scrollHandler, onLayout, onContentSizeChange } = useHorizontalScrollIndicator();
 
-  const isChannelRail = artists.length > 0;
+  const isChannelRail = railKind === 'channel' || artists.length > 0;
 
   const railItems: MezmurCatalogRailItem[] =
     items.length > 0
@@ -75,7 +90,8 @@ export function MezmurCatalogShelf({
             subtitle: formatMezmurChannelSubtitle(
               channel.name,
               channel.albumCount,
-              channel.songCount
+              channel.songCount,
+              { kind: channelKind, mode: languageMode }
             ),
             imageUri: channel.thumbnailUrl,
             onPress: () => router.push(`/listen/${encodeRouteParam(channel.name)}` as never),
@@ -93,6 +109,9 @@ export function MezmurCatalogShelf({
           onScroll: scrollHandler,
           onLayout,
           onContentSizeChange,
+          contentContainerStyle: isChannelRail
+            ? LISTEN_CHANNEL_RAIL_SCROLL_CONTENT
+            : LISTEN_RAIL_SCROLL_CONTENT,
         }}>
         {railItems.map((item) => {
           if (item.variant === 'create') {
@@ -100,7 +119,6 @@ export function MezmurCatalogShelf({
               <CreatePlaylistRailCard
                 key={item.key}
                 title={item.title}
-                subtitle={item.subtitle}
                 onPress={item.onPress}
               />
             );
@@ -123,6 +141,7 @@ export function MezmurCatalogShelf({
               subtitle={item.subtitle}
               artist={item.artist}
               imageUri={item.imageUri}
+              collageUris={item.collageUris}
               fallbackImageUri={item.imageUri ? SacredImagery.listenHymns : undefined}
               onPress={item.onPress}
             />
@@ -141,7 +160,7 @@ export function MezmurCatalogShelf({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: Space.s16,
+    marginBottom: Space.s12,
   },
   wrapCompact: {
     marginBottom: 0,

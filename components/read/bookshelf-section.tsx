@@ -29,13 +29,15 @@ export function BookshelfSection({
   list = false,
   scrollProps,
 }: BookshelfSectionProps) {
+  const { contentContainerStyle: scrollContentStyle, ...restScrollProps } = scrollProps ?? {};
+
   const content = horizontal ? (
     <AnimatedScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       scrollEventThrottle={16}
-      contentContainerStyle={styles.rail}
-      {...scrollProps}>
+      contentContainerStyle={[styles.rail, scrollContentStyle]}
+      {...restScrollProps}>
       {children}
     </AnimatedScrollView>
   ) : (

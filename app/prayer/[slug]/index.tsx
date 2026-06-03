@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { PrayerLanguageTabs } from '@/components/prayer/prayer-language-tabs';
 import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
@@ -65,9 +66,7 @@ export default function PrayerBookScreen() {
 
   return (
     <ScreenScrollView includeFloatingChrome={false}>
-      <OrthodoxPressable style={styles.topBar} onPress={() => router.back()}>
-        <ThemedText type="seeAll">{t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+      <AppBackButton style={styles.topBar} />
 
       <ScriptureBookHeader title={headerTitle} subtitle={headerSubtitle} />
 

@@ -4,8 +4,10 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { HymnsCatalogListRow } from '@/components/listen/hymns-catalog-list-row';
 import { MezmurSongRow } from '@/components/listen/mezmur-song-row';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
+import { CatalogListDivider } from '@/components/ui/catalog-list-divider';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
@@ -25,6 +27,7 @@ import {
   type Mezmur,
   type MezmurAlbum,
 } from '@/lib/mezmur';
+import { isBundledSermonChannel } from '@/lib/sermon-catalog';
 
 const MUTED_GOLD = '#8A8070';
 
@@ -34,6 +37,7 @@ export default function ListenAlbumsScreen() {
   const { artist: artistParam } = useLocalSearchParams<{ artist: string }>();
   const artist = decodeRouteParam(artistParam);
   const songsOnly = artist ? isMezmurSongsOnlyChannel(artist) : false;
+  const isSermonChannel = artist ? isBundledSermonChannel(artist) : false;
 
   const [albums, setAlbums] = useState<MezmurAlbum[]>([]);
   const [songs, setSongs] = useState<Mezmur[]>([]);
@@ -89,9 +93,7 @@ export default function ListenAlbumsScreen() {
   if (!artist) {
     return (
       <ScreenScrollView includeFloatingChrome>
-        <OrthodoxPressable style={styles.topBar} onPress={() => router.back()}>
-          <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
-        </OrthodoxPressable>
+        <AppBackButton style={styles.topBar} />
         <EmptyState title="Channel not found" />
       </ScreenScrollView>
     );
@@ -99,16 +101,10 @@ export default function ListenAlbumsScreen() {
 
   return (
     <ScreenScrollView includeFloatingChrome>
-      <OrthodoxPressable
+      <AppBackButton
         style={styles.topBar}
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.push('/(tabs)/listen');
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={t('settings.back')}>
-        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+        onFallback={() => router.push('/(tabs)/listen')}
+      />
 
       <ThemedText style={styles.pageTitle}>{artist}</ThemedText>
       {mode !== 'en' ? <ThemedText style={styles.pageGeez}>መዝሙር</ThemedText> : null}
@@ -161,23 +157,29 @@ export default function ListenAlbumsScreen() {
         <EmptyState title="No playlists match your search" suggestion="Try a different term." />
       ) : (
         <View style={styles.list}>
-          {filteredAlbums.map((album) => {
-            const countLabel = `${album.songCount} ${album.songCount === 1 ? 'song' : 'songs'}`;
+          {filteredAlbums.map((album, index) => {
+            const countLabel = isSermonChannel
+              ? album.songCount === 1
+                ? t('listen.oneSermon')
+                : t('listen.nSermons').replace('{n}', String(album.songCount))
+              : `${album.songCount} ${album.songCount === 1 ? 'song' : 'songs'}`;
             return (
-              <HymnsCatalogListRow
-                key={album.name}
-                title={album.name}
-                subtitle={countLabel}
-                leadingShape="cover"
-                albumArtist={artist}
-                albumName={album.name}
-                albumThumbnailUrl={album.thumbnailUrl}
-                onPress={() =>
-                  router.push(
-                    `/listen/${encodeRouteParam(artist)}/${encodeRouteParam(album.name)}` as never
-                  )
-                }
-              />
+              <View key={album.name}>
+                <HymnsCatalogListRow
+                  title={album.name}
+                  subtitle={countLabel}
+                  leadingShape="cover"
+                  albumArtist={artist}
+                  albumName={album.name}
+                  albumThumbnailUrl={album.thumbnailUrl}
+                  onPress={() =>
+                    router.push(
+                      `/listen/${encodeRouteParam(artist)}/${encodeRouteParam(album.name)}` as never
+                    )
+                  }
+                />
+                {index < filteredAlbums.length - 1 ? <CatalogListDivider /> : null}
+              </View>
             );
           })}
         </View>

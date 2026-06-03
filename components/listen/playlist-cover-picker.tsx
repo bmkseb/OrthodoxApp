@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
+import { ThumbnailCollage } from '@/components/listen/thumbnail-collage';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { MEZMUR_ALBUM_HERO_FRAME, MEZMUR_ALBUM_LIST_FRAME } from '@/constants/mezmur-album-art';
@@ -15,6 +16,8 @@ const SETTINGS_COVER_H = MEZMUR_ALBUM_HERO_FRAME.height;
 
 type PlaylistCoverPickerProps = {
   imageUri?: string | null;
+  /** Automatic 2×2 art when no custom cover. */
+  collageUris?: string[];
   /** When true, offer to remove the custom cover photo. */
   hasCustomCover?: boolean;
   onImageChange: (uri: string | null) => void;
@@ -26,6 +29,7 @@ type PlaylistCoverPickerProps = {
 
 export function PlaylistCoverPicker({
   imageUri,
+  collageUris,
   hasCustomCover = false,
   onImageChange,
   ui = 'buttons',
@@ -99,6 +103,17 @@ export function PlaylistCoverPicker({
             </View>
           ) : null}
         </>
+      ) : (collageUris?.filter(Boolean).length ?? 0) > 0 ? (
+        <>
+          <ThumbnailCollage uris={collageUris!} style={styles.image} />
+          {ui === 'overlay' || ui === 'settings' ? (
+            <View style={styles.editOverlay} pointerEvents="none">
+              <View style={styles.pencilBadge}>
+                <Icon name="pencil" size={18} color={Palette.text} strokeWidth={2} />
+              </View>
+            </View>
+          ) : null}
+        </>
       ) : (
         <View style={styles.placeholder}>
           <Icon name="music" size={ui === 'settings' ? 24 : 28} color={Palette.mutedGold} />
@@ -126,11 +141,6 @@ export function PlaylistCoverPicker({
           <ThemedText type="muted" style={styles.settingsHint}>
             {t('listen.editCoverHint')}
           </ThemedText>
-          {hasCustomCover ? (
-            <OrthodoxPressable onPress={clear} hitSlop={8} accessibilityRole="button">
-              <ThemedText style={styles.removeLink}>{t('listen.removeCover')}</ThemedText>
-            </OrthodoxPressable>
-          ) : null}
         </View>
       </View>
     );
@@ -184,11 +194,6 @@ const styles = StyleSheet.create({
   settingsHint: {
     fontSize: 13,
     lineHeight: 18,
-  },
-  removeLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Palette.mutedGold,
   },
   frame: {
     borderRadius: MEZMUR_ALBUM_LIST_FRAME.borderRadius,

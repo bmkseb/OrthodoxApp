@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
@@ -26,16 +26,12 @@ export default function YaredMelodyPlaylistScreen() {
 
   return (
     <ScreenScrollView includeFloatingChrome>
-      <OrthodoxPressable
+      <AppBackButton
         style={styles.topBar}
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.push({ pathname: '/listen/melodies', params: { shelf: shelf.id } } as never);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={t('settings.back')}>
-        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+        onFallback={() =>
+          router.push({ pathname: '/listen/melodies', params: { shelf: shelf.id } } as never)
+        }
+      />
 
       <ThemedText style={styles.eyebrow}>{t(shelf.titleKey)}</ThemedText>
       <ThemedText style={styles.pageTitle}>{t(playlist.titleKey)}</ThemedText>

@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { SavedChapterList, SavedVerseList } from '@/components/read/saved-read-content';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -62,16 +63,10 @@ export default function SavedScreen() {
 
   return (
     <ScreenScrollView includeFloatingChrome={false}>
-      <OrthodoxPressable
+      <AppBackButton
         style={styles.topBar}
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.push('/(tabs)/read');
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={t('settings.back')}>
-        <ThemedText type="seeAll">← {t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+        onFallback={() => router.push('/(tabs)/read')}
+      />
 
       <ThemedText style={styles.eyebrow}>{t('sections.saved')}</ThemedText>
       <ThemedText style={styles.pageTitle}>{t(active.titleKey)}</ThemedText>
@@ -101,9 +96,9 @@ export default function SavedScreen() {
       {isEmpty ? (
         <EmptyState title={active.emptyTitle} suggestion={active.emptySuggestion} />
       ) : section === 'chapters' ? (
-        <SavedChapterList variant="catalog" />
+        <SavedChapterList />
       ) : (
-        <SavedVerseList variant="catalog" />
+        <SavedVerseList />
       )}
     </ScreenScrollView>
   );

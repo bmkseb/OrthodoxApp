@@ -199,7 +199,15 @@ export function PlayerQueueSheet({ visible, onClose }: PlayerQueueSheetProps) {
   const dragIndex = useSharedValue(-1);
   const dragOffset = useSharedValue(0);
   const [listScrollEnabled, setListScrollEnabled] = useState(true);
-  const { queue, queueIndex, playQueueItem, removeFromQueue, reorderQueue } = useAudioPlayer();
+  const {
+    queue,
+    queueIndex,
+    queuedTrackCount,
+    playQueueItem,
+    removeFromQueue,
+    reorderQueue,
+    clearQueue,
+  } = useAudioPlayer();
 
   const handleDragActiveChange = useCallback((active: boolean) => {
     setListScrollEnabled(!active);
@@ -285,9 +293,22 @@ export function PlayerQueueSheet({ visible, onClose }: PlayerQueueSheetProps) {
 
             <View style={styles.header}>
               <ThemedText style={styles.headerTitle}>Queue</ThemedText>
-              <ThemedText type="muted" style={styles.headerCount}>
-                {queue.length} {queue.length === 1 ? 'song' : 'songs'}
-              </ThemedText>
+              <View style={styles.headerActions}>
+                {queuedTrackCount > 0 ? (
+                  <OrthodoxPressable
+                    onPress={clearQueue}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear queued songs">
+                    <ThemedText type="seeAll" style={styles.clearQueueLabel}>
+                      Clear queue
+                    </ThemedText>
+                  </OrthodoxPressable>
+                ) : null}
+                <ThemedText type="muted" style={styles.headerCount}>
+                  {queue.length} {queue.length === 1 ? 'song' : 'songs'}
+                </ThemedText>
+              </View>
             </View>
 
             <ThemedText type="muted" style={styles.hint}>
@@ -373,6 +394,14 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.s12,
+  },
+  clearQueueLabel: {
+    fontSize: 13,
   },
   headerTitle: {
     fontSize: 20,

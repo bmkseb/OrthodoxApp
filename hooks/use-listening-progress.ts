@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { isBundledSermonChannel } from '@/lib/sermon-catalog';
 import type { SavedListenKind } from '@/hooks/use-saved-hymns';
 
 const STORAGE_KEY = '@orthodox/listening-progress';
-const MAX_ENTRIES = 15;
+const MAX_ENTRIES_PER_KIND = 15;
 
 export type ListeningProgressEntry = {
   videoId: string;
@@ -43,6 +44,8 @@ function isValidEntry(value: unknown): value is ListeningProgressEntry & { kind?
 }
 
 function normalizeEntry(raw: ListeningProgressEntry & { kind?: string }): ListeningProgressEntry {
+  let kind = normalizeKind(raw.kind);
+  if (kind === 'hymn' && isBundledSermonChannel(raw.artist)) kind = 'sermon';
   return {
     videoId: raw.videoId,
     title: raw.title,
@@ -51,7 +54,7 @@ function normalizeEntry(raw: ListeningProgressEntry & { kind?: string }): Listen
     thumbnailUrl: raw.thumbnailUrl ?? '',
     positionSeconds: raw.positionSeconds,
     updatedAt: raw.updatedAt ?? Date.now(),
-    kind: normalizeKind(raw.kind),
+    kind,
   };
 }
 
@@ -68,8 +71,7 @@ function ensureLoaded(): Promise<void> {
             .map(normalizeEntry)
             .sort((a, b) => b.updatedAt - a.updatedAt)
         : [];
-      cache = valid.slice(0, MAX_ENTRIES);
-      if (valid.length > MAX_ENTRIES) await persist();
+      cache = trimByKind(valid);
     } catch {
       cache = [];
     } finally {
@@ -78,6 +80,20 @@ function ensureLoaded(): Promise<void> {
     }
   })();
   return loadPromise;
+}
+
+function trimByKind(entries: ListeningProgressEntry[]): ListeningProgressEntry[] {
+  const kinds: SavedListenKind[] = ['hymn', 'sermon', 'melody'];
+  const merged: ListeningProgressEntry[] = [];
+  for (const kind of kinds) {
+    merged.push(
+      ...entries
+        .filter((entry) => entry.kind === kind)
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, MAX_ENTRIES_PER_KIND)
+    );
+  }
+  return merged.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 async function persist(): Promise<void> {
@@ -102,7 +118,7 @@ export async function recordListeningProgress(
     updatedAt: Date.now(),
   };
   const rest = cache.filter((e) => e.videoId !== entry.videoId);
-  cache = [next, ...rest].slice(0, MAX_ENTRIES);
+  cache = trimByKind([next, ...rest]);
   emit();
   await persist();
 }

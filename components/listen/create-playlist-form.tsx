@@ -168,7 +168,7 @@ export function CreatePlaylistForm({
 
         <View style={[styles.card, !embedded && styles.cardFull]}>
 
-          <ThemedText style={styles.fieldLabel}>{t('listen.playlistNameLabel')}</ThemedText>
+          <ThemedText style={styles.fieldLabel}>{t('listen.playlistTitleLabel')}</ThemedText>
 
           <TextInput
 

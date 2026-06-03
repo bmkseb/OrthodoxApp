@@ -102,7 +102,7 @@ async function main() {
         album,
         thumbnail_url: thumbnail || '',
         language:      lang,
-        type:          ['nisiha','praise','maryam','fasting','other'].includes(t) ? t : 'other',
+        type:          ['nisiha','praise','maryam','fasting','sermon','other'].includes(t) ? t : 'other',
         status:        'approved',
       });
     } else if (s === 'rejected') {

@@ -15,7 +15,7 @@ import {
 } from '@/hooks/use-listening-progress';
 import type { TranslationKey } from '@/lib/translations';
 import { fetchRandomMezmur, mezmurToAudioTrack } from '@/lib/mezmur';
-import { shuffleQueueKeepingCurrent } from '@/lib/audio-utils';
+import { mergePlaybackQueue, shuffleQueueKeepingCurrent } from '@/lib/audio-utils';
 import {
   useActiveTrack,
   usePlaybackState,
@@ -84,6 +84,8 @@ type AudioPlayerContextValue = {
   openQueue: () => void;
   closeQueue: () => void;
   addToQueue: (track: AudioTrack, options?: { playNext?: boolean }) => void;
+  clearQueue: () => void;
+  queuedTrackCount: number;
   removeFromQueue: (trackId: string) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   playQueueItem: (index: number) => void;
@@ -132,6 +134,7 @@ const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null);
   const [queue, setQueue] = useState<AudioTrack[]>([]);
+  const [insertedQueueIds, setInsertedQueueIds] = useState<string[]>([]);
   const [isShuffleEnabled, setIsShuffleEnabled] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
@@ -151,6 +154,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const trackMetaRef = useRef<Map<string, AudioTrack>>(new Map());
   const queueOrderRef = useRef<string[]>([]);
   const canonicalOrderRef = useRef<string[]>([]);
+  const basePlaylistIdsRef = useRef<string[]>([]);
   const isShuffleEnabledRef = useRef(false);
   const currentTrackRef = useRef<AudioTrack | null>(null);
   const isPlayingRef = useRef(false);
@@ -170,7 +174,39 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       trackMetaRef.current.set(item.id, item);
     }
     queueOrderRef.current = tracks.map((item) => item.id);
+    canonicalOrderRef.current = tracks.map((item) => item.id);
   }, []);
+
+  const resolveTracksByIds = useCallback((ids: string[]) => {
+    return ids
+      .map((id) => trackMetaRef.current.get(id))
+      .filter((track): track is AudioTrack => Boolean(track));
+  }, []);
+
+  const buildMergedPlaybackQueue = useCallback(
+    (insertedIds: string[] = insertedQueueIds) => {
+      const baseTracks = resolveTracksByIds(basePlaylistIdsRef.current);
+      const insertedTracks = resolveTracksByIds(insertedIds);
+      return mergePlaybackQueue(
+        baseTracks,
+        insertedTracks,
+        currentTrackRef.current?.id ?? null
+      );
+    },
+    [insertedQueueIds, resolveTracksByIds]
+  );
+
+  const syncMergedQueue = useCallback(
+    (insertedIds: string[] = insertedQueueIds, options?: { syncNative?: boolean }) => {
+      applyDisplayQueue(buildMergedPlaybackQueue(insertedIds), {
+        keepCurrentId: currentTrackRef.current?.id ?? null,
+        syncNative: options?.syncNative ?? !isYoutubeTrack(currentTrackRef.current),
+      });
+    },
+    [applyDisplayQueue, buildMergedPlaybackQueue, insertedQueueIds]
+  );
+
+  const queuedTrackCount = insertedQueueIds.length;
 
   useEffect(() => {
     currentTrackRef.current = currentTrack;
@@ -204,7 +240,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const applyDisplayQueue = useCallback(
     (canonicalTracks: AudioTrack[], options?: { keepCurrentId?: string | null; syncNative?: boolean }) => {
-      canonicalOrderRef.current = canonicalTracks.map((item) => item.id);
       for (const item of canonicalTracks) {
         trackMetaRef.current.set(item.id, item);
       }
@@ -314,6 +349,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       const index = Math.max(0, incomingQueue.findIndex((item) => item.id === track.id));
       const selected = incomingQueue[index] ?? track;
 
+      setInsertedQueueIds([]);
+      basePlaylistIdsRef.current = incomingQueue.map((item) => item.id);
+      for (const item of incomingQueue) {
+        trackMetaRef.current.set(item.id, item);
+      }
+
       applyDisplayQueue(incomingQueue, { keepCurrentId: selected.id });
 
       if (options?.openFullPlayer) {
@@ -385,7 +426,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
           next = [randomTrack];
         }
 
-        canonicalOrderRef.current = next.map((item) => item.id);
+        basePlaylistIdsRef.current = next.map((item) => item.id);
         syncQueueRefs(next);
         return next;
       });
@@ -397,15 +438,11 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     isShuffleEnabledRef.current = enabled;
     setIsShuffleEnabled(enabled);
 
-    const canonicalTracks = canonicalOrderRef.current
-      .map((id) => trackMetaRef.current.get(id))
-      .filter((track): track is AudioTrack => Boolean(track));
-
-    applyDisplayQueue(canonicalTracks, {
+    applyDisplayQueue(buildMergedPlaybackQueue(), {
       keepCurrentId: currentTrackRef.current?.id ?? null,
       syncNative: true,
     });
-  }, [applyDisplayQueue]);
+  }, [applyDisplayQueue, buildMergedPlaybackQueue]);
 
   const closeQueue = useCallback(() => {
     setIsQueueOpen(false);
@@ -444,67 +481,48 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     (track: AudioTrack, options?: { playNext?: boolean }) => {
       trackMetaRef.current.set(track.id, track);
 
-      setQueue((prevQueue) => {
-        const fromRef = canonicalOrderRef.current
-          .map((id) => trackMetaRef.current.get(id))
-          .filter((item): item is AudioTrack => Boolean(item));
-
-        let base = fromRef.length > 0 ? fromRef : [...prevQueue];
-
-        const playing = currentTrackRef.current;
-        if (playing) {
-          trackMetaRef.current.set(playing.id, playing);
-          if (!base.some((item) => item.id === playing.id)) {
-            base = [playing, ...base];
-          }
+      const playing = currentTrackRef.current;
+      if (playing) {
+        trackMetaRef.current.set(playing.id, playing);
+        if (!basePlaylistIdsRef.current.includes(playing.id)) {
+          basePlaylistIdsRef.current = [playing.id, ...basePlaylistIdsRef.current];
         }
+      }
 
-        for (const item of base) {
-          trackMetaRef.current.set(item.id, item);
-        }
+      const withoutDup = insertedQueueIds.filter((id) => id !== track.id);
+      const nextInserted = options?.playNext
+        ? [track.id, ...withoutDup]
+        : [...withoutDup, track.id];
 
-        const withoutDup = base.filter((item) => item.id !== track.id);
-        let nextCanonical: AudioTrack[];
-
-        if (options?.playNext && playing) {
-          const currentIdx = withoutDup.findIndex((item) => item.id === playing.id);
-          if (currentIdx >= 0) {
-            nextCanonical = [...withoutDup];
-            nextCanonical.splice(currentIdx + 1, 0, track);
-          } else {
-            nextCanonical = [...withoutDup, track];
-          }
-        } else {
-          nextCanonical = [...withoutDup, track];
-        }
-
-        canonicalOrderRef.current = nextCanonical.map((item) => item.id);
-
-        const keepCurrentId = playing?.id ?? null;
-        const displayTracks =
-          isShuffleEnabledRef.current && nextCanonical.length > 1
-            ? shuffleQueueKeepingCurrent(nextCanonical, keepCurrentId)
-            : nextCanonical;
-
-        syncQueueRefs(displayTracks);
-        return displayTracks;
-      });
+      setInsertedQueueIds(nextInserted);
+      syncMergedQueue(nextInserted, { syncNative: true });
     },
-    [syncQueueRefs]
+    [insertedQueueIds, syncMergedQueue]
   );
+
+  const clearQueue = useCallback(() => {
+    setInsertedQueueIds([]);
+    syncMergedQueue([], { syncNative: !isYoutubeTrack(currentTrackRef.current) });
+  }, [syncMergedQueue]);
 
   const removeFromQueue = useCallback(
     (trackId: string) => {
-      const canonicalTracks = canonicalOrderRef.current
-        .map((id) => trackMetaRef.current.get(id))
-        .filter((item): item is AudioTrack => Boolean(item));
+      const inInserted = insertedQueueIds.includes(trackId);
+      const nextInserted = inInserted
+        ? insertedQueueIds.filter((id) => id !== trackId)
+        : insertedQueueIds;
 
-      const index = canonicalTracks.findIndex((item) => item.id === trackId);
-      if (index < 0) return;
+      if (inInserted) {
+        setInsertedQueueIds(nextInserted);
+      } else {
+        basePlaylistIdsRef.current = basePlaylistIdsRef.current.filter((id) => id !== trackId);
+      }
+
+      const merged = buildMergedPlaybackQueue(nextInserted);
+      if (!queueOrderRef.current.includes(trackId)) return;
 
       const prevDisplayIndex = queueOrderRef.current.indexOf(trackId);
-      const nextCanonical = canonicalTracks.filter((item) => item.id !== trackId);
-      const displayQueue = applyDisplayQueue(nextCanonical, {
+      const displayQueue = applyDisplayQueue(merged, {
         keepCurrentId: currentTrack?.id === trackId ? null : currentTrack?.id ?? null,
       });
 
@@ -538,8 +556,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     [
       applyDisplayQueue,
       beginYoutubePlayback,
+      buildMergedPlaybackQueue,
       closeFullPlayer,
       currentTrack,
+      insertedQueueIds,
       isPlaying,
       nativePlayerReady,
       rebuildNativeQueue,
@@ -555,10 +575,11 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         const next = [...prev];
         const [moved] = next.splice(fromIndex, 1);
         next.splice(toIndex, 0, moved);
-        canonicalOrderRef.current = next.map((item) => item.id);
+        basePlaylistIdsRef.current = next.map((item) => item.id);
         syncQueueRefs(next);
         return next;
       });
+      setInsertedQueueIds([]);
     },
     [syncQueueRefs]
   );
@@ -621,6 +642,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     trackMetaRef.current.clear();
     queueOrderRef.current = [];
     canonicalOrderRef.current = [];
+    basePlaylistIdsRef.current = [];
+    setInsertedQueueIds([]);
     setQueue([]);
     setIsShuffleEnabled(false);
     isShuffleEnabledRef.current = false;
@@ -788,6 +811,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       openQueue,
       closeQueue,
       addToQueue,
+      clearQueue,
+      queuedTrackCount,
       removeFromQueue,
       reorderQueue,
       playQueueItem,
@@ -826,6 +851,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       openQueue,
       closeQueue,
       addToQueue,
+      clearQueue,
+      queuedTrackCount,
       removeFromQueue,
       reorderQueue,
       playQueueItem,

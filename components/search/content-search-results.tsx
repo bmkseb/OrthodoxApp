@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native';
 import { Image, type ImageSourcePropType } from 'expo-image';
 
+import { ChannelAvatarImage } from '@/components/listen/channel-avatar-image';
 import {
   VIDEO_THUMB_BORDER_RADIUS,
   VIDEO_THUMB_ROW_HEIGHT,
@@ -92,16 +93,22 @@ export function ContentSearchResults({
                     height={wide ? videoThumbHeightForWidth(64) : undefined}
                     spacing={8}
                   />
+                ) : circular && hit.imageUri !== undefined ? (
+                  <ChannelAvatarImage
+                    channelName={hit.title}
+                    size={52}
+                    imageUri={hit.imageUri}
+                    style={styles.thumbCircleAvatar}
+                  />
                 ) : hit.imageUri || hit.imageSource ? (
                   <Image
                     source={hit.imageSource ?? { uri: hit.imageUri! }}
                     style={[
                       styles.thumb,
-                      circular && styles.thumbCircle,
                       wide && styles.thumbWide,
                       albumArt && styles.thumbAlbumArt,
                     ]}
-                    contentFit={circular || albumArt ? 'cover' : 'contain'}
+                    contentFit={albumArt ? 'cover' : 'contain'}
                   />
                 ) : (
                   <View
@@ -194,6 +201,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
+    marginRight: 8,
+  },
+  thumbCircleAvatar: {
     marginRight: 8,
   },
   thumbWide: {

@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { RadialCardSurface } from '@/components/sacred/radial-card-surface';
 import { ThemedText } from '@/components/themed-text';
@@ -29,9 +29,7 @@ export default function SettingsScreen() {
 
   return (
     <ScreenScrollView>
-      <OrthodoxPressable style={styles.backRow} onPress={() => router.back()}>
-        <ThemedText type="seeAll">{t('settings.back')}</ThemedText>
-      </OrthodoxPressable>
+      <AppBackButton style={styles.backRow} />
 
       <ThemedText type="title" style={styles.pageTitle}>
         {t('settings.title')}

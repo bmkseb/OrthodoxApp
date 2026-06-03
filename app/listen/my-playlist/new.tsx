@@ -1,24 +1,29 @@
-import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CreatePlaylistForm } from '@/components/listen/create-playlist-form';
-import { Icon } from '@/components/Icon';
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
-import { Layout, Palette, Spacing } from '@/constants/theme';
-import { USER_PLAYLIST_ARTIST } from '@/data/userPlaylists';
+import { Layout, Spacing } from '@/constants/theme';
+import { userPlaylistArtistForKind } from '@/data/userPlaylists';
+import type { SavedListenKind } from '@/hooks/use-saved-hymns';
 import { createUserPlaylist } from '@/hooks/use-user-playlists';
-import { useTranslation } from '@/hooks/use-translation';
 import { encodeRouteParam } from '@/lib/mezmur';
 
+function parsePlaylistKind(raw: string | string[] | undefined): SavedListenKind {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === 'sermon' || value === 'melody') return value;
+  return 'hymn';
+}
+
 export default function NewUserPlaylistScreen() {
-  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { kind: kindParam } = useLocalSearchParams<{ kind?: string }>();
+  const playlistKind = useMemo(() => parsePlaylistKind(kindParam), [kindParam]);
   const [title, setTitle] = useState('');
-  const [coverUri, setCoverUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const save = useCallback(async () => {
@@ -26,36 +31,29 @@ export default function NewUserPlaylistScreen() {
     if (!trimmed || saving) return;
     setSaving(true);
     try {
-      const playlist = await createUserPlaylist(trimmed, [], coverUri);
+      const playlist = await createUserPlaylist(trimmed, [], null, playlistKind);
       router.replace(
-        `/listen/${encodeRouteParam(USER_PLAYLIST_ARTIST)}/${encodeRouteParam(playlist.id)}` as never
+        `/listen/${encodeRouteParam(userPlaylistArtistForKind(playlistKind))}/${encodeRouteParam(playlist.id)}` as never
       );
     } finally {
       setSaving(false);
     }
-  }, [coverUri, saving, title]);
+  }, [playlistKind, saving, title]);
 
   return (
     <ThemedView style={styles.screen}>
       <SacredAtmosphere />
       <View style={[styles.header, { paddingTop: insets.top + Spacing.xs }]}>
-        <OrthodoxPressable
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.back')}>
-          <Icon name="chevron-left" size={20} color={Palette.text} />
-        </OrthodoxPressable>
+        <AppBackButton style={styles.backBtn} />
       </View>
 
       <View style={styles.form}>
         <CreatePlaylistForm
           title={title}
           onTitleChange={setTitle}
-          coverUri={coverUri}
-          onCoverChange={setCoverUri}
           onSubmit={() => void save()}
           saving={saving}
+          showCover={false}
         />
       </View>
     </ThemedView>
@@ -71,11 +69,8 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -8,
+    marginLeft: -2,
+    paddingVertical: 0,
   },
   form: {
     flex: 1,

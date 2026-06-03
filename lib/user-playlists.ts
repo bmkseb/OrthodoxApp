@@ -1,6 +1,9 @@
 import type { UserPlaylist } from '@/hooks/use-user-playlists';
-
+import { userPlaylistArtistForKind } from '@/data/userPlaylists';
 import { fetchAllMezmur, type Mezmur, type MezmurPlaylistCard } from '@/lib/mezmur';
+import { youtubeListThumbnailUrl } from '@/lib/youtube-thumbnail';
+
+const COLLAGE_SLOT_COUNT = 4;
 
 
 
@@ -20,10 +23,29 @@ export async function resolveUserPlaylistSongs(playlist: UserPlaylist): Promise<
 
 
 
-/** Custom cover only; null shows the default music-note placeholder. */
-export function userPlaylistThumbnail(playlist: UserPlaylist): string | null {
+/** Custom cover only; null means use the automatic thumbnail collage. */
+export function userPlaylistCoverUri(playlist: UserPlaylist): string | null {
   const cover = playlist.coverImageUri?.trim();
   return cover ? cover : null;
+}
+
+/** @deprecated Use userPlaylistCoverUri — kept for call sites that expect a single URI. */
+export function userPlaylistThumbnail(playlist: UserPlaylist): string | null {
+  return userPlaylistCoverUri(playlist);
+}
+
+/** Up to four YouTube list thumbnails from the playlist's videos (playlist order). */
+export function userPlaylistCollageUris(playlist: UserPlaylist): string[] {
+  const uris: string[] = [];
+  const seen = new Set<string>();
+  for (const rawId of playlist.videoIds) {
+    const id = rawId.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    uris.push(youtubeListThumbnailUrl(id, null));
+    if (uris.length >= COLLAGE_SLOT_COUNT) break;
+  }
+  return uris;
 }
 
 
@@ -38,7 +60,7 @@ export function userPlaylistToCard(
 
   return {
 
-    artist: 'My Playlists',
+    artist: userPlaylistArtistForKind(playlist.kind),
 
     album: playlist.id,
 

@@ -4,9 +4,12 @@ import { StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { MezmurAlbumThumbnail } from '@/components/listen/mezmur-album-thumbnail';
+import { ThumbnailCollage } from '@/components/listen/thumbnail-collage';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+import { ChannelAvatarImage } from '@/components/listen/channel-avatar-image';
+import { mezmurChannelImageSource } from '@/constants/mezmur-channel-art';
+import { BorderRadius, Palette, Spacing } from '@/constants/theme';
 
 const LEADING_SIZE = 42;
 
@@ -16,6 +19,7 @@ export type HymnsCatalogListRowProps = {
   onPress: () => void;
   /** Circular avatar (channels). */
   imageUri?: string | null;
+  collageUris?: string[];
   leadingShape?: 'circle' | 'cover';
   /** Renders bundled / remote album art in the cover slot. */
   albumArtist?: string;
@@ -26,13 +30,20 @@ export type HymnsCatalogListRowProps = {
 function LeadingVisual({
   title,
   imageUri,
+  collageUris,
   leadingShape,
   albumArtist,
   albumName,
   albumThumbnailUrl,
 }: Pick<
   HymnsCatalogListRowProps,
-  'title' | 'imageUri' | 'leadingShape' | 'albumArtist' | 'albumName' | 'albumThumbnailUrl'
+  | 'title'
+  | 'imageUri'
+  | 'collageUris'
+  | 'leadingShape'
+  | 'albumArtist'
+  | 'albumName'
+  | 'albumThumbnailUrl'
 >) {
   const shape = leadingShape ?? (albumArtist ? 'cover' : 'circle');
 
@@ -45,6 +56,39 @@ function LeadingVisual({
           thumbnailUrl={albumThumbnailUrl}
           style={StyleSheet.absoluteFill}
         />
+      </View>
+    );
+  }
+
+  const channelSource =
+    shape === 'circle' ? mezmurChannelImageSource(title, imageUri ?? null) : null;
+
+  if (channelSource && shape === 'circle') {
+    return (
+      <ChannelAvatarImage
+        channelName={title}
+        size={LEADING_SIZE}
+        imageUri={imageUri}
+        style={styles.avatar}
+      />
+    );
+  }
+
+  if (channelSource) {
+    return (
+      <Image
+        source={channelSource}
+        style={styles.cover}
+        contentFit="cover"
+      />
+    );
+  }
+
+  const collage = collageUris?.filter(Boolean) ?? [];
+  if (collage.length > 0 && !imageUri && shape === 'cover') {
+    return (
+      <View style={styles.cover}>
+        <ThumbnailCollage uris={collage} style={StyleSheet.absoluteFill} />
       </View>
     );
   }
@@ -77,6 +121,7 @@ export const HymnsCatalogListRow = memo(function HymnsCatalogListRow({
   subtitle,
   onPress,
   imageUri,
+  collageUris,
   leadingShape,
   albumArtist,
   albumName,
@@ -91,6 +136,7 @@ export const HymnsCatalogListRow = memo(function HymnsCatalogListRow({
       <LeadingVisual
         title={title}
         imageUri={imageUri}
+        collageUris={collageUris}
         leadingShape={leadingShape}
         albumArtist={albumArtist}
         albumName={albumName}
@@ -116,21 +162,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Layout.cardBorder,
-    backgroundColor: Palette.card,
+    paddingVertical: Spacing.md - 2,
+    paddingHorizontal: 2,
+    minHeight: 56,
   },
   avatar: {
-    width: LEADING_SIZE,
-    height: LEADING_SIZE,
-    borderRadius: LEADING_SIZE / 2,
     marginRight: Spacing.md,
-    backgroundColor: Palette.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
   },
   cover: {
     width: LEADING_SIZE,
@@ -138,9 +175,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     marginRight: Spacing.md,
     overflow: 'hidden',
-    backgroundColor: Palette.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
+    backgroundColor: 'rgba(201, 147, 58, 0.08)',
   },
   coverIcon: {
     width: LEADING_SIZE,
@@ -152,8 +187,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(201, 147, 58, 0.1)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
   },
   avatarInitial: {
     color: Palette.gold,

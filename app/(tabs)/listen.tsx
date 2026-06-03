@@ -61,13 +61,26 @@ import {
   type Mezmur,
   type MezmurArtist,
   type MezmurSearchResults,
+  type MezmurSearchScope,
 } from '@/lib/mezmur';
+import { fetchSermonArtists } from '@/lib/sermon-catalog';
 import { SacredImagery } from '@/constants/sacred-imagery';
+import {
+  LISTEN_FEATURED_HEIGHT,
+  LISTEN_PLAYLIST_SHELF_SLOTS,
+  LISTEN_RAIL_SCROLL_CONTENT,
+  LISTEN_SHELF_PREVIEW_LIMIT,
+  ListenSectionSpacing,
+} from '@/constants/listen-layout';
+import {
+  sortChannelsByRecentAccess,
+  sortPlaylistKeysByRecentAccess,
+} from '@/lib/listen-shelf-order';
 import { Layout, Palette, Space } from '@/constants/theme';
 import { LISTEN_FEATURED_SEEDS } from '@/data/listenFeatured';
-import { USER_PLAYLIST_ARTIST } from '@/data/userPlaylists';
+import { userPlaylistArtistForKind } from '@/data/userPlaylists';
 import { useUserPlaylists } from '@/hooks/use-user-playlists';
-import { userPlaylistThumbnail } from '@/lib/user-playlists';
+import { userPlaylistCollageUris, userPlaylistCoverUri } from '@/lib/user-playlists';
 import { YARED_MELODY_SHELVES } from '@/data/yaredMelodiesCatalog';
 import { translate, type LanguageMode, type TranslationKey } from '@/lib/translations';
 import type { IconName } from '@/components/Icon';
@@ -82,7 +95,12 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 
 const EMPTY_SEARCH: MezmurSearchResults = { channels: [], playlists: [], songs: [] };
-const SAVED_HYMNS_PREVIEW_LIMIT = 3;
+/** Visual progress when duration is not stored yet (caps ~5 min). */
+function continueListeningProgress(entry: ListeningProgressEntry): number {
+  const seconds = entry.positionSeconds ?? 0;
+  if (seconds <= 0) return 0;
+  return Math.min(seconds / 300, 0.95);
+}
 
 const TAB_TO_SAVED_KIND: Record<ListenTab, SavedListenKind> = {
   hymns: 'hymn',
@@ -217,21 +235,23 @@ export default function ListenScreen() {
   const [searchFocused, setSearchFocused] = useState(false);
   const searchBlurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mezmurChannels, setMezmurChannels] = useState<MezmurArtist[]>([]);
-  const { playlists: userPlaylists } = useUserPlaylists();
+  const [sermonChannels, setSermonChannels] = useState<MezmurArtist[]>([]);
+  const savedKind = TAB_TO_SAVED_KIND[activeTab];
+  const { playlists: userPlaylists } = useUserPlaylists(savedKind);
   const [mezmurCatalog, setMezmurCatalog] = useState<Mezmur[]>([]);
   const [searchResults, setSearchResults] = useState<MezmurSearchResults>(EMPTY_SEARCH);
   const [searchLoading, setSearchLoading] = useState(false);
   const { entries: continueEntries } = useListeningProgress();
   const { entries: savedItems } = useSavedHymns();
-  const savedKind = TAB_TO_SAVED_KIND[activeTab];
   const savedForTab = useMemo(
     () => savedItems.filter((entry) => entry.kind === savedKind),
     [savedItems, savedKind]
   );
   const savedPreview = useMemo(
-    () => savedForTab.slice(0, SAVED_HYMNS_PREVIEW_LIMIT),
+    () => savedForTab.slice(0, LISTEN_SHELF_PREVIEW_LIMIT),
     [savedForTab]
   );
+  const showSavedSeeAll = savedForTab.length > LISTEN_SHELF_PREVIEW_LIMIT;
   const {
     entries: recentSearchEntries,
     addRecentSearch,
@@ -288,10 +308,20 @@ export default function ListenScreen() {
       .catch(() => {
         if (active) setMezmurCatalog([]);
       });
+    fetchSermonArtists()
+      .then((rows) => {
+        if (active) setSermonChannels(rows);
+      })
+      .catch(() => {
+        if (active) setSermonChannels([]);
+      });
     return () => {
       active = false;
     };
   }, []);
+
+  const searchScope: MezmurSearchScope =
+    activeTab === 'sermons' ? 'sermons' : activeTab === 'hymns' ? 'hymns' : 'hymns';
 
   useEffect(() => {
     if (!debouncedQuery) {
@@ -307,7 +337,7 @@ export default function ListenScreen() {
     setSearchLoading(true);
     searchResultsQueryRef.current = '';
 
-    searchMezmurCatalog(query)
+    searchMezmurCatalog(query, searchScope)
       .then((results) => {
         if (active) {
           setSearchResults(results);
@@ -327,7 +357,7 @@ export default function ListenScreen() {
     return () => {
       active = false;
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, searchScope]);
 
   const playContinueEntry = useCallback(
     async (entry: ListeningProgressEntry) => {
@@ -372,7 +402,6 @@ export default function ListenScreen() {
   );
 
   const featuredItemsForTab = useMemo<FeaturedItem[]>(() => {
-    const badgeLabel = getListenTabLabel(t, mode, activeTab);
     const kind = TAB_TO_SAVED_KIND[activeTab];
 
     return LISTEN_FEATURED_SEEDS[activeTab].map((seed) => {
@@ -386,7 +415,6 @@ export default function ListenScreen() {
         id: seed.id,
         title: resolveLabel(t, seed.titleKey, seed.title ?? matched?.title),
         subtitle: resolveLabel(t, seed.subtitleKey, seed.subtitle ?? matched?.artist),
-        badgeLabel,
         imageUri: matched?.thumbnailUrl ?? seed.image,
         onPress: () => {
           if (seed.melodyPlaylistId) {
@@ -440,13 +468,14 @@ export default function ListenScreen() {
         subtitle: formatMezmurChannelSubtitle(
           channel.name,
           channel.albumCount,
-          channel.songCount
+          channel.songCount,
+          { kind: savedKind, mode }
         ),
         thumbnailUrl: channel.thumbnailUrl ?? undefined,
         channelName: channel.name,
       });
     },
-    [addRecentSearch]
+    [addRecentSearch, mode, savedKind]
   );
 
   const savePlaylistRecent = useCallback(
@@ -525,36 +554,115 @@ export default function ListenScreen() {
   const searchResultsBottomInset = keyboardHeight > 0 ? keyboardContentGap : scrollBottomPadding;
   const listenScrollTrackRight = -Layout.pagePadding + 4;
 
-  const playlistRailItems = useMemo(() => {
-    const items: MezmurCatalogRailItem[] = [];
+  const openChannel = useCallback(
+    (channel: MezmurArtist) => {
+      saveChannelRecent(channel);
+      router.push(`/listen/${encodeRouteParam(channel.name)}` as never);
+    },
+    [saveChannelRecent]
+  );
 
-    for (const playlist of userPlaylists) {
-      const songLabel =
-        playlist.videoIds.length === 1
+  const openUserPlaylist = useCallback(
+    (playlist: (typeof userPlaylists)[number]) => {
+      const playlistArtist = userPlaylistArtistForKind(savedKind);
+      savePlaylistRecent(playlistArtist, {
+        name: playlist.id,
+        thumbnailUrl: userPlaylistCoverUri(playlist),
+      });
+      router.push(
+        `/listen/${encodeRouteParam(playlistArtist)}/${encodeRouteParam(playlist.id)}` as never
+      );
+    },
+    [savePlaylistRecent, savedKind]
+  );
+
+  const hymnChannelShelf = useMemo(() => {
+    const sorted = sortChannelsByRecentAccess(mezmurChannels, recentSearchEntries);
+    const visible = sorted.slice(0, LISTEN_SHELF_PREVIEW_LIMIT);
+    const items: MezmurCatalogRailItem[] = visible.map((channel) => ({
+      key: channel.name,
+      title: channel.name,
+      subtitle: formatMezmurChannelSubtitle(
+        channel.name,
+        channel.albumCount,
+        channel.songCount,
+        { kind: 'hymn', mode }
+      ),
+      imageUri: channel.thumbnailUrl,
+      onPress: () => openChannel(channel),
+    }));
+    return { items, totalCount: sorted.length };
+  }, [mezmurChannels, mode, openChannel, recentSearchEntries]);
+
+  const sermonChannelShelf = useMemo(() => {
+    const sorted = sortChannelsByRecentAccess(sermonChannels, recentSearchEntries);
+    const visible = sorted.slice(0, LISTEN_SHELF_PREVIEW_LIMIT);
+    const items: MezmurCatalogRailItem[] = visible.map((channel) => ({
+      key: channel.name,
+      title: channel.name,
+      subtitle: formatMezmurChannelSubtitle(
+        channel.name,
+        channel.albumCount,
+        channel.songCount,
+        { kind: 'sermon', mode }
+      ),
+      imageUri: channel.thumbnailUrl,
+      onPress: () => openChannel(channel),
+    }));
+    return { items, totalCount: sorted.length };
+  }, [mode, openChannel, recentSearchEntries, sermonChannels]);
+
+  const playlistShelf = useMemo(() => {
+    const playlistArtist = userPlaylistArtistForKind(savedKind);
+    const isSermonTab = savedKind === 'sermon';
+    const createItem: MezmurCatalogRailItem = {
+      key: 'create-playlist',
+      variant: 'create',
+      title: t(
+        isSermonTab ? 'listen.createYourSermonPlaylist' : 'listen.createYourPlaylist'
+      ),
+      onPress: () =>
+        router.push({
+          pathname: '/listen/my-playlist/new',
+          params: { kind: savedKind },
+        } as never),
+    };
+
+    const playlistItems: MezmurCatalogRailItem[] = userPlaylists.map((playlist) => {
+      const songLabel = isSermonTab
+        ? playlist.videoIds.length === 1
+          ? t('listen.oneSermon')
+          : t('listen.nSermons').replace('{n}', String(playlist.videoIds.length))
+        : playlist.videoIds.length === 1
           ? t('listen.oneSong')
           : t('listen.nSongs').replace('{n}', String(playlist.videoIds.length));
-      items.push({
+      return {
         key: `user-${playlist.id}`,
         title: playlist.title,
         subtitle: songLabel,
-        imageUri: userPlaylistThumbnail(playlist),
-        onPress: () =>
-          router.push(
-            `/listen/${encodeRouteParam(USER_PLAYLIST_ARTIST)}/${encodeRouteParam(playlist.id)}` as never
-          ),
-      });
-    }
-
-    items.push({
-      key: 'create-playlist',
-      variant: 'create',
-      title: t('listen.createYourPlaylist'),
-      subtitle: t('listen.createYourPlaylistDescription'),
-      onPress: () => router.push('/listen/my-playlist/new' as never),
+        imageUri: userPlaylistCoverUri(playlist),
+        collageUris: userPlaylistCollageUris(playlist),
+        onPress: () => openUserPlaylist(playlist),
+      };
     });
 
-    return items;
-  }, [t, userPlaylists]);
+    const sortedKeys = sortPlaylistKeysByRecentAccess(
+      playlistItems.map((item) => item.key.replace(/^user-/, '')),
+      recentSearchEntries,
+      playlistArtist,
+      (albumKey) => albumKey
+    );
+    const byKey = new Map(playlistItems.map((item) => [item.key.replace(/^user-/, ''), item]));
+    const sortedPlaylists = sortedKeys
+      .map((id) => byKey.get(id))
+      .filter((item): item is MezmurCatalogRailItem => Boolean(item));
+
+    const visiblePlaylists = sortedPlaylists.slice(0, LISTEN_PLAYLIST_SHELF_SLOTS);
+    return {
+      items: [createItem, ...visiblePlaylists],
+      totalCount: playlistItems.length,
+    };
+  }, [openUserPlaylist, recentSearchEntries, savedKind, t, userPlaylists]);
 
   return (
     <ThemedView style={styles.root}>
@@ -619,10 +727,11 @@ export default function ListenScreen() {
                       id: `channel-${channel.name}`,
                       title: channel.name,
                       subtitle: formatMezmurChannelSubtitle(
-          channel.name,
-          channel.albumCount,
-          channel.songCount
-        ),
+                        channel.name,
+                        channel.albumCount,
+                        channel.songCount,
+                        { kind: searchScope === 'sermons' ? 'sermon' : 'hymn', mode }
+                      ),
                       imageUri: channel.thumbnailUrl,
                       circularImage: true,
                       isHeader: true,
@@ -679,18 +788,19 @@ export default function ListenScreen() {
                 <>
                   <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
 
-                  <View style={styles.section}>
-                    <SectionHeader title={t(tabSections.featuredTitleKey)} icon="sparkle" />
+                  <View style={styles.sectionHero}>
+                    <SectionHeader title={t(tabSections.featuredTitleKey)} />
                     <FeaturedCarousel
                       items={featuredItemsForTab}
                       width={featuredWidth}
                       autoRotateMs={3200}
-                      cardHeight={Layout.featuredCardHeight}
+                      cardHeight={LISTEN_FEATURED_HEIGHT}
+                      listenHero
                     />
                   </View>
 
                   {continueForTab.length > 0 ? (
-                    <View style={styles.section}>
+                    <View style={styles.sectionPrimary}>
                       <SectionHeader
                         title={t(tabSections.continueTitleKey)}
                         icon={LISTEN_CONTINUE_ICON}
@@ -703,9 +813,11 @@ export default function ListenScreen() {
                           <PlaylistRailCard
                             key={entry.videoId}
                             title={entry.title}
-                            subtitle={`${entry.artist} · ${entry.album}`}
+                            secondaryText={entry.artist}
                             imageUri={entry.thumbnailUrl || tabSections.fallbackImage}
                             fallbackImageUri={tabSections.fallbackImage}
+                            progress={continueListeningProgress(entry)}
+                            progressBelow
                             onPress={() => void playContinueEntry(entry)}
                             onRemove={() => void removeListeningProgress(entry.videoId)}
                             removeLabel={`Remove ${entry.title}`}
@@ -715,7 +827,7 @@ export default function ListenScreen() {
                     </View>
                   ) : null}
 
-                  <View style={[styles.section, !showSavedSection && styles.lastSection]}>
+                  <View style={[styles.sectionSecondary, !showSavedSection && styles.lastSection]}>
                     <SectionHeader
                       title={t(tabSections.catalogTitleKey)}
                       icon={LISTEN_CATALOG_ICON}
@@ -724,24 +836,63 @@ export default function ListenScreen() {
                       <>
                         <MezmurCatalogShelf
                           title={t('listen.mezmurPlaylistsShelf')}
-                          items={playlistRailItems}
-                          compactBottom={mezmurChannels.length > 0}
-                          onSeeAll={() =>
-                            router.push({
-                              pathname: '/listen/catalog',
-                              params: { section: 'playlists' },
-                            } as never)
+                          items={playlistShelf.items}
+                          compactBottom={hymnChannelShelf.items.length > 0}
+                          onSeeAll={
+                            playlistShelf.totalCount > LISTEN_PLAYLIST_SHELF_SLOTS
+                              ? () =>
+                                  router.push({
+                                    pathname: '/listen/catalog',
+                                    params: { section: 'playlists' },
+                                  } as never)
+                              : undefined
                           }
                         />
                         <MezmurCatalogShelf
                           title={t('listen.mezmurChannelsShelf')}
-                          artists={mezmurChannels}
+                          railKind="channel"
+                          items={hymnChannelShelf.items}
                           compactBottom={!showSavedSection}
-                          onSeeAll={() =>
-                            router.push({
-                              pathname: '/listen/catalog',
-                              params: { section: 'channels' },
-                            } as never)
+                          onSeeAll={
+                            hymnChannelShelf.totalCount > LISTEN_SHELF_PREVIEW_LIMIT
+                              ? () =>
+                                  router.push({
+                                    pathname: '/listen/catalog',
+                                    params: { section: 'channels' },
+                                  } as never)
+                              : undefined
+                          }
+                        />
+                      </>
+                    ) : activeTab === 'sermons' ? (
+                      <>
+                        <MezmurCatalogShelf
+                          title={t('listen.mezmurPlaylistsShelf')}
+                          items={playlistShelf.items}
+                          compactBottom={sermonChannelShelf.items.length > 0}
+                          onSeeAll={
+                            playlistShelf.totalCount > LISTEN_PLAYLIST_SHELF_SLOTS
+                              ? () =>
+                                  router.push({
+                                    pathname: '/listen/sermons/catalog',
+                                    params: { section: 'playlists' },
+                                  } as never)
+                              : undefined
+                          }
+                        />
+                        <MezmurCatalogShelf
+                          title={t('listen.mezmurChannelsShelf')}
+                          railKind="channel"
+                          items={sermonChannelShelf.items}
+                          compactBottom={!showSavedSection}
+                          onSeeAll={
+                            sermonChannelShelf.totalCount > LISTEN_SHELF_PREVIEW_LIMIT
+                              ? () =>
+                                  router.push({
+                                    pathname: '/listen/sermons/catalog',
+                                    params: { section: 'channels' },
+                                  } as never)
+                              : undefined
                           }
                         />
                       </>
@@ -759,29 +910,29 @@ export default function ListenScreen() {
                           }
                         />
                       ))
-                    ) : (
-                      <ThemedText type="muted" style={styles.catalogPlaceholder}>
-                        {t('listen.catalogComingSoon')}
-                      </ThemedText>
-                    )}
+                    ) : null}
                   </View>
 
                   {showSavedSection ? (
-                    <View style={[styles.section, styles.lastSection]}>
+                    <View style={[styles.sectionTertiary, styles.lastSection]}>
                       <SectionHeader
                         title={t(tabSections.savedTitleKey)}
                         icon={tabSections.savedIcon}
-                        onSeeAllPress={() =>
-                          router.push({
-                            pathname: '/listen/saved',
-                            params: { kind: savedKind },
-                          } as never)
+                        onSeeAllPress={
+                          showSavedSeeAll
+                            ? () =>
+                                router.push({
+                                  pathname: '/listen/saved',
+                                  params: { kind: savedKind },
+                                } as never)
+                            : undefined
                         }
                       />
                       <View style={styles.savedHymnsList}>
                         {savedPreview.map((entry, index) => (
                           <View key={entry.videoId}>
                             <MezmurSongRow
+                              variant="saved"
                               title={entry.title}
                               subtitle={`${entry.artist} · ${entry.album}`}
                               thumbnailUrl={entry.thumbnailUrl || tabSections.fallbackImage}
@@ -866,22 +1017,24 @@ const styles = StyleSheet.create({
   },
   segmentLabelActive: { color: '#000000', fontWeight: '600' },
   segmentLabelInactive: { color: MUTED_GOLD, fontWeight: '500' },
-  section: { marginBottom: Layout.sectionContentBottom },
+  sectionHero: { marginBottom: ListenSectionSpacing.hero },
+  sectionPrimary: { marginBottom: ListenSectionSpacing.primary },
+  sectionSecondary: { marginBottom: ListenSectionSpacing.secondary },
+  sectionTertiary: { marginBottom: ListenSectionSpacing.tertiary },
   lastSection: { marginBottom: 0 },
-  savedHymnsList: { marginTop: 2 },
+  savedHymnsList: { marginTop: Space.s4 },
   savedHymnDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Layout.cardBorder,
-    marginLeft: 68,
+    marginLeft: 80,
+  },
+  rail: {
+    ...LISTEN_RAIL_SCROLL_CONTENT,
+    marginRight: -Layout.pagePadding,
   },
   catalogPlaceholder: {
     fontSize: 14,
     lineHeight: 21,
     marginTop: 2,
-  },
-  rail: {
-    gap: Layout.cardGap,
-    paddingRight: Layout.pagePadding,
-    marginRight: -Layout.pagePadding,
   },
 });

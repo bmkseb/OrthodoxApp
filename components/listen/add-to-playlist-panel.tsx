@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CreatePlaylistForm } from '@/components/listen/create-playlist-form';
+import { UserPlaylistThumbnail } from '@/components/listen/user-playlist-thumbnail';
 import { Icon } from '@/components/Icon';
+import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { BorderRadius, Palette, Space } from '@/constants/theme';
-import { USER_PLAYLIST_ARTIST } from '@/data/userPlaylists';
+import { userPlaylistArtistForKind } from '@/data/userPlaylists';
+import type { SavedListenKind } from '@/hooks/use-saved-hymns';
 import {
   addSongToUserPlaylist,
   createUserPlaylist,
@@ -19,6 +22,7 @@ import { router } from 'expo-router';
 type AddToPlaylistPanelProps = {
   videoId: string;
   songTitle: string;
+  playlistKind?: SavedListenKind;
   onBack?: () => void;
   onDone?: () => void;
 };
@@ -30,11 +34,12 @@ function normalizeVideoId(videoId: string): string {
 export function AddToPlaylistPanel({
   videoId,
   songTitle,
+  playlistKind = 'hymn',
   onBack,
   onDone,
 }: AddToPlaylistPanelProps) {
   const { t } = useTranslation();
-  const { playlists, refresh, ready } = useUserPlaylists();
+  const { playlists, refresh, ready } = useUserPlaylists(playlistKind);
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [busy, setBusy] = useState(false);
@@ -73,27 +78,22 @@ export function AddToPlaylistPanel({
     if (!title || !vid || busy) return;
     setBusy(true);
     try {
-      const playlist = await createUserPlaylist(title, [vid]);
+      const playlist = await createUserPlaylist(title, [vid], null, playlistKind);
       await refresh();
       onDone?.();
       router.push(
-        `/listen/${encodeRouteParam(USER_PLAYLIST_ARTIST)}/${encodeRouteParam(playlist.id)}` as never
+        `/listen/${encodeRouteParam(userPlaylistArtistForKind(playlistKind))}/${encodeRouteParam(playlist.id)}` as never
       );
     } finally {
       setBusy(false);
     }
-  }, [busy, newTitle, onDone, refresh, vid]);
+  }, [busy, newTitle, onDone, playlistKind, refresh, vid]);
 
   if (creating) {
     return (
       <View style={styles.wrap}>
         {onBack ? (
-          <OrthodoxPressable
-            style={styles.backRow}
-            onPress={() => setCreating(false)}
-            accessibilityRole="button">
-            <ThemedText style={styles.backLabel}>← {t('listen.addToPlaylist')}</ThemedText>
-          </OrthodoxPressable>
+          <AppBackButton style={styles.backRow} onPress={() => setCreating(false)} />
         ) : null}
         <CreatePlaylistForm
           title={newTitle}
@@ -110,11 +110,7 @@ export function AddToPlaylistPanel({
 
   return (
     <View style={styles.wrap}>
-      {onBack ? (
-        <OrthodoxPressable style={styles.backRow} onPress={onBack} accessibilityRole="button">
-          <ThemedText style={styles.backLabel}>← {t('settings.back')}</ThemedText>
-        </OrthodoxPressable>
-      ) : null}
+      {onBack ? <AppBackButton style={styles.backRow} onPress={onBack} /> : null}
 
       <View style={styles.songChip}>
         <Icon name="music" size={14} color={Palette.gold} />
@@ -151,7 +147,11 @@ export function AddToPlaylistPanel({
                 accessibilityRole="button"
                 accessibilityLabel={playlist.title}>
                 <View style={styles.playlistIcon}>
-                  <Icon name="music" size={16} color={Palette.gold} />
+                  <UserPlaylistThumbnail
+                    playlist={playlist}
+                    style={styles.playlistThumb}
+                    placeholderIconSize={18}
+                  />
                 </View>
                 <View style={styles.playlistCopy}>
                   <ThemedText style={styles.playlistTitle} numberOfLines={1}>
@@ -190,8 +190,7 @@ export function AddToPlaylistPanel({
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, minHeight: 200 },
-  backRow: { paddingVertical: Space.s4, marginBottom: Space.s8 },
-  backLabel: { fontSize: 15, fontWeight: '600', color: Palette.gold },
+  backRow: { marginBottom: Space.s8, paddingVertical: 0 },
   songChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -238,11 +237,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
     backgroundColor: 'rgba(22, 19, 16, 0.9)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(201, 147, 58, 0.2)',
+  },
+  playlistThumb: {
+    width: '100%',
+    height: '100%',
   },
   playlistCopy: { flex: 1, gap: 2 },
   playlistTitle: { fontSize: 15, fontWeight: '600', color: Palette.text },

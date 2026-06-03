@@ -23,6 +23,7 @@ import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { BorderRadius, Palette, Space } from '@/constants/theme';
+import type { SavedListenKind } from '@/hooks/use-saved-hymns';
 import { useTranslation } from '@/hooks/use-translation';
 
 const SHEET_BG = '#1A1815';
@@ -45,6 +46,7 @@ type MezmurSongOptionsSheetProps = {
   videoIdForPlaylist?: string;
   /** Open directly on the Add to Playlist panel (e.g. from the audio player). */
   startInPlaylistMode?: boolean;
+  playlistKind?: SavedListenKind;
   onRemove?: () => void;
   removeLabel?: string;
 };
@@ -60,6 +62,7 @@ export function MezmurSongOptionsSheet({
   onAddToQueue,
   videoIdForPlaylist,
   startInPlaylistMode = false,
+  playlistKind = 'hymn',
   onRemove,
   removeLabel = 'Remove Saved Hymn',
 }: MezmurSongOptionsSheetProps) {
@@ -169,6 +172,7 @@ export function MezmurSongOptionsSheet({
             <AddToPlaylistPanel
               videoId={playlistVideoId}
               songTitle={title}
+              playlistKind={playlistKind}
               onBack={() => (startInPlaylistMode ? dismiss() : setPlaylistMode(false))}
               onDone={dismiss}
             />
