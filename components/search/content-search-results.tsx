@@ -1,7 +1,14 @@
 import React from 'react';
 import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native';
-import { Image } from 'expo-image';
+import { Image, type ImageSourcePropType } from 'expo-image';
 
+import {
+  VIDEO_THUMB_BORDER_RADIUS,
+  VIDEO_THUMB_ROW_HEIGHT,
+  VIDEO_THUMB_ROW_WIDTH,
+  videoThumbHeightForWidth,
+  VideoThumbnail,
+} from '@/components/listen/video-thumbnail';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
@@ -13,10 +20,15 @@ export type ContentSearchHit = {
   snippet?: string;
   /** When set (including null), renders a leading thumbnail on the left. */
   imageUri?: string | null;
+  /** YouTube video id — uses mqdefault (16:9, no letterbox bars). */
+  videoId?: string;
   /** Renders a circular thumbnail (e.g. mezmur channels). */
   circularImage?: boolean;
   /** 16:9 landscape thumbnail (e.g. mezmur playlists). */
   wideImage?: boolean;
+  /** Square album art — full image visible (no crop). */
+  albumArt?: boolean;
+  imageSource?: ImageSourcePropType;
   /** Header rows (books, topics, chapters) omit the quote snippet. */
   isHeader?: boolean;
   onPress: () => void;
@@ -59,7 +71,8 @@ export function ContentSearchResults({
         {hits.map((hit, index) => {
           const showImage = hit.imageUri !== undefined;
           const circular = showImage && hit.circularImage;
-          const wide = showImage && hit.wideImage && !circular;
+          const wide = showImage && hit.wideImage && !circular && !hit.albumArt;
+          const albumArt = showImage && hit.albumArt && !circular;
           return (
           <View key={hit.id}>
             <OrthodoxPressable
@@ -71,11 +84,24 @@ export function ContentSearchResults({
               accessibilityRole="button"
               accessibilityLabel={`${hit.title}. ${hit.isHeader ? hit.subtitle ?? hit.title : hit.snippet ?? hit.title}`}>
               {showImage ? (
-                hit.imageUri ? (
+                hit.imageUri && !hit.imageSource && !circular && !albumArt ? (
+                  <VideoThumbnail
+                    uri={hit.imageUri}
+                    videoId={hit.videoId}
+                    width={wide ? 64 : undefined}
+                    height={wide ? videoThumbHeightForWidth(64) : undefined}
+                    spacing={8}
+                  />
+                ) : hit.imageUri || hit.imageSource ? (
                   <Image
-                    source={{ uri: hit.imageUri }}
-                    style={[styles.thumb, circular && styles.thumbCircle, wide && styles.thumbWide]}
-                    contentFit="cover"
+                    source={hit.imageSource ?? { uri: hit.imageUri! }}
+                    style={[
+                      styles.thumb,
+                      circular && styles.thumbCircle,
+                      wide && styles.thumbWide,
+                      albumArt && styles.thumbAlbumArt,
+                    ]}
+                    contentFit={circular || albumArt ? 'cover' : 'contain'}
                   />
                 ) : (
                   <View
@@ -83,6 +109,7 @@ export function ContentSearchResults({
                       styles.thumb,
                       circular && styles.thumbCircle,
                       wide && styles.thumbWide,
+                      albumArt && styles.thumbAlbumArt,
                       styles.thumbPlaceholder,
                     ]}>
                     <ThemedText style={styles.thumbGlyph}>{hit.title.charAt(0)}</ThemedText>
@@ -111,11 +138,13 @@ export function ContentSearchResults({
                 style={[
                   styles.divider,
                   showImage &&
-                    (wide
-                      ? styles.dividerWithWideImage
-                      : circular
-                        ? styles.dividerWithCircleImage
-                        : styles.dividerWithImage),
+                    (albumArt
+                      ? styles.dividerWithAlbumArt
+                      : wide
+                        ? styles.dividerWithWideImage
+                        : circular
+                          ? styles.dividerWithCircleImage
+                          : styles.dividerWithImage),
                 ]}
               />
             ) : null}
@@ -147,7 +176,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: Spacing.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 4,
   },
@@ -155,22 +183,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   thumb: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
+    width: VIDEO_THUMB_ROW_WIDTH,
+    height: VIDEO_THUMB_ROW_HEIGHT,
+    marginRight: 8,
+    borderRadius: VIDEO_THUMB_BORDER_RADIUS,
+    overflow: 'hidden',
     backgroundColor: Palette.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
   },
   thumbCircle: {
     width: 52,
     height: 52,
     borderRadius: 26,
+    marginRight: 8,
   },
   thumbWide: {
-    width: 80,
-    height: 45,
+    width: 64,
+    height: videoThumbHeightForWidth(64),
+    marginRight: 8,
+    borderRadius: VIDEO_THUMB_BORDER_RADIUS,
+    overflow: 'hidden',
+  },
+  thumbAlbumArt: {
+    width: 58,
+    height: Math.round((58 * 3) / 4),
     borderRadius: BorderRadius.md,
+    marginRight: 8,
+    overflow: 'hidden',
   },
   thumbPlaceholder: {
     alignItems: 'center',
@@ -211,13 +249,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(201, 147, 58, 0.1)',
   },
   dividerWithImage: {
-    marginLeft: Spacing.md + 44 + Spacing.sm,
+    marginLeft: Spacing.md + 56 + 8,
   },
   dividerWithCircleImage: {
     marginLeft: Spacing.md + 52 + Spacing.sm,
   },
   dividerWithWideImage: {
-    marginLeft: Spacing.md + 80 + Spacing.sm,
+    marginLeft: Spacing.md + 64 + 8,
+  },
+  dividerWithAlbumArt: {
+    marginLeft: Spacing.md + 58 + 8,
   },
   loadingWrap: {
     paddingVertical: Spacing.lg,

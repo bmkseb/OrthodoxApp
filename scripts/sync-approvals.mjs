@@ -1,7 +1,12 @@
 /**
  * Reads approved rows from Google Sheet → pushes to Supabase.
+ * Columns: title(A) artist(B) channel(C) youtube_link(D) status(E)
+ *          type(F) playlist(G) language(H) video_id(I) thumbnail(J) notes(K)
+ *
+ * playlist column: if filled → used as album name under channel shelf
+ *                  if blank  → defaults to 'Other'
+ *
  * Run: node scripts/sync-approvals.mjs
- * Auto-runs every 6 hours via GitHub Actions.
  */
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
@@ -50,11 +55,9 @@ async function main() {
   console.log('📋 Syncing approvals from Google Sheet → Supabase...\n');
   const sheets = await getSheetsClient();
 
-  // Columns: title(A) artist(B) channel(C) youtube_link(D) thumbnail(E)
-  //          type(F) language(G) video_id(H) status(I) notes(J)
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: 'Mezmur Catalog!A2:J',
+    range: 'Mezmur Catalog!A2:K',
   });
 
   const rows = res.data.values ?? [];
@@ -64,38 +67,39 @@ async function main() {
   const rejected = [];
 
   for (const row of rows) {
-    const [title, artist, channel, , thumbnail, type, language, videoId, status] = row;
+    // A:title B:artist C:channel D:link E:status F:type G:playlist H:language I:video_id J:thumbnail K:notes
+    const [title, artist, channel, , status, type, playlist, language, videoId, thumbnail] = row;
     if (!videoId || !status) continue;
-    const s = status.trim().toLowerCase();
-    const t = (type || '').trim().toLowerCase();
+
+    const s    = status.trim().toLowerCase();
+    const t    = (type || '').trim().toLowerCase();
     const lang = (language || 'english').trim().toLowerCase();
 
+    let resolvedArtist = (artist || channel || 'Unknown').trim();
+    if (/y\.?o\.?t\.?c|young orthodox tewahedo/i.test(`${resolvedArtist} ${channel || ''}`)) {
+      resolvedArtist = 'Y.O.T.C. Choir';
+    }
+
+    // playlist column: if filled use it as album; Egeziharya Singles stay flat
+    const songsOnly = resolvedArtist === 'Egeziharya Yilma';
+    let album = songsOnly ? '' : ((playlist || '').trim() || 'Other');
+    if (resolvedArtist === 'Y.O.T.C. Choir') {
+      album = (playlist || '').trim() || 'Nation of the Cross';
+    }
+    if (/mezmur debter/i.test(`${resolvedArtist} ${channel || ''}`)) {
+      resolvedArtist = 'Mezmur Debter Zetewahedo';
+      const pl = (playlist || '').trim();
+      if (pl) album = pl;
+      else if (lang === 'amharic') album = 'Amharic Hymns';
+      else if (lang === 'english') album = 'English Hymns';
+    }
+
     if (s === 'approved') {
-      const channelName = (channel || '').trim();
-      const artistName = (artist || '').trim();
-      const isEgeziharya = /egeziharya/i.test(channelName) || /egeziharya/i.test(artistName);
-      const isMezmurDebter = /mezmur debter|debter zetewahedo/i.test(channelName) ||
-        /mezmur debter|debter zetewahedo/i.test(artistName);
-      const isYotcChoir = /\by\.?\s*o\.?\s*t\.?\s*c\b/i.test(channelName) ||
-        /\by\.?\s*o\.?\s*t\.?\s*c\b/i.test(artistName) ||
-        /young orthodox tewahedo/i.test(channelName) ||
-        /young orthodox tewahedo/i.test(artistName);
-      let resolvedArtist = artistName || channelName || 'Unknown';
-      let resolvedAlbum = (channelName || artistName || 'Discovered').trim();
-      if (isEgeziharya) {
-        resolvedArtist = 'Egeziharya Yilma';
-        resolvedAlbum = '';
-      } else if (isMezmurDebter) {
-        resolvedArtist = 'Mezmur Debter Zetewahedo';
-      } else if (isYotcChoir) {
-        resolvedArtist = 'Y.O.T.C. Choir';
-        resolvedAlbum = '';
-      }
       approved.push({
         video_id:      videoId,
         title:         title || '',
         artist:        resolvedArtist,
-        album:         resolvedAlbum,
+        album,
         thumbnail_url: thumbnail || '',
         language:      lang,
         type:          ['nisiha','praise','maryam','fasting','other'].includes(t) ? t : 'other',

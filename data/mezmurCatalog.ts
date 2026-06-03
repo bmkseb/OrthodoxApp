@@ -64,11 +64,16 @@ export const EGEZIHARYA_YILMA_CHANNEL = 'Egeziharya Yilma';
 /** Young Orthodox Tewahedo Christians — English hymns catalog. */
 export const YOTC_CHOIR_CHANNEL = 'Y.O.T.C. Choir';
 
+/** Default album for all Y.O.T.C. Choir channel uploads. */
+export const YOTC_NATION_OF_THE_CROSS_ALBUM = 'Nation of the Cross';
+
+export const YOTC_ALBUMS = new Set([YOTC_NATION_OF_THE_CROSS_ALBUM]);
+
+/** Mahibere Kidusan (EOTC Sunday School) — English hymns. */
+export const MAHIBERE_KIDUSAN_CHANNEL = 'Mahibere Kidusan';
+
 /** Channels that show songs directly — no playlist step in the app. */
-export const MEZMUR_SONGS_ONLY_CHANNELS = new Set<string>([
-  EGEZIHARYA_YILMA_CHANNEL,
-  YOTC_CHOIR_CHANNEL,
-]);
+export const MEZMUR_SONGS_ONLY_CHANNELS = new Set<string>([]);
 
 export function isMezmurSongsOnlyChannel(artist: string): boolean {
   return MEZMUR_SONGS_ONLY_CHANNELS.has(artist);
@@ -77,19 +82,24 @@ export function isMezmurSongsOnlyChannel(artist: string): boolean {
 /** Playlists on the Mezmur Debter Zetewahedo channel. */
 export const MEZMUR_DEBTER_CHANNEL = 'Mezmur Debter Zetewahedo';
 
-export const MEZMUR_DEBTER_ALBUMS = new Set([
-  'የዐቢይ ጾም መዝሙራት',
-  'የዓመቱ ያሬዳዊ መዝሙራት || Mezmur Collection',
+export const MEZMUR_DEBTER_ALBUMS = new Set(['English Hymns', 'Amharic Hymns']);
+
+/** Curated albums on the Egeziharya Yilma channel. */
+export const EGEZIHARYA_YILMA_ALBUMS = new Set([
+  'Singles',
   'English Hymns',
-  // Legacy titles from earlier sync mappings
   'Great Lent Mezmurs',
-  'Annual Collection',
+  'Tewahedo I',
+  'Tewahedo II',
 ]);
+
+/** Curated albums on the Mahibere Kidusan channel. */
+export const MAHIBERE_KIDUSAN_ALBUMS = new Set(['Proclaim His Name']);
 
 /** Channel → hymns catalog shelf (whole artist lives on one side). */
 export const MEZMUR_CHANNEL_LANGUAGE: Record<string, MezmurLanguage> = {
   'Ahadu Studios': 'english',
   [EGEZIHARYA_YILMA_CHANNEL]: 'english',
-  [MEZMUR_DEBTER_CHANNEL]: 'english',
   [YOTC_CHOIR_CHANNEL]: 'english',
+  [MAHIBERE_KIDUSAN_CHANNEL]: 'english',
 };

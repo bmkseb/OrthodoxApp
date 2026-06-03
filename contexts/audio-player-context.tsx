@@ -58,8 +58,16 @@ type YoutubeBridge = {
   seekTo: (seconds: number) => void;
 };
 
+export type AddToPlaylistPickerState = {
+  videoId: string;
+  title: string;
+  subtitle?: string;
+  thumbnailUrl?: string;
+};
+
 type AudioPlayerContextValue = {
   currentTrack: AudioTrack | null;
+  addToPlaylistPicker: AddToPlaylistPickerState | null;
   queue: AudioTrack[];
   queueIndex: number;
   isShuffleEnabled: boolean;
@@ -86,6 +94,8 @@ type AudioPlayerContextValue = {
   seekTo: (progress: number) => void;
   skipSeconds: (delta: number) => void;
   dismissMiniPlayer: () => void;
+  openAddToPlaylistPicker: (picker: AddToPlaylistPickerState) => void;
+  closeAddToPlaylistPicker: () => void;
   registerYoutubeBridge: (bridge: YoutubeBridge | null) => void;
   reportYoutubeProgress: (position: number, duration: number) => void;
   handleYoutubeEnded: () => void;
@@ -133,6 +143,9 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     buffered: 0,
   });
   const [youtubeStartSeconds, setYoutubeStartSeconds] = useState(0);
+  const [addToPlaylistPicker, setAddToPlaylistPicker] = useState<AddToPlaylistPickerState | null>(
+    null
+  );
 
   const expandProgress = useSharedValue(0);
   const trackMetaRef = useRef<Map<string, AudioTrack>>(new Map());
@@ -578,6 +591,20 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     })();
   }, [currentTrack, nativePlayerReady]);
 
+  const openAddToPlaylistPicker = useCallback((picker: AddToPlaylistPickerState) => {
+    const videoId = picker.videoId.trim();
+    if (!videoId) return;
+    setAddToPlaylistPicker({
+      ...picker,
+      videoId,
+      title: picker.title.trim() || 'Unknown',
+    });
+  }, []);
+
+  const closeAddToPlaylistPicker = useCallback(() => {
+    setAddToPlaylistPicker(null);
+  }, []);
+
   const dismissMiniPlayer = useCallback(() => {
     if (currentTrack?.videoId) {
       youtubeBridgeRef.current?.seekTo(0);
@@ -744,6 +771,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const value = useMemo<AudioPlayerContextValue>(
     () => ({
       currentTrack,
+      addToPlaylistPicker,
       queue,
       queueIndex,
       isShuffleEnabled,
@@ -770,6 +798,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       seekTo,
       skipSeconds,
       dismissMiniPlayer,
+      openAddToPlaylistPicker,
+      closeAddToPlaylistPicker,
       registerYoutubeBridge,
       reportYoutubeProgress,
       handleYoutubeEnded,
@@ -779,6 +809,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }),
     [
       currentTrack,
+      addToPlaylistPicker,
       queue,
       queueIndex,
       isShuffleEnabled,
@@ -805,6 +836,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       seekTo,
       skipSeconds,
       dismissMiniPlayer,
+      openAddToPlaylistPicker,
+      closeAddToPlaylistPicker,
       registerYoutubeBridge,
       reportYoutubeProgress,
       handleYoutubeEnded,

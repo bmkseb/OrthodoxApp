@@ -1,4 +1,10 @@
-import { Image } from 'expo-image';
+
+import {
+  VIDEO_THUMB_BORDER_RADIUS,
+  VIDEO_THUMB_SHEET_HEIGHT,
+  VIDEO_THUMB_SHEET_WIDTH,
+  VideoThumbnail,
+} from '@/components/listen/video-thumbnail';
 import { useCallback, useEffect } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -124,7 +130,12 @@ export function SavedHymnOptionsSheet({
 
             <View style={styles.header}>
               {thumbnailUrl ? (
-                <Image source={{ uri: thumbnailUrl }} style={styles.thumb} contentFit="cover" />
+                <VideoThumbnail
+                  uri={thumbnailUrl}
+                  width={VIDEO_THUMB_SHEET_WIDTH}
+                  height={VIDEO_THUMB_SHEET_HEIGHT}
+                  spacing={0}
+                />
               ) : (
                 <View style={[styles.thumb, styles.thumbPlaceholder]}>
                   <ThemedText style={styles.thumbGlyph}>♪</ThemedText>
@@ -166,7 +177,8 @@ export function SavedHymnOptionsSheet({
   );
 }
 
-const THUMB = 52;
+const THUMB_W = VIDEO_THUMB_SHEET_WIDTH;
+const THUMB_H = VIDEO_THUMB_SHEET_HEIGHT;
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
@@ -195,12 +207,11 @@ const styles = StyleSheet.create({
     gap: Space.s12,
   },
   thumb: {
-    width: THUMB,
-    height: THUMB,
-    borderRadius: BorderRadius.md,
+    width: THUMB_W,
+    height: THUMB_H,
+    borderRadius: VIDEO_THUMB_BORDER_RADIUS,
+    overflow: 'hidden',
     backgroundColor: Palette.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
   },
   thumbPlaceholder: {
     alignItems: 'center',

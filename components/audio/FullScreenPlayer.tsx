@@ -76,7 +76,7 @@ function staggerStyle(progress: import('react-native-reanimated').SharedValue<nu
 export function FullScreenPlayer() {
   const insets = useSafeAreaInsets();
   const { height: screenH } = useWindowDimensions();
-  const { mode } = useTranslation();
+  const { t, mode } = useTranslation();
   const { position, duration } = usePlayerProgress(250);
   const activeTrack = useActiveTrack();
   const progress = duration > 0 ? position / duration : 0;
@@ -97,6 +97,7 @@ export function FullScreenPlayer() {
     isQueueOpen,
     toggleShuffle,
     isShuffleEnabled,
+    openAddToPlaylistPicker,
   } = useAudioPlayer();
 
   const trackForDisplay =
@@ -142,6 +143,17 @@ export function FullScreenPlayer() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     toggleShuffle();
   }, [toggleShuffle]);
+
+  const openAddToPlaylist = useCallback(() => {
+    if (!currentTrack?.videoId || !copy) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    openAddToPlaylistPicker({
+      videoId: currentTrack.videoId,
+      title: copy.title,
+      subtitle: copy.artist,
+      thumbnailUrl: currentTrack.artworkUri,
+    });
+  }, [copy, currentTrack, openAddToPlaylistPicker]);
 
   const handleShare = useCallback(async () => {
     if (!trackForDisplay) return;
@@ -419,6 +431,13 @@ export function FullScreenPlayer() {
                         onPress={onToggleShuffle}
                       />
                       <SecondaryAction icon="share" label="Share" onPress={handleShare} />
+                      {currentTrack?.videoId ? (
+                        <SecondaryAction
+                          icon="plus"
+                          label={t('listen.addToPlaylist')}
+                          onPress={openAddToPlaylist}
+                        />
+                      ) : null}
                       <SecondaryAction icon="list" label="Queue" onPress={openQueue} />
                       <SecondaryAction
                         icon={saved ? 'bookmark-filled' : 'bookmark'}

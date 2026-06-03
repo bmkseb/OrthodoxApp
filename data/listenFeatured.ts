@@ -11,6 +11,8 @@ export type ListenFeaturedSeed = {
   subtitleKey?: TranslationKey;
   /** When set, plays a catalog song whose title contains this string (if found). */
   titleNeedle?: string;
+  /** Prefer this video when multiple catalog titles match the needle. */
+  videoId?: string;
   image: string;
   /** Chants tab — opens playlist detail. */
   melodyPlaylistId?: string;
@@ -20,25 +22,28 @@ export type ListenFeaturedSeed = {
 export const LISTEN_FEATURED_SEEDS: Record<ListenFeaturedTab, ListenFeaturedSeed[]> = {
   hymns: [
     {
+      id: 'hymn-please-you',
+      title: 'With What Shall I Please You',
+      subtitle: 'Mezmur Debter Zetewahedo',
+      titleNeedle: 'With What Shall I Please You',
+      videoId: 'CIGBJy_B3VI',
+      image: SacredImagery.prayerMary,
+    },
+    {
+      id: 'hymn-alone',
+      title: "I Can't Do It Alone",
+      subtitle: 'Y.O.T.C. Choir',
+      titleNeedle: "Can't Do It Alone",
+      videoId: 'HTihxcq1INg',
+      image: SacredImagery.listenHymns,
+    },
+    {
       id: 'hymn-covenant',
       title: 'Covenant of Mercy',
       subtitle: 'Helena Alemu',
       titleNeedle: 'Covenant of Mercy',
+      videoId: 'aLQqecKcAMQ',
       image: SacredImagery.listenHymns,
-    },
-    {
-      id: 'hymn-wudase',
-      title: 'Wudase Mariam',
-      subtitle: 'Marian Hymn',
-      titleNeedle: 'Wudase',
-      image: SacredImagery.prayerMary,
-    },
-    {
-      id: 'hymn-trinity',
-      title: 'Praise to the Trinity',
-      subtitle: 'Orthodox Hymn',
-      titleNeedle: 'Trinity',
-      image: SacredImagery.readManuscript,
     },
   ],
   sermons: [

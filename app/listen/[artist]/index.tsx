@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { MezmurPlaylistRow } from '@/components/listen/mezmur-playlist-row';
+import { HymnsCatalogListRow } from '@/components/listen/hymns-catalog-list-row';
 import { MezmurSongRow } from '@/components/listen/mezmur-song-row';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
@@ -161,21 +161,25 @@ export default function ListenAlbumsScreen() {
         <EmptyState title="No playlists match your search" suggestion="Try a different term." />
       ) : (
         <View style={styles.list}>
-          {filteredAlbums.map((album, index) => (
-            <View key={album.name}>
-              <MezmurPlaylistRow
+          {filteredAlbums.map((album) => {
+            const countLabel = `${album.songCount} ${album.songCount === 1 ? 'song' : 'songs'}`;
+            return (
+              <HymnsCatalogListRow
+                key={album.name}
                 title={album.name}
-                songCount={album.songCount}
-                thumbnailUrl={album.thumbnailUrl}
+                subtitle={countLabel}
+                leadingShape="cover"
+                albumArtist={artist}
+                albumName={album.name}
+                albumThumbnailUrl={album.thumbnailUrl}
                 onPress={() =>
                   router.push(
                     `/listen/${encodeRouteParam(artist)}/${encodeRouteParam(album.name)}` as never
                   )
                 }
               />
-              {index < filteredAlbums.length - 1 ? <View style={styles.divider} /> : null}
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
     </ScreenScrollView>
@@ -206,14 +210,9 @@ const styles = StyleSheet.create({
   list: {
     marginTop: 2,
   },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Layout.cardBorder,
-    marginLeft: 124,
-  },
   songDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Layout.cardBorder,
-    marginLeft: 60,
+    marginLeft: 68,
   },
 });

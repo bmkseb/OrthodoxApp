@@ -1,5 +1,12 @@
-import { Image } from 'expo-image';
-import { useCallback, useEffect } from 'react';
+
+import {
+  VIDEO_THUMB_BORDER_RADIUS,
+  VIDEO_THUMB_SHEET_HEIGHT,
+  VIDEO_THUMB_SHEET_WIDTH,
+  VideoThumbnail,
+} from '@/components/listen/video-thumbnail';
+import { AddToPlaylistPanel } from '@/components/listen/add-to-playlist-panel';
+import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -16,6 +23,7 @@ import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { BorderRadius, Palette, Space } from '@/constants/theme';
+import { useTranslation } from '@/hooks/use-translation';
 
 const SHEET_BG = '#1A1815';
 const ENTER_MS = 220;
@@ -29,9 +37,14 @@ type MezmurSongOptionsSheetProps = {
   title: string;
   subtitle?: string;
   thumbnailUrl?: string;
+  videoId?: string;
   onClose: () => void;
   onPlayNow: () => void;
   onAddToQueue: () => void;
+  /** YouTube video id — enables Add to Playlist picker in this sheet. */
+  videoIdForPlaylist?: string;
+  /** Open directly on the Add to Playlist panel (e.g. from the audio player). */
+  startInPlaylistMode?: boolean;
   onRemove?: () => void;
   removeLabel?: string;
 };
@@ -41,15 +54,31 @@ export function MezmurSongOptionsSheet({
   title,
   subtitle,
   thumbnailUrl,
+  videoId,
   onClose,
   onPlayNow,
   onAddToQueue,
+  videoIdForPlaylist,
+  startInPlaylistMode = false,
   onRemove,
   removeLabel = 'Remove Saved Hymn',
 }: MezmurSongOptionsSheetProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const presented = useSharedValue(0);
   const dragY = useSharedValue(0);
+  const [playlistMode, setPlaylistMode] = useState(false);
+  const playlistVideoId = videoIdForPlaylist?.trim() ?? videoId?.trim() ?? '';
+
+  useEffect(() => {
+    if (!visible) {
+      setPlaylistMode(false);
+      return;
+    }
+    if (startInPlaylistMode && playlistVideoId) {
+      setPlaylistMode(true);
+    }
+  }, [visible, startInPlaylistMode, playlistVideoId]);
 
   const dismiss = useCallback(() => {
     presented.value = withTiming(
@@ -124,77 +153,108 @@ export function MezmurSongOptionsSheet({
         </Animated.View>
 
         <Animated.View
-          style={[styles.sheet, { paddingBottom: 20 + Math.max(insets.bottom, 8) }, sheetStyle]}>
+          style={[
+            styles.sheet,
+            playlistMode && styles.sheetExpanded,
+            { paddingBottom: 20 + Math.max(insets.bottom, 8) },
+            sheetStyle,
+          ]}>
           <GestureDetector gesture={panGesture}>
             <View style={styles.handleHitArea}>
               <View style={styles.handle} />
             </View>
           </GestureDetector>
 
-          <View style={styles.header}>
-              {thumbnailUrl ? (
-                <Image source={{ uri: thumbnailUrl }} style={styles.thumb} contentFit="cover" />
-              ) : (
-                <View style={[styles.thumb, styles.thumbPlaceholder]}>
-                  <ThemedText style={styles.thumbGlyph}>♪</ThemedText>
-                </View>
-              )}
+          {playlistMode && playlistVideoId ? (
+            <AddToPlaylistPanel
+              videoId={playlistVideoId}
+              songTitle={title}
+              onBack={() => (startInPlaylistMode ? dismiss() : setPlaylistMode(false))}
+              onDone={dismiss}
+            />
+          ) : (
+            <>
+              <View style={styles.header}>
+                {thumbnailUrl ? (
+                  <VideoThumbnail
+                    uri={thumbnailUrl}
+                    videoId={videoId}
+                    width={VIDEO_THUMB_SHEET_WIDTH}
+                    height={VIDEO_THUMB_SHEET_HEIGHT}
+                    spacing={0}
+                  />
+                ) : (
+                  <View style={[styles.thumb, styles.thumbPlaceholder]}>
+                    <ThemedText style={styles.thumbGlyph}>♪</ThemedText>
+                  </View>
+                )}
 
-              <View style={styles.headerCopy}>
-                <ThemedText style={styles.title} numberOfLines={2}>
-                  {title}
-                </ThemedText>
-                {subtitle ? (
-                  <ThemedText type="muted" style={styles.subtitle} numberOfLines={1}>
-                    {subtitle}
+                <View style={styles.headerCopy}>
+                  <ThemedText style={styles.title} numberOfLines={2}>
+                    {title}
                   </ThemedText>
-                ) : null}
+                  {subtitle ? (
+                    <ThemedText type="muted" style={styles.subtitle} numberOfLines={1}>
+                      {subtitle}
+                    </ThemedText>
+                  ) : null}
+                </View>
               </View>
-            </View>
 
-            <OrthodoxPressable
-              style={styles.primaryBtn}
-              onPress={() => runAndDismiss(onPlayNow)}
-              accessibilityRole="button"
-              accessibilityLabel="Play now">
-              <Icon name="play" size={18} color={Palette.background} />
-              <ThemedText style={styles.primaryLabel}>Play Now</ThemedText>
-            </OrthodoxPressable>
-
-            <OrthodoxPressable
-              style={styles.secondaryBtn}
-              onPress={() => runAndDismiss(onAddToQueue)}
-              accessibilityRole="button"
-              accessibilityLabel="Add to queue">
-              <Icon name="list" size={18} color={Palette.gold} />
-              <ThemedText style={styles.secondaryLabel}>Add to Queue</ThemedText>
-            </OrthodoxPressable>
-
-            {onRemove ? (
               <OrthodoxPressable
-                style={styles.removeBtn}
-                onPress={() => runAndDismiss(onRemove)}
+                style={styles.primaryBtn}
+                onPress={() => runAndDismiss(onPlayNow)}
                 accessibilityRole="button"
-                accessibilityLabel={removeLabel}>
-                <Icon name="bookmark-filled" size={18} color={Palette.crimson} />
-                <ThemedText style={styles.removeLabel}>{removeLabel}</ThemedText>
+                accessibilityLabel="Play now">
+                <Icon name="play" size={18} color={Palette.background} />
+                <ThemedText style={styles.primaryLabel}>Play Now</ThemedText>
               </OrthodoxPressable>
-            ) : null}
 
-            <OrthodoxPressable
-              style={styles.cancelBtn}
-              onPress={dismiss}
-              accessibilityRole="button"
-              accessibilityLabel="Cancel">
-              <ThemedText style={styles.cancelLabel}>Cancel</ThemedText>
-            </OrthodoxPressable>
+              <OrthodoxPressable
+                style={styles.secondaryBtn}
+                onPress={() => runAndDismiss(onAddToQueue)}
+                accessibilityRole="button"
+                accessibilityLabel="Add to queue">
+                <Icon name="list" size={18} color={Palette.gold} />
+                <ThemedText style={styles.secondaryLabel}>Add to Queue</ThemedText>
+              </OrthodoxPressable>
+
+              {playlistVideoId ? (
+                <OrthodoxPressable
+                  style={styles.secondaryBtn}
+                  onPress={() => setPlaylistMode(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('listen.addToPlaylist')}>
+                  <Icon name="bookmark" size={18} color={Palette.gold} />
+                  <ThemedText style={styles.secondaryLabel}>{t('listen.addToPlaylist')}</ThemedText>
+                </OrthodoxPressable>
+              ) : null}
+
+              {onRemove ? (
+                <OrthodoxPressable
+                  style={styles.removeBtn}
+                  onPress={() => runAndDismiss(onRemove)}
+                  accessibilityRole="button"
+                  accessibilityLabel={removeLabel}>
+                  <Icon name="bookmark-filled" size={18} color={Palette.crimson} />
+                  <ThemedText style={styles.removeLabel}>{removeLabel}</ThemedText>
+                </OrthodoxPressable>
+              ) : null}
+
+              <OrthodoxPressable
+                style={styles.cancelBtn}
+                onPress={dismiss}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel">
+                <ThemedText style={styles.cancelLabel}>Cancel</ThemedText>
+              </OrthodoxPressable>
+            </>
+          )}
         </Animated.View>
       </View>
     </Modal>
   );
 }
-
-const THUMB = 52;
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
@@ -208,6 +268,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 24,
     paddingTop: 12,
+    maxHeight: '88%',
+  },
+  sheetExpanded: {
+    minHeight: 380,
   },
   handleHitArea: {
     alignItems: 'center',
@@ -227,12 +291,11 @@ const styles = StyleSheet.create({
     gap: Space.s12,
   },
   thumb: {
-    width: THUMB,
-    height: THUMB,
-    borderRadius: BorderRadius.md,
+    width: VIDEO_THUMB_SHEET_WIDTH,
+    height: VIDEO_THUMB_SHEET_HEIGHT,
+    borderRadius: VIDEO_THUMB_BORDER_RADIUS,
+    overflow: 'hidden',
     backgroundColor: Palette.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
   },
   thumbPlaceholder: {
     alignItems: 'center',

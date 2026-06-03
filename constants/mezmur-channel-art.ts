@@ -6,6 +6,7 @@ const CHANNEL_ART = {
   'Egeziharya Yilma': require('@/assets/images/egeziharya-yilma.png'),
   'Mezmur Debter Zetewahedo': require('@/assets/images/mezmur-debter-zetewahedo.png'),
   'Y.O.T.C. Choir': require('@/assets/images/yotc-choir.png'),
+  'Mahibere Kidusan': require('@/assets/images/mahibere-kidusan.png'),
 } as const satisfies Record<string, number>;
 
 const uriCache = new Map<string, string>();

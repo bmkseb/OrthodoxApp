@@ -166,6 +166,6 @@ const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Layout.cardBorder,
-    marginLeft: 60,
+    marginLeft: 68,
   },
 });

@@ -1,18 +1,18 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { BookshelfSection } from '@/components/read/bookshelf-section';
-import { ThemedText } from '@/components/themed-text';
+import { ShelfSubsectionHeader } from '@/components/read/shelf-subsection-header';
 import {
   HorizontalScrollIndicator,
   useHorizontalScrollIndicator,
 } from '@/components/ui/scroll-indicator';
 import { ChannelRailCard } from '@/components/listen/channel-rail-card';
+import { CreatePlaylistRailCard } from '@/components/listen/create-playlist-rail-card';
 import { PlaylistRailCard } from '@/components/listen/playlist-rail-card';
 import { SacredImagery } from '@/constants/sacred-imagery';
-import { Palette, Space } from '@/constants/theme';
-import { useTranslation } from '@/hooks/use-translation';
+import { Space } from '@/constants/theme';
 import {
   encodeRouteParam,
   formatMezmurChannelSubtitle,
@@ -23,9 +23,11 @@ import {
 export type MezmurCatalogRailItem = {
   key: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
+  artist?: string;
   imageUri?: string | null;
   onPress: () => void;
+  variant?: 'create' | 'playlist';
 };
 
 type MezmurCatalogShelfProps = {
@@ -48,7 +50,6 @@ export function MezmurCatalogShelf({
   compactBottom = false,
 }: MezmurCatalogShelfProps) {
   const router = useRouter();
-  const { t } = useTranslation();
   const { values, scrollHandler, onLayout, onContentSizeChange } = useHorizontalScrollIndicator();
 
   const isChannelRail = artists.length > 0;
@@ -61,6 +62,7 @@ export function MezmurCatalogShelf({
             key: `${playlist.artist}-${playlist.album}`,
             title: playlist.album,
             subtitle: `${playlist.artist} · ${playlist.songCount} songs`,
+            artist: playlist.artist,
             imageUri: playlist.thumbnailUrl,
             onPress: () =>
               router.push(
@@ -83,22 +85,7 @@ export function MezmurCatalogShelf({
 
   return (
     <View style={[styles.wrap, compactBottom && styles.wrapCompact]}>
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <View style={styles.accent} />
-          <ThemedText style={styles.title}>{title}</ThemedText>
-        </View>
-        {onSeeAll ? (
-          <TouchableOpacity
-            onPress={onSeeAll}
-            accessibilityRole="button"
-            accessibilityLabel={`See all ${title}`}>
-            <ThemedText type="seeAll" style={styles.seeAll}>
-              {t('common.seeAll')}
-            </ThemedText>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+      <ShelfSubsectionHeader title={title} onSeeAllPress={onSeeAll} />
 
       <BookshelfSection
         horizontal
@@ -107,26 +94,40 @@ export function MezmurCatalogShelf({
           onLayout,
           onContentSizeChange,
         }}>
-        {railItems.map((item) =>
-          isChannelRail ? (
-            <ChannelRailCard
-              key={item.key}
-              title={item.title}
-              subtitle={item.subtitle}
-              imageUri={item.imageUri}
-              onPress={item.onPress}
-            />
-          ) : (
+        {railItems.map((item) => {
+          if (item.variant === 'create') {
+            return (
+              <CreatePlaylistRailCard
+                key={item.key}
+                title={item.title}
+                subtitle={item.subtitle}
+                onPress={item.onPress}
+              />
+            );
+          }
+          if (isChannelRail) {
+            return (
+              <ChannelRailCard
+                key={item.key}
+                title={item.title}
+                subtitle={item.subtitle}
+                imageUri={item.imageUri}
+                onPress={item.onPress}
+              />
+            );
+          }
+          return (
             <PlaylistRailCard
               key={item.key}
               title={item.title}
               subtitle={item.subtitle}
+              artist={item.artist}
               imageUri={item.imageUri}
-              fallbackImageUri={SacredImagery.listenHymns}
+              fallbackImageUri={item.imageUri ? SacredImagery.listenHymns : undefined}
               onPress={item.onPress}
             />
-          )
-        )}
+          );
+        })}
       </BookshelfSection>
 
       {railItems.length > 2 ? (
@@ -144,34 +145,6 @@ const styles = StyleSheet.create({
   },
   wrapCompact: {
     marginBottom: 0,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Space.s8,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 0,
-  },
-  accent: {
-    width: 3,
-    height: 14,
-    borderRadius: 2,
-    backgroundColor: Palette.gold,
-    marginRight: Space.s8,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-    color: Palette.text,
-  },
-  seeAll: {
-    fontSize: 12,
-    fontWeight: '500',
   },
   hint: {
     marginTop: Space.s8,

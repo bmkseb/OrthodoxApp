@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -14,6 +13,13 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
+import {
+  VIDEO_THUMB_BORDER_RADIUS,
+  VIDEO_THUMB_ROW_GAP,
+  VIDEO_THUMB_ROW_HEIGHT,
+  VIDEO_THUMB_ROW_WIDTH,
+  VideoThumbnail,
+} from '@/components/listen/video-thumbnail';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
@@ -150,7 +156,7 @@ function QueueRow({
         </GestureDetector>
 
         {track.artworkUri ? (
-          <Image source={{ uri: track.artworkUri }} style={styles.thumb} contentFit="contain" />
+          <VideoThumbnail uri={track.artworkUri} videoId={track.videoId} />
         ) : (
           <View style={[styles.thumb, styles.thumbPlaceholder]}>
             <ThemedText style={styles.thumbGlyph}>♪</ThemedText>
@@ -338,7 +344,8 @@ export function PlayerQueueSheet({ visible, onClose }: PlayerQueueSheetProps) {
   );
 }
 
-const THUMB = 44;
+const THUMB_W = VIDEO_THUMB_ROW_WIDTH;
+const THUMB_H = VIDEO_THUMB_ROW_HEIGHT;
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
@@ -394,7 +401,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: Space.s8,
   },
   rowActive: {
     backgroundColor: 'rgba(201, 147, 58, 0.08)',
@@ -409,12 +415,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   thumb: {
-    width: THUMB,
-    height: THUMB,
-    borderRadius: BorderRadius.md,
+    width: THUMB_W,
+    height: THUMB_H,
+    marginRight: VIDEO_THUMB_ROW_GAP,
+    borderRadius: VIDEO_THUMB_BORDER_RADIUS,
+    overflow: 'hidden',
     backgroundColor: Palette.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.2)',
   },
   thumbPlaceholder: {
     alignItems: 'center',

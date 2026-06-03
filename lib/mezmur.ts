@@ -1,15 +1,35 @@
 import { getSupabase } from '@/lib/supabase';
 import type { AudioTrack } from '@/contexts/audio-player-context';
+import { youtubeListThumbnailUrl } from '@/lib/youtube-thumbnail';
+import { resolveMezmurAlbumThumbnail } from '@/constants/mezmur-album-art';
 import { resolveMezmurChannelThumbnail } from '@/constants/mezmur-channel-art';
+import { AHADU_ALBUM_NAMES } from '@/data/ahaduAlbums';
 import {
   EGEZIHARYA_YILMA_CHANNEL,
   isMezmurSongsOnlyChannel,
   MEZMUR_CHANNEL_LANGUAGE,
   MEZMUR_DEBTER_ALBUMS,
   MEZMUR_DEBTER_CHANNEL,
+  YOTC_CHOIR_CHANNEL,
+  YOTC_NATION_OF_THE_CROSS_ALBUM,
   type MezmurCategory,
   type MezmurLanguage,
 } from '@/data/mezmurCatalog';
+import {
+  buildAhaduAlbumCards,
+  buildAhaduPlaylistCards,
+  isAhaduStudiosChannel,
+  pickSongsForAhaduAlbum,
+} from '@/lib/ahadu-albums';
+import {
+  hasEgeziharyaTrackOrder,
+  pickSongsForEgeziharyaAlbum,
+} from '@/lib/egeziharya-albums';
+import {
+  hasMahibereKidusanTrackOrder,
+  pickSongsForMahibereKidusanAlbum,
+} from '@/lib/mahibere-kidusan-albums';
+import { MAHIBERE_KIDUSAN_CHANNEL } from '@/data/mezmurCatalog';
 
 export type Mezmur = {
   videoId: string;
@@ -64,7 +84,7 @@ function mapRow(row: MezmurRow): Mezmur {
     title: row.title,
     artist: row.artist,
     album: row.album,
-    thumbnailUrl: row.thumbnail_url ?? '',
+    thumbnailUrl: youtubeListThumbnailUrl(row.video_id, row.thumbnail_url),
     publishedAt: row.published_at,
     language: row.language,
     type: row.type ?? null,
@@ -93,6 +113,22 @@ export function normalizeMezmurCatalogEntry(song: Mezmur): Mezmur {
       return { ...song, artist: MEZMUR_DEBTER_CHANNEL };
     }
     return song;
+  }
+
+  if (/y\.?o\.?t\.?c|young orthodox tewahedo/i.test(song.artist)) {
+    return { ...song, artist: YOTC_CHOIR_CHANNEL, album: YOTC_NATION_OF_THE_CROSS_ALBUM };
+  }
+
+  if (/mezmur debter/i.test(song.artist)) {
+    const lang = song.language?.trim().toLowerCase();
+    let album = song.album;
+    if (!MEZMUR_DEBTER_ALBUMS.has(album)) {
+      if (lang === 'english') album = 'English Hymns';
+      else if (lang === 'amharic') album = 'Amharic Hymns';
+      else if (album.toLowerCase().includes('english')) album = 'English Hymns';
+      else album = 'Amharic Hymns';
+    }
+    return { ...song, artist: MEZMUR_DEBTER_CHANNEL, album };
   }
 
   return song;
@@ -213,6 +249,7 @@ export function groupPlaylistsByLanguageAndCategory(
 
   const byAlbum = new Map<string, Mezmur[]>();
   for (const song of songs) {
+    if (isAhaduStudiosChannel(song.artist)) continue;
     const key = `${song.artist}\0${song.album}`;
     const list = byAlbum.get(key) ?? [];
     list.push(song);
@@ -224,12 +261,17 @@ export function groupPlaylistsByLanguageAndCategory(
     if (!first) continue;
     const language = resolveMezmurLanguage(first);
     const category = resolveMezmurCategory(first.type);
+    const videoThumb = albumSongs.find((s) => s.thumbnailUrl)?.thumbnailUrl ?? null;
     result[language][category].push({
       artist: first.artist,
       album: first.album,
       songCount: albumSongs.length,
-      thumbnailUrl: albumSongs.find((s) => s.thumbnailUrl)?.thumbnailUrl ?? null,
+      thumbnailUrl: resolveMezmurAlbumThumbnail(first.artist, first.album, videoThumb),
     });
+  }
+
+  for (const card of buildAhaduPlaylistCards(songs)) {
+    result.english.praise.push(card);
   }
 
   for (const language of ['english', 'amharic'] as MezmurLanguage[]) {
@@ -248,27 +290,31 @@ export async function fetchPlaylistsGroupedByLanguageAndCategory(): Promise<
 }
 
 function playlistsFromSongs(songs: Mezmur[]): MezmurPlaylistCard[] {
+  const nonAhadu = songs.filter((song) => !isAhaduStudiosChannel(song.artist));
   const byAlbum = new Map<string, Mezmur[]>();
-  for (const song of songs) {
+  for (const song of nonAhadu) {
     const key = `${song.artist}\0${song.album}`;
     const list = byAlbum.get(key) ?? [];
     list.push(song);
     byAlbum.set(key, list);
   }
 
-  return Array.from(byAlbum.values())
+  const cards = Array.from(byAlbum.values())
     .map((albumSongs) => {
       const first = albumSongs[0];
       if (!first) return null;
+      const videoThumb = albumSongs.find((s) => s.thumbnailUrl)?.thumbnailUrl ?? null;
       return {
         artist: first.artist,
         album: first.album,
         songCount: albumSongs.length,
-        thumbnailUrl: albumSongs.find((s) => s.thumbnailUrl)?.thumbnailUrl ?? null,
+        thumbnailUrl: resolveMezmurAlbumThumbnail(first.artist, first.album, videoThumb),
       };
     })
     .filter((item): item is MezmurPlaylistCard => Boolean(item))
     .sort((a, b) => a.album.localeCompare(b.album));
+
+  return [...cards, ...buildAhaduPlaylistCards(songs)];
 }
 
 /** All playlists for one language — one bookshelf, any channel or theme. */
@@ -307,6 +353,18 @@ export async function fetchPlaylistsByCategory(): Promise<
 > {
   const grouped = await fetchPlaylistsGroupedByLanguageAndCategory();
   return mergePlaylistsByCategory(grouped);
+}
+
+/** Flat catalog playlists (all themes/channels combined, deduped). */
+export async function fetchAllCatalogPlaylists(): Promise<MezmurPlaylistCard[]> {
+  const byCategory = await fetchPlaylistsByCategory();
+  const map = new Map<string, MezmurPlaylistCard>();
+  for (const list of Object.values(byCategory)) {
+    for (const card of list) {
+      map.set(`${card.artist}\0${card.album}`, card);
+    }
+  }
+  return [...map.values()].sort((a, b) => a.album.localeCompare(b.album));
 }
 
 function emptyCategorySongs(): Record<MezmurCategory, Mezmur[]> {
@@ -410,6 +468,10 @@ export async function fetchAlbumsByArtist(artist: string): Promise<MezmurAlbum[]
   if (isMezmurSongsOnlyChannel(artist)) return [];
 
   const songs = await fetchAllMezmur();
+  if (isAhaduStudiosChannel(artist)) {
+    return buildAhaduAlbumCards(songs);
+  }
+
   const byAlbum = new Map<string, Mezmur[]>();
 
   for (const song of songs.filter((s) => s.artist === artist && s.album)) {
@@ -422,14 +484,27 @@ export async function fetchAlbumsByArtist(artist: string): Promise<MezmurAlbum[]
     .map(([name, albumSongs]) => ({
       name,
       songCount: albumSongs.length,
-      thumbnailUrl: albumSongs.find((s) => s.thumbnailUrl)?.thumbnailUrl ?? null,
+      thumbnailUrl: resolveMezmurAlbumThumbnail(
+        artist,
+        name,
+        albumSongs.find((s) => s.thumbnailUrl)?.thumbnailUrl ?? null
+      ),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Songs for one artist + album, in title order. */
+/** Songs for one artist + album, in tracklist order when curated. */
 export async function fetchSongsByArtistAlbum(artist: string, album: string): Promise<Mezmur[]> {
   const songs = await fetchAllMezmur();
+  if (isAhaduStudiosChannel(artist) && AHADU_ALBUM_NAMES.has(album)) {
+    return pickSongsForAhaduAlbum(songs, album);
+  }
+  if (artist === EGEZIHARYA_YILMA_CHANNEL && hasEgeziharyaTrackOrder(album)) {
+    return pickSongsForEgeziharyaAlbum(songs, album);
+  }
+  if (artist === MAHIBERE_KIDUSAN_CHANNEL && hasMahibereKidusanTrackOrder(album)) {
+    return pickSongsForMahibereKidusanAlbum(songs, album);
+  }
   return songs.filter((s) => s.artist === artist && s.album === album);
 }
 
@@ -503,7 +578,7 @@ export function listeningEntryToMezmur(entry: {
     title: entry.title,
     artist: entry.artist,
     album: entry.album,
-    thumbnailUrl: entry.thumbnailUrl,
+    thumbnailUrl: youtubeListThumbnailUrl(entry.videoId, entry.thumbnailUrl),
     publishedAt: null,
     language: null,
     description: null,
@@ -537,14 +612,22 @@ export async function searchMezmurCatalog(query: string): Promise<MezmurSearchRe
         album: {
           name: song.album,
           songCount: 0,
-          thumbnailUrl: song.thumbnailUrl || null,
+          thumbnailUrl: resolveMezmurAlbumThumbnail(
+            song.artist,
+            song.album,
+            song.thumbnailUrl || null
+          ),
         },
       });
     }
     const entry = playlistMap.get(key)!;
     entry.album.songCount += 1;
     if (!entry.album.thumbnailUrl && song.thumbnailUrl) {
-      entry.album.thumbnailUrl = song.thumbnailUrl;
+      entry.album.thumbnailUrl = resolveMezmurAlbumThumbnail(
+        song.artist,
+        song.album,
+        song.thumbnailUrl
+      );
     }
   }
 

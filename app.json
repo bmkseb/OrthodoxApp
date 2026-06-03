@@ -41,7 +41,13 @@
       ],
       "expo-web-browser",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow access to your photos to set a playlist cover image."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

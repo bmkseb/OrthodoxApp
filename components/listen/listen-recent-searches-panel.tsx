@@ -55,7 +55,7 @@ export function ListenRecentSearchesPanel({
 
       {entries.length === 0 ? (
         <ThemedText type="muted" style={styles.empty}>
-          Your recent songs, playlists, channels, and searches will appear here.
+          Your recent searches will appear here.
         </ThemedText>
       ) : (
         <View style={styles.listShell} onLayout={onLayout}>
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Layout.cardBorder,
-    marginLeft: 60,
+    marginLeft: 68,
   },
   clearWrap: {
     alignItems: 'center',
