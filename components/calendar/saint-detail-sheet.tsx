@@ -1,12 +1,11 @@
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
+import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Modal,
-  Platform,
   Pressable,
   Share,
   StyleSheet,
@@ -32,7 +31,29 @@ import { BilingualHeader } from '@/components/ui/bilingual-header';
 import { useTranslation } from '@/hooks/use-translation';
 import type { HeaderKey } from '@/lib/translations';
 import { getDayInfo } from '@/data/orthodoxCalendar';
-import { Layout, Opacity, Palette } from '@/constants/theme';
+import {
+  getDayInfo as getLiturgicalDayInfo,
+  type FeastType,
+} from '@/lib/eotc-liturgical-calendar';
+import { ThemedText } from '@/components/themed-text';
+import { BorderRadius, Layout, Opacity, Palette, Space } from '@/constants/theme';
+
+const ETHIOPIAN_MONTHS = [
+  '',
+  'Meskerem',
+  'Tikimt',
+  'Hidar',
+  'Tahsas',
+  'Tir',
+  'Yekatit',
+  'Megabit',
+  'Miazia',
+  'Ginbot',
+  'Sene',
+  'Hamle',
+  'Nehase',
+  'Pagumen',
+];
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.92;
@@ -43,6 +64,8 @@ const DISMISS_DISTANCE = 72;
 const DISMISS_VELOCITY = 650;
 const FLING_VELOCITY = 900;
 const SNAP_BACK_SPRING = { damping: 22, stiffness: 320 };
+const DAY_SWIPE_DISTANCE = 48;
+const DAY_SWIPE_VELOCITY = 500;
 
 type SaintDetailSheetProps = {
   visible: boolean;
@@ -53,6 +76,8 @@ type SaintDetailSheetProps = {
   onClose: () => void;
   onDismissStart?: () => void;
   onToggleBookmark: () => void;
+  onPrevDay: () => void;
+  onNextDay: () => void;
 };
 
 type ReadingSection = {
@@ -60,9 +85,108 @@ type ReadingSection = {
   headerKey: HeaderKey;
   icon: IconName;
   refs: string[];
-  gradient: [string, string];
-  imageUri: string;
+  hint?: string;
 };
+
+type HolidayEntry = {
+  name: string;
+  nameAm: string;
+  isMajor: boolean;
+  type?: FeastType;
+};
+
+function formatFeastDetail(holidays: HolidayEntry[]): string | null {
+  if (holidays.length === 0) return null;
+  return holidays.map((holiday) => holiday.name).join(' · ');
+}
+
+function DayStatusCard({
+  label,
+  detail,
+}: {
+  label: string;
+  detail?: string | null;
+}) {
+  return (
+    <View style={styles.dayStatusCard}>
+      <ThemedText style={styles.dayStatusLabel}>{label}</ThemedText>
+      {detail ? <ThemedText style={styles.dayStatusDetail}>{detail}</ThemedText> : null}
+    </View>
+  );
+}
+
+function LiturgicalDayPanel({
+  isFasting,
+  fastingReason,
+  isFeastDay,
+  feastDetail,
+  fastingLabel,
+  feastDayLabel,
+}: {
+  isFasting: boolean;
+  fastingReason: string | null;
+  isFeastDay: boolean;
+  feastDetail: string | null;
+  fastingLabel: string;
+  feastDayLabel: string;
+}) {
+  if (!isFasting && !isFeastDay) return null;
+
+  return (
+    <View style={styles.liturgicalPanel}>
+      <View style={styles.dayStatusRow}>
+        {isFasting ? (
+          <DayStatusCard label={fastingLabel} detail={fastingReason} />
+        ) : null}
+        {isFeastDay ? <DayStatusCard label={feastDayLabel} detail={feastDetail} /> : null}
+      </View>
+    </View>
+  );
+}
+
+function LectionaryPanel({ section }: { section: ReadingSection }) {
+  const hasRefs = section.refs.length > 0;
+  const isAnaphora = section.key === 'anaphora';
+
+  return (
+    <View style={styles.lectionaryBlock}>
+      <View style={styles.sectionTitleRow}>
+        <View style={styles.sectionIconWrap}>
+          <Icon name={section.icon} size={16} color={Palette.gold} />
+        </View>
+        <View style={styles.sectionLabelWrap}>
+          <BilingualHeader headerKey={section.headerKey} variant="compact" />
+          {section.hint ? (
+            <ThemedText type="muted" style={styles.sectionHint}>
+              {section.hint}
+            </ThemedText>
+          ) : null}
+        </View>
+      </View>
+
+      <View style={[styles.readingPanel, !hasRefs && styles.readingPanelEmpty]}>
+        {!hasRefs ? (
+          <ThemedText type="muted" style={styles.readingRefMuted}>
+            —
+          </ThemedText>
+        ) : (
+          section.refs.map((ref, index) => (
+            <View
+              key={`${section.key}-${index}-${ref}`}
+              style={[styles.readingRow, index < section.refs.length - 1 && styles.readingRowBorder]}>
+              {!isAnaphora ? <View style={styles.readingBullet} /> : null}
+              <ThemedText
+                style={[styles.readingRef, isAnaphora && styles.anaphoraRef]}
+                selectable>
+                {ref}
+              </ThemedText>
+            </View>
+          ))
+        )}
+      </View>
+    </View>
+  );
+}
 
 export function SaintDetailSheet({
   visible,
@@ -73,13 +197,39 @@ export function SaintDetailSheet({
   onClose,
   onDismissStart,
   onToggleBookmark,
+  onPrevDay,
+  onNextDay,
 }: SaintDetailSheetProps) {
   const { t } = useTranslation();
   const [mounted, setMounted] = useState(visible);
   const closingRef = useRef(false);
+  const scrollRef = useRef<Animated.ScrollView>(null);
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const scrollY = useSharedValue(0);
+  const daySwipeX = useSharedValue(0);
+  const dayEnterX = useSharedValue(0);
   const info = useMemo(() => getDayInfo(year, month, day), [year, month, day]);
+  const liturgical = useMemo(
+    () => getLiturgicalDayInfo(new Date(year, month, day)),
+    [year, month, day]
+  );
+
+  const holidays = useMemo(
+    () =>
+      [...liturgical.feasts]
+        .sort((a, b) => Number(b.isMajor) - Number(a.isMajor))
+        .map((feast) => ({
+          name: feast.name,
+          nameAm: feast.nameAm,
+          isMajor: feast.isMajor,
+          type: feast.type,
+        })),
+    [liturgical.feasts]
+  );
+
+  const isFeastDay = holidays.length > 0;
+  const feastDetail = useMemo(() => formatFeastDetail(holidays), [holidays]);
+  const isFasting = liturgical.isFasting;
 
   const sections: ReadingSection[] = useMemo(
     () => [
@@ -88,24 +238,25 @@ export function SaintDetailSheet({
         headerKey: 'content.morning',
         icon: 'sun',
         refs: info.lectionary.morning,
-        gradient: ['#4A6FA5', '#8BB8E8'],
-        imageUri: 'https://picsum.photos/600/400?random=101',
       },
       {
         key: 'liturgical',
-        headerKey: 'content.liturgical',
+        headerKey: 'content.qidase',
         icon: 'church',
         refs: info.lectionary.liturgical,
-        gradient: ['#3D2817', '#8B6914'],
-        imageUri: 'https://picsum.photos/600/400?random=102',
+      },
+      {
+        key: 'anaphora',
+        headerKey: 'content.anaphora',
+        icon: 'book',
+        refs: info.lectionary.anaphora ?? [],
+        hint: '4–14',
       },
       {
         key: 'evening',
         headerKey: 'content.evening',
         icon: 'moon',
         refs: info.lectionary.evening,
-        gradient: ['#1A1A2E', '#4A4A8A'],
-        imageUri: 'https://picsum.photos/600/400?random=103',
       },
     ],
     [info]
@@ -145,6 +296,13 @@ export function SaintDetailSheet({
     });
   }, [visible, scrollY, translateY]);
 
+  useEffect(() => {
+    if (!visible) return;
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    dayEnterX.value = 14;
+    dayEnterX.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
+  }, [year, month, day, visible, dayEnterX]);
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
@@ -159,7 +317,46 @@ export function SaintDetailSheet({
     transform: [{ translateY: translateY.value }],
   }));
 
+  const dayContentStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: daySwipeX.value + dayEnterX.value }],
+  }));
+
+  const goToPrevDay = useCallback(() => {
+    Haptics.selectionAsync();
+    onPrevDay();
+  }, [onPrevDay]);
+
+  const goToNextDay = useCallback(() => {
+    Haptics.selectionAsync();
+    onNextDay();
+  }, [onNextDay]);
+
   const scrollGesture = Gesture.Native();
+
+  const dayPanGesture = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .failOffsetY([-18, 18])
+    .simultaneousWithExternalGesture(scrollGesture)
+    .onUpdate((event) => {
+      daySwipeX.value = event.translationX * 0.4;
+    })
+    .onEnd((event) => {
+      const goNext =
+        event.translationX < -DAY_SWIPE_DISTANCE || event.velocityX < -DAY_SWIPE_VELOCITY;
+      const goPrev =
+        event.translationX > DAY_SWIPE_DISTANCE || event.velocityX > DAY_SWIPE_VELOCITY;
+
+      if (goNext) {
+        runOnJS(goToNextDay)();
+      } else if (goPrev) {
+        runOnJS(goToPrevDay)();
+      }
+
+      daySwipeX.value = withSpring(0, SNAP_BACK_SPRING);
+    })
+    .onFinalize(() => {
+      daySwipeX.value = withSpring(0, SNAP_BACK_SPRING);
+    });
 
   const panGesture = Gesture.Pan()
     .simultaneousWithExternalGesture(scrollGesture)
@@ -189,11 +386,58 @@ export function SaintDetailSheet({
       }
     });
 
+  const sheetGesture = Gesture.Exclusive(dayPanGesture, panGesture);
+
+  const ethiopianDateLabel = useMemo(() => {
+    const ethMonth = liturgical.ethiopianDate.month ?? info.ethiopianMonth;
+    const ethDay = liturgical.ethiopianDate.day ?? info.ethiopianDay;
+    if (!ethMonth || !ethDay) return null;
+    const monthName =
+      liturgical.ethiopianDate.monthName ||
+      ETHIOPIAN_MONTHS[ethMonth] ||
+      `Month ${ethMonth}`;
+    return `${monthName} ${ethDay}`;
+  }, [info.ethiopianDay, info.ethiopianMonth, liturgical.ethiopianDate]);
+
   const handleShare = async () => {
-    await Share.share({
-      message: `Saint of the Day: ${info.saint}\n${month + 1}/${day}/${year}\nMorning: ${info.lectionary.morning.join(', ')}`,
-    });
+    const lines = [
+      `Saint of the Day: ${info.saint}`,
+      `${month + 1}/${day}/${year}`,
+      ethiopianDateLabel ? `Ethiopian: ${ethiopianDateLabel}` : null,
+      isFasting
+        ? `Fasting Day${liturgical.fastingReason ? ` (${liturgical.fastingReason})` : ''}`
+        : null,
+      isFeastDay
+        ? `Feast Day${feastDetail ? ` (${feastDetail})` : ''}`
+        : null,
+      info.lectionaryHiatus
+        ? 'Readings: Festal hiatus'
+        : [
+            info.lectionary.morning.length
+              ? `Morning: ${info.lectionary.morning.join('; ')}`
+              : null,
+            info.lectionary.liturgical.length
+              ? `Liturgy: ${info.lectionary.liturgical.join('; ')}`
+              : null,
+            info.lectionary.anaphora?.length
+              ? `Anaphora: ${info.lectionary.anaphora.join('; ')}`
+              : null,
+            info.lectionary.evening.length
+              ? `Evening: ${info.lectionary.evening.join('; ')}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join('\n'),
+      info.lectionarySourceUrl,
+    ].filter(Boolean);
+
+    await Share.share({ message: lines.join('\n') });
   };
+
+  const openLectionarySource = useCallback(() => {
+    if (!info.lectionarySourceUrl) return;
+    void WebBrowser.openBrowserAsync(info.lectionarySourceUrl);
+  }, [info.lectionarySourceUrl]);
 
   if (!mounted) return null;
 
@@ -208,7 +452,7 @@ export function SaintDetailSheet({
           />
         </Animated.View>
 
-        <GestureDetector gesture={panGesture}>
+        <GestureDetector gesture={sheetGesture}>
           <Animated.View style={[styles.sheet, sheetStyle]}>
             <View style={styles.handleRow}>
               <View style={styles.handle} />
@@ -222,11 +466,13 @@ export function SaintDetailSheet({
 
             <GestureDetector gesture={scrollGesture}>
               <Animated.ScrollView
+                ref={scrollRef}
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
                 bounces
                 contentContainerStyle={styles.scrollContent}>
+                <Animated.View style={dayContentStyle}>
                 <View style={styles.hero}>
                   <Image
                     source={{ uri: `https://picsum.photos/800/1200?random=${day + month * 31}` }}
@@ -255,47 +501,45 @@ export function SaintDetailSheet({
                       {t('sections.saintOfTheDay').toUpperCase()}
                     </Text>
                     <Text style={styles.saintName}>{info.saint}</Text>
-                    <OrthodoxPressable>
-                      <Text style={styles.continueLink}>{t('common.continueToReading')}</Text>
-                    </OrthodoxPressable>
+                    {ethiopianDateLabel ? (
+                      <Text style={styles.ethiopianDate}>Ethiopian calendar · {ethiopianDateLabel}</Text>
+                    ) : null}
                   </View>
                 </View>
 
                 <View style={styles.body}>
+                  <LiturgicalDayPanel
+                    isFasting={isFasting}
+                    fastingReason={liturgical.fastingReason}
+                    isFeastDay={isFeastDay}
+                    feastDetail={feastDetail}
+                    fastingLabel="Fasting Day"
+                    feastDayLabel="Feast Day"
+                  />
                   <BilingualHeader headerKey="lectionaries" variant="section" />
-                  {sections.map((section) => (
-                    <View key={section.key} style={styles.section}>
-                      <View style={styles.sectionTitleRow}>
-                        <Icon name={section.icon} size={18} />
-                        <BilingualHeader headerKey={section.headerKey} variant="compact" />
-                      </View>
-                      <View style={styles.readingCard}>
-                        <Image
-                          source={{ uri: section.imageUri }}
-                          style={styles.cardBg}
-                          contentFit="cover"
-                          transition={200}
-                        />
-                        <LinearGradient
-                          colors={[...section.gradient, 'rgba(0,0,0,0.75)']}
-                          style={styles.cardOverlay}
-                        />
-                        {Platform.OS === 'ios' ? (
-                          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-                        ) : null}
-                        <View style={styles.cardGlass} />
-                        <View style={styles.cardContent}>
-                          <Text style={styles.readingsHeading}>{t('common.readings')}</Text>
-                          {section.refs.map((ref) => (
-                            <Text key={ref} style={styles.readingRef}>
-                              {ref}
-                            </Text>
-                          ))}
-                        </View>
-                      </View>
-                    </View>
-                  ))}
+                  {info.lectionaryHiatus ? (
+                    <Text style={styles.hiatusNote}>
+                      Festal hiatus — no standard readings for this day per the annual lectionary.
+                    </Text>
+                  ) : null}
+                  <View style={styles.lectionaryGrid}>
+                    {sections.map((section) => (
+                      <LectionaryPanel key={section.key} section={section} />
+                    ))}
+                  </View>
+                  {info.lectionarySourceUrl ? (
+                    <OrthodoxPressable
+                      onPress={openLectionarySource}
+                      style={styles.sourceLink}
+                      accessibilityRole="link"
+                      accessibilityLabel="Open annual lectionary source">
+                      <Text style={styles.sourceLinkText}>
+                        Annual readings from Ethiopian Orthodox Church
+                      </Text>
+                    </OrthodoxPressable>
+                  ) : null}
                 </View>
+                </Animated.View>
               </Animated.ScrollView>
             </GestureDetector>
           </Animated.View>
@@ -387,57 +631,154 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: Palette.text,
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  continueLink: {
-    fontSize: 15,
-    color: Palette.gold,
-    fontWeight: '600',
+  ethiopianDate: {
+    fontSize: 14,
+    color: Palette.mutedGold,
+    fontWeight: '500',
+  },
+  hiatusNote: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: Palette.mutedGold,
+    marginBottom: Space.s8,
   },
   body: {
     padding: Layout.pagePadding,
-    gap: Layout.sectionGap,
+    gap: Space.s24,
     paddingBottom: 40,
   },
-  section: {
-    gap: Layout.headerContentGap,
+  liturgicalPanel: {
+    gap: Space.s16,
+    padding: Space.s16,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: `rgba(201, 147, 58, ${Opacity.goldBorder})`,
+    borderLeftWidth: 3,
+    borderLeftColor: Palette.gold,
+    backgroundColor: Palette.card,
+    overflow: 'hidden',
+  },
+  dayStatusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Space.s12,
+  },
+  dayStatusCard: {
+    flex: 1,
+    minWidth: 140,
+    gap: Space.s4,
+    padding: Space.s12,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Palette.surface,
+    borderWidth: 1,
+    borderColor: Layout.cardBorderThin,
+  },
+  dayStatusLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Palette.text,
+    letterSpacing: 0.2,
+  },
+  dayStatusDetail: {
+    fontSize: 12,
+    color: Palette.gold,
+    fontWeight: '500',
+  },
+  lectionaryGrid: {
+    gap: Space.s24,
+  },
+  lectionaryBlock: {
+    gap: Space.s12,
   },
   sectionTitleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 6,
+    alignItems: 'center',
+    gap: Space.s12,
   },
-  readingCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
+  sectionIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(201, 147, 58, 0.1)',
     borderWidth: 1,
     borderColor: `rgba(201, 147, 58, ${Opacity.goldBorder})`,
-    minHeight: 140,
   },
-  cardBg: {
-    ...StyleSheet.absoluteFillObject,
+  sectionLabelWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Space.s8,
   },
-  cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  sectionHint: {
+    fontSize: 12,
+    letterSpacing: 0.3,
   },
-  cardGlass: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20, 18, 16, 0.55)',
+  readingPanel: {
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: `rgba(201, 147, 58, ${Opacity.goldBorder})`,
+    borderLeftWidth: 3,
+    borderLeftColor: Palette.gold,
+    backgroundColor: Palette.card,
+    overflow: 'hidden',
   },
-  cardContent: {
-    padding: 20,
-    zIndex: 1,
+  readingPanelEmpty: {
+    paddingVertical: Space.s12,
+    paddingHorizontal: Space.s16,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  readingsHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Palette.text,
-    marginBottom: 10,
+  readingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Space.s12,
+    paddingVertical: Space.s12,
+    paddingHorizontal: Space.s16,
+  },
+  readingRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Layout.cardBorder,
+  },
+  readingBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 9,
+    backgroundColor: Palette.gold,
+    flexShrink: 0,
   },
   readingRef: {
+    flex: 1,
     fontSize: 15,
-    color: 'rgba(245, 236, 215, 0.85)',
-    lineHeight: 15 * 1.6,
-    marginBottom: 4,
+    lineHeight: 24,
+    color: Palette.text,
+    letterSpacing: 0.1,
+  },
+  anaphoraRef: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: Palette.gold,
+    lineHeight: 28,
+    paddingVertical: Space.s4,
+  },
+  readingRefMuted: {
+    fontSize: 15,
+    fontStyle: 'italic',
+    paddingHorizontal: Space.s16,
+    paddingVertical: Space.s12,
+  },
+  sourceLink: {
+    alignSelf: 'center',
+    paddingVertical: Space.s12,
+  },
+  sourceLinkText: {
+    fontSize: 13,
+    color: Palette.gold,
+    textDecorationLine: 'underline',
+    textAlign: 'center',
   },
 });

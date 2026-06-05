@@ -63,7 +63,12 @@ const gez = {
     lectionaries: 'ግጻዌ',
     fasting: 'ጾም',
     feastDay: 'በዓል',
+    fastingDay: 'የጾም ቀን',
+    holidays: 'በዓላት',
     majorFeast: 'ዐቢይ',
+    legendFasting: 'ቢጫ ቁጥር · ጾም',
+    legendFeast: '☩ እና ቀለበት · በዓል',
+    legendToday: 'ወርቃማ ክብ · ዛሬ',
   },
   common: {
     dailyReading: 'ዕለት',
@@ -71,7 +76,9 @@ const gez = {
   },
   content: {
     morning: 'ጥዋት',
+    qidase: 'ቅዳሴ',
     liturgical: 'ቅዳሴ',
+    anaphora: 'አናብራ',
     evening: 'ማታ',
   },
 } as const;

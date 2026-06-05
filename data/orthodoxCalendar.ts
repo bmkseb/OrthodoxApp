@@ -1,10 +1,19 @@
 export type CalendarEventType = 'feast' | 'fast' | 'marian' | 'saint' | 'major_feast' | 'lectionary';
 
-export type LectionaryRefs = {
-  morning: string[];
-  liturgical: string[];
-  evening: string[];
-};
+import {
+  EOTC_LECTIONARY_SOURCE_URL,
+  getEotcLectionaryForDate,
+  type LectionaryRefs,
+} from '@/data/eotcAnnualLectionary';
+import {
+  getDayInfo as getLiturgicalDayInfo,
+  type FeastType,
+  type LiturgicalFeast,
+  isCurrentlyFasting,
+} from '@/lib/eotc-liturgical-calendar';
+
+export type { LectionaryRefs };
+export { EOTC_LECTIONARY_SOURCE_URL };
 
 export type CalendarEvent = {
   month: number;
@@ -28,14 +37,6 @@ export type FastingPeriod = {
 };
 
 export type CalendarFilter = 'all' | 'feasts' | 'fasts' | 'saints' | 'marian' | 'lectionary';
-
-/** Gregorian Easter dates (Ethiopian Orthodox approximation by year) */
-const FASIKA_BY_YEAR: Record<number, { month: number; day: number }> = {
-  2024: { month: 4, day: 5 },
-  2025: { month: 3, day: 20 },
-  2026: { month: 3, day: 12 },
-  2027: { month: 4, day: 4 },
-};
 
 export const FASTING_PERIODS: FastingPeriod[] = [
   {
@@ -76,114 +77,32 @@ export const FASTING_PERIODS: FastingPeriod[] = [
   },
 ];
 
-const FIXED_EVENTS: CalendarEvent[] = [
-  {
-    month: 0,
-    day: 7,
-    nameEn: 'Genna (Christmas)',
-    nameGeez: 'ገና',
-    type: 'major_feast',
-    isMajor: true,
-    saint: 'Our Lord Jesus Christ',
-    lectionary: {
-      morning: ['Isaiah 9', 'Hebrews 1', 'Matthew 1'],
-      liturgical: ['Luke 2', 'Titus 2'],
-      evening: ['Micah 5', 'Galatians 4', 'John 1'],
-    },
+/** Curated lectionary overrides for major national feasts (Gregorian dates vary slightly by year). */
+const FEAST_LECTIONARY_OVERRIDES: Record<string, LectionaryRefs> = {
+  'Christmas (Genna)': {
+    morning: ['Isaiah 9', 'Hebrews 1', 'Matthew 1'],
+    liturgical: ['Luke 2', 'Titus 2'],
+    anaphora: [],
+    evening: ['Micah 5', 'Galatians 4', 'John 1'],
   },
-  {
-    month: 0,
-    day: 19,
-    nameEn: 'Timkat (Epiphany)',
-    nameGeez: 'ጥምቀት',
-    type: 'major_feast',
-    isMajor: true,
-    saint: 'Baptism of Our Lord',
-    lectionary: {
-      morning: ['Isaiah 43', 'Acts 10', 'Mark 1'],
-      liturgical: ['Matthew 3', 'Romans 6'],
-      evening: ['Isaiah 12', '1 John 5', 'John 3'],
-    },
+  'Epiphany (Timket)': {
+    morning: ['Isaiah 43', 'Acts 10', 'Mark 1'],
+    liturgical: ['Matthew 3', 'Romans 6'],
+    anaphora: [],
+    evening: ['Isaiah 12', '1 John 5', 'John 3'],
   },
-  {
-    month: 0,
-    day: 22,
-    nameEn: 'Marian Feast',
-    nameGeez: 'የማርያም በዓል',
-    type: 'marian',
-    isMajor: true,
-    saint: 'St. Mary',
-    lectionary: {
-      morning: ['Luke 1', 'Galatians 4'],
-      liturgical: ['John 2'],
-      evening: ['Song of Songs 2', 'Revelation 12'],
-    },
+  'Meskel (Finding of the True Cross)': {
+    morning: ['John 3', 'Philippians 2'],
+    liturgical: ['Matthew 16', '1 Corinthians 1'],
+    anaphora: [],
+    evening: ['Galatians 6', 'Mark 8'],
   },
-  {
-    month: 4,
-    day: 1,
-    nameEn: 'Marian Feast',
-    nameGeez: 'የማርያም በዓል',
-    type: 'marian',
-    isMajor: true,
-    saint: 'St. Mary',
+  'Fasika (Easter)': {
+    morning: ['Acts 10', 'Romans 6', 'Mark 16'],
+    liturgical: ['1 Corinthians 15', 'John 20'],
+    anaphora: [],
+    evening: ['Isaiah 25', 'Colossians 3', 'Luke 24'],
   },
-  {
-    month: 5,
-    day: 12,
-    nameEn: 'Mikael Feast',
-    nameGeez: 'ቅዱስ ሚካኤል',
-    type: 'feast',
-    isMajor: true,
-    saint: 'St. Michael the Archangel',
-  },
-  {
-    month: 7,
-    day: 22,
-    nameEn: 'Marian Feast (Filseta)',
-    nameGeez: 'ፍልሰታ',
-    type: 'marian',
-    isMajor: true,
-    saint: 'St. Mary',
-  },
-  {
-    month: 8,
-    day: 11,
-    nameEn: 'Enkutatash (New Year)',
-    nameGeez: 'እንቁጣጣሽ',
-    type: 'major_feast',
-    isMajor: true,
-    saint: 'St. John the Baptist',
-  },
-  {
-    month: 8,
-    day: 27,
-    nameEn: 'Meskel (Finding of the Cross)',
-    nameGeez: 'መስቀል',
-    type: 'major_feast',
-    isMajor: true,
-    saint: 'Holy Cross',
-    lectionary: {
-      morning: ['John 3', 'Philippians 2'],
-      liturgical: ['Matthew 16', '1 Corinthians 1'],
-      evening: ['Galatians 6', 'Mark 8'],
-    },
-  },
-  {
-    month: 10,
-    day: 8,
-    nameEn: 'Mikael Feast',
-    nameGeez: 'ቅዱስ ሚካኤል',
-    type: 'feast',
-    isMajor: true,
-    saint: 'St. Michael the Archangel',
-  },
-];
-
-const DEFAULT_LECTIONARY: LectionaryRefs = {
-  morning: ['Nehemiah 13', '1 John 5', 'Luke 1'],
-  liturgical: ['Isaiah 6', 'Romans 8', 'Matthew 5'],
-  evening: ['Psalm 91', 'Hebrews 11', 'John 6'],
 };
 
 const SAINTS_BY_DAY: Record<number, string> = {
@@ -217,34 +136,32 @@ const SAINTS_BY_DAY: Record<number, string> = {
   28: 'St. Thomas the Apostle',
 };
 
-export function getFasikaDate(year: number): { month: number; day: number } | null {
-  return FASIKA_BY_YEAR[year] ?? null;
+function feastTypeToCalendarType(type: FeastType): CalendarEventType {
+  if (type === 'mary') return 'marian';
+  if (type === 'saint') return 'saint';
+  if (type === 'angel') return 'feast';
+  return 'major_feast';
 }
 
-export function getEventsForYear(year: number): CalendarEvent[] {
-  const events = [...FIXED_EVENTS];
-  const fasika = getFasikaDate(year);
-  if (fasika) {
-    events.push({
-      month: fasika.month,
-      day: fasika.day,
-      nameEn: 'Fasika (Easter)',
-      nameGeez: 'ፋሲካ',
-      type: 'major_feast',
-      isMajor: true,
-      saint: 'Resurrection of Our Lord',
-      lectionary: {
-        morning: ['Acts 10', 'Romans 6', 'Mark 16'],
-        liturgical: ['1 Corinthians 15', 'John 20'],
-        evening: ['Isaiah 25', 'Colossians 3', 'Luke 24'],
-      },
-    });
-  }
-  return events;
+function liturgicalFeastToEvent(
+  feast: LiturgicalFeast,
+  month: number,
+  day: number
+): CalendarEvent {
+  return {
+    month,
+    day,
+    nameEn: feast.name,
+    nameGeez: feast.nameAm,
+    type: feastTypeToCalendarType(feast.type),
+    isMajor: feast.isMajor,
+    lectionary: FEAST_LECTIONARY_OVERRIDES[feast.name],
+  };
 }
 
 export function getEventsForDate(year: number, month: number, day: number): CalendarEvent[] {
-  return getEventsForYear(year).filter((e) => e.month === month && e.day === day);
+  const liturgical = getLiturgicalDayInfo(new Date(year, month, day));
+  return liturgical.feasts.map((feast) => liturgicalFeastToEvent(feast, month, day));
 }
 
 export function isFastingDay(month: number, day: number): boolean {
@@ -272,12 +189,19 @@ export function getSaintForDate(year: number, month: number, day: number): strin
 
 export function getDayInfo(year: number, month: number, day: number) {
   const events = getEventsForDate(year, month, day);
-  const fasting = isFastingDay(month, day);
+  const fasting = isCurrentlyFasting(new Date(year, month, day));
   const majorFeast = events.find((e) => e.isMajor);
   const hasFeast = events.some((e) => e.type === 'feast' || e.type === 'major_feast');
   const hasMarian = events.some((e) => e.type === 'marian');
   const saint = getSaintForDate(year, month, day);
-  const lectionary = majorFeast?.lectionary ?? events[0]?.lectionary ?? DEFAULT_LECTIONARY;
+  const annualLectionary = getEotcLectionaryForDate(year, month, day);
+  const feastLectionary = majorFeast?.lectionary ?? events[0]?.lectionary;
+  const lectionary: LectionaryRefs = feastLectionary ?? {
+    morning: annualLectionary.morning,
+    liturgical: annualLectionary.liturgical,
+    anaphora: annualLectionary.anaphora,
+    evening: annualLectionary.evening,
+  };
 
   return {
     events,
@@ -288,6 +212,10 @@ export function getDayInfo(year: number, month: number, day: number) {
     hasSaint: true,
     saint,
     lectionary,
+    ethiopianMonth: annualLectionary.ethiopianMonth,
+    ethiopianDay: annualLectionary.ethiopianDay,
+    lectionaryHiatus: annualLectionary.hiatus,
+    lectionarySourceUrl: EOTC_LECTIONARY_SOURCE_URL,
     primaryEvent: majorFeast ?? events[0],
   };
 }
@@ -311,31 +239,38 @@ export type UpcomingFeast = CalendarEvent & {
 };
 
 export function getUpcomingMajorFeasts(count = 5, fromDate = new Date()): UpcomingFeast[] {
-  const year = fromDate.getFullYear();
-  const events = getEventsForYear(year).filter((e) => e.isMajor);
+  const start = new Date(fromDate);
+  start.setHours(0, 0, 0, 0);
 
   const upcoming: UpcomingFeast[] = [];
   const seen = new Set<string>();
+  const cursor = new Date(start);
 
-  for (const event of events) {
-    let date = new Date(year, event.month, event.day);
-    if (date < fromDate) {
-      date = new Date(year + 1, event.month, event.day);
+  for (let i = 0; i < 366 && upcoming.length < count; i++) {
+    const liturgical = getLiturgicalDayInfo(cursor);
+
+    for (const feast of liturgical.feasts) {
+      if (!feast.isMajor) continue;
+
+      const occurrenceKey = `${cursor.getFullYear()}-${cursor.getMonth()}-${cursor.getDate()}-${feast.name}`;
+      if (seen.has(occurrenceKey)) continue;
+      seen.add(occurrenceKey);
+
+      const daysRemaining = Math.ceil(
+        (cursor.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      upcoming.push({
+        ...liturgicalFeastToEvent(feast, cursor.getMonth(), cursor.getDate()),
+        date: new Date(cursor),
+        daysRemaining,
+      });
     }
 
-    const occurrenceKey = `${date.getFullYear()}-${event.month}-${event.day}-${event.nameEn}`;
-    if (seen.has(occurrenceKey)) continue;
-    seen.add(occurrenceKey);
-
-    const daysRemaining = Math.ceil(
-      (date.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    upcoming.push({ ...event, date, daysRemaining });
+    cursor.setDate(cursor.getDate() + 1);
   }
 
-  return upcoming
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .slice(0, count);
+  return upcoming.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, count);
 }
 
 export const CALENDAR_FILTERS: { key: CalendarFilter; labelKey: string }[] = [

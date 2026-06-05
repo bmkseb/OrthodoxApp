@@ -12,7 +12,8 @@
     "ingest:extract": "python scripts/ingestion/extract_bible.py",
     "ingest:books": "node scripts/ingestion/seed.mjs --books",
     "ingest:seed": "node scripts/ingestion/seed.mjs",
-    "onboard:db": "node scripts/ingestion/onboard.mjs"
+    "onboard:db": "node scripts/ingestion/onboard.mjs",
+    "build:lectionary": "node scripts/build-eotc-lectionary.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -21,6 +22,8 @@
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "@supabase/supabase-js": "^2.49.0",
+    "eotc-calendar": "^1.0.0",
+    "ethiopian-date": "^0.0.6",
     "expo": "~54.0.35",
     "expo-asset": "~12.0.13",
     "expo-blur": "~15.0.8",
@@ -58,6 +61,7 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "googleapis": "^173.0.0",
+    "pdf-parse": "^1.1.1",
     "typescript": "~5.9.2"
   },
   "private": true
