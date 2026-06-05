@@ -79,7 +79,10 @@ import {
 import { Layout, Palette, Space } from '@/constants/theme';
 import { LISTEN_FEATURED_SEEDS } from '@/data/listenFeatured';
 import { userPlaylistArtistForKind } from '@/data/userPlaylists';
+import { useGlobalMezmurPlayStats } from '@/hooks/use-global-mezmur-play-stats';
+import { useMezmurPlayStats } from '@/hooks/use-mezmur-play-stats';
 import { useUserPlaylists } from '@/hooks/use-user-playlists';
+import { rankPopularMezmur, resolvePopularMezmurPlayStats } from '@/lib/mezmur-popularity';
 import { userPlaylistCollageUris, userPlaylistCoverUri } from '@/lib/user-playlists';
 import { YARED_MELODY_SHELVES } from '@/data/yaredMelodiesCatalog';
 import { translate, type LanguageMode, type TranslationKey } from '@/lib/translations';
@@ -242,6 +245,12 @@ export default function ListenScreen() {
   const [searchResults, setSearchResults] = useState<MezmurSearchResults>(EMPTY_SEARCH);
   const [searchLoading, setSearchLoading] = useState(false);
   const { entries: continueEntries } = useListeningProgress();
+  const { stats: globalMezmurPlayStats } = useGlobalMezmurPlayStats();
+  const { stats: localMezmurPlayStats } = useMezmurPlayStats();
+  const popularMezmurPlayStats = useMemo(
+    () => resolvePopularMezmurPlayStats(globalMezmurPlayStats, localMezmurPlayStats),
+    [globalMezmurPlayStats, localMezmurPlayStats]
+  );
   const { entries: savedItems } = useSavedHymns();
   const savedForTab = useMemo(
     () => savedItems.filter((entry) => entry.kind === savedKind),
@@ -612,6 +621,17 @@ export default function ListenScreen() {
     return { items, totalCount: sorted.length };
   }, [mode, openChannel, recentSearchEntries, sermonChannels]);
 
+  const popularHymnsShelf = useMemo(() => {
+    return rankPopularMezmur(mezmurCatalog, popularMezmurPlayStats, 10).map((entry) => ({
+      key: entry.song.videoId,
+      title: entry.song.title,
+      subtitle: entry.song.artist,
+      imageUri: entry.song.thumbnailUrl,
+      rank: entry.rank,
+      onPress: () => void playSong(entry.song, 'hymn'),
+    }));
+  }, [mezmurCatalog, popularMezmurPlayStats, playSong]);
+
   const playlistShelf = useMemo(() => {
     const playlistArtist = userPlaylistArtistForKind(savedKind);
     const isSermonTab = savedKind === 'sermon';
@@ -834,6 +854,11 @@ export default function ListenScreen() {
                     />
                     {activeTab === 'hymns' ? (
                       <>
+                        <MezmurCatalogShelf
+                          title={t('listen.discover')}
+                          items={popularHymnsShelf}
+                          compactBottom
+                        />
                         <MezmurCatalogShelf
                           title={t('listen.mezmurPlaylistsShelf')}
                           items={playlistShelf.items}

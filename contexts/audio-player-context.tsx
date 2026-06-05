@@ -15,6 +15,7 @@ import {
 } from '@/hooks/use-listening-progress';
 import type { TranslationKey } from '@/lib/translations';
 import { fetchRandomMezmur, mezmurToAudioTrack } from '@/lib/mezmur';
+import { recordMezmurPlay } from '@/lib/mezmur-popularity';
 import { mergePlaybackQueue, shuffleQueueKeepingCurrent } from '@/lib/audio-utils';
 import {
   useActiveTrack,
@@ -112,6 +113,10 @@ const PROGRESS_SAVE_INTERVAL_SEC = 3;
 
 function isYoutubeTrack(track: AudioTrack | null | undefined): boolean {
   return Boolean(track?.videoId);
+}
+
+function shouldRecordMezmurPopularity(track: AudioTrack): boolean {
+  return Boolean(track.videoId) && (track.saveKind ?? 'hymn') === 'hymn';
 }
 
 function listeningProgressFromTrack(
@@ -331,6 +336,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
           savedPositionsRef.current.set(track.videoId, seconds);
         }
 
+        if (!sameVideo && shouldRecordMezmurPopularity(track)) {
+          void recordMezmurPlay(track.videoId!);
+        }
+
         void recordListeningProgress(listeningProgressFromTrack(track, seconds));
       })();
 
@@ -371,6 +380,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       setYoutubeProgress({ position: 0, duration: 0, buffered: 0 });
       setCurrentTrack(selected);
       setIsPlaying(autoPlay);
+
+      if (shouldRecordMezmurPopularity(selected)) {
+        void recordMezmurPlay(selected.videoId!);
+      }
 
       if (!HAS_TRACK_PLAYER || !nativePlayerReady) return;
 

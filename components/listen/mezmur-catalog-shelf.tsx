@@ -13,6 +13,7 @@ import { CreatePlaylistRailCard } from '@/components/listen/create-playlist-rail
 import { PlaylistRailCard } from '@/components/listen/playlist-rail-card';
 import {
   LISTEN_CHANNEL_RAIL_SCROLL_CONTENT,
+  LISTEN_RANKED_RAIL_SCROLL_CONTENT,
   LISTEN_RAIL_SCROLL_CONTENT,
 } from '@/constants/listen-layout';
 import { SacredImagery } from '@/constants/sacred-imagery';
@@ -35,6 +36,7 @@ export type MezmurCatalogRailItem = {
   collageUris?: string[];
   onPress: () => void;
   variant?: 'create' | 'playlist';
+  rank?: number;
 };
 
 type MezmurCatalogShelfProps = {
@@ -99,6 +101,8 @@ export function MezmurCatalogShelf({
 
   if (railItems.length === 0) return null;
 
+  const isRankedRail = railItems.some((item) => item.rank != null);
+
   return (
     <View style={[styles.wrap, compactBottom && styles.wrapCompact]}>
       <ShelfSubsectionHeader title={title} onSeeAllPress={onSeeAll} />
@@ -111,7 +115,9 @@ export function MezmurCatalogShelf({
           onContentSizeChange,
           contentContainerStyle: isChannelRail
             ? LISTEN_CHANNEL_RAIL_SCROLL_CONTENT
-            : LISTEN_RAIL_SCROLL_CONTENT,
+            : isRankedRail
+              ? LISTEN_RANKED_RAIL_SCROLL_CONTENT
+              : LISTEN_RAIL_SCROLL_CONTENT,
         }}>
         {railItems.map((item) => {
           if (item.variant === 'create') {
@@ -143,6 +149,7 @@ export function MezmurCatalogShelf({
               imageUri={item.imageUri}
               collageUris={item.collageUris}
               fallbackImageUri={item.imageUri ? SacredImagery.listenHymns : undefined}
+              rank={item.rank}
               onPress={item.onPress}
             />
           );

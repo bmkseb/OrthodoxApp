@@ -54,6 +54,7 @@ const en = {
   },
   listen: {
     hymns: 'Hymns',
+    discover: 'Discover',
     sermons: 'Sermons',
     melodies: 'Chants',
     yaredMelody: 'Chants',

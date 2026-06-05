@@ -17,6 +17,24 @@ export const LISTEN_RAIL_SCROLL_CONTENT = {
   paddingRight: Layout.pagePadding,
 } as const;
 
+/** Netflix-style ranked hymn rail — fixed rank column keeps thumbnails aligned. */
+export const LISTEN_RANKED_RAIL = {
+  rankColumnWidth: 44,
+  rankColumnWidthDouble: 56,
+  rankToCardGap: 2,
+  rankToCardGapDouble: Space.s8,
+  rankFontSize: 56,
+  rankFontSizeDouble: 52,
+  /** Nudge double-digit ranks down to align with single-digit baseline. */
+  rankTenOffsetY: 4,
+} as const;
+
+export const LISTEN_RANKED_RAIL_SCROLL_CONTENT = {
+  gap: Space.s8,
+  paddingLeft: Space.s4,
+  paddingRight: Layout.pagePadding,
+} as const;
+
 /** Circular channel avatars on the Listen tab channel rail. */
 export const LISTEN_CHANNEL_RAIL = {
   avatarSize: 104,

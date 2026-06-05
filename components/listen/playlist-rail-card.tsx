@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { MezmurAlbumThumbnail } from '@/components/listen/mezmur-album-thumbnail';
@@ -7,7 +7,7 @@ import { ThumbnailCollage } from '@/components/listen/thumbnail-collage';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
-import { LISTEN_RAIL_FRAME } from '@/constants/listen-layout';
+import { LISTEN_RANKED_RAIL, LISTEN_RAIL_FRAME } from '@/constants/listen-layout';
 import { Layout, Palette, Space, Typography } from '@/constants/theme';
 
 type RailFrame = {
@@ -28,6 +28,8 @@ type PlaylistRailCardProps = {
   progress?: number;
   /** Progress bar under metadata (continue listening). */
   progressBelow?: boolean;
+  /** Netflix-style top-10 rank badge (1–10). */
+  rank?: number;
   onPress?: () => void;
   onRemove?: () => void;
   removeLabel?: string;
@@ -44,6 +46,7 @@ export const PlaylistRailCard = memo(function PlaylistRailCard({
   fallbackImageUri,
   progress = 0,
   progressBelow = false,
+  rank,
   onPress,
   onRemove,
   removeLabel,
@@ -56,12 +59,19 @@ export const PlaylistRailCard = memo(function PlaylistRailCard({
   const showProgress = progress > 0;
   const metaSecondary = secondaryText ?? subtitle;
 
-  return (
+  const accessibilityLabel =
+    rank != null
+      ? `Number ${rank}. ${title}${metaSecondary ? `. ${metaSecondary}` : ''}`
+      : metaSecondary
+        ? `${title}. ${metaSecondary}`
+        : title;
+
+  const card = (
     <OrthodoxPressable
-      style={[styles.wrap, { width: frame.width, marginRight: gap }]}
+      style={[styles.wrap, { width: frame.width, marginRight: rank == null ? gap : 0 }]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={metaSecondary ? `${title}. ${metaSecondary}` : title}>
+      accessibilityLabel={accessibilityLabel}>
       <View
         style={[
           styles.card,
@@ -128,9 +138,113 @@ export const PlaylistRailCard = memo(function PlaylistRailCard({
       ) : null}
     </OrthodoxPressable>
   );
+
+  if (rank == null) return card;
+
+  const isDoubleDigit = rank >= 10;
+
+  return (
+    <View style={[styles.rankedRow, { marginRight: gap }]}>
+      <View
+        style={[
+          styles.rankColumn,
+          {
+            width: isDoubleDigit
+              ? LISTEN_RANKED_RAIL.rankColumnWidthDouble
+              : LISTEN_RANKED_RAIL.rankColumnWidth,
+            height: frame.height,
+            marginRight: isDoubleDigit
+              ? LISTEN_RANKED_RAIL.rankToCardGapDouble
+              : LISTEN_RANKED_RAIL.rankToCardGap,
+          },
+        ]}>
+        <View style={styles.rankNumberAnchor}>
+          {isDoubleDigit ? (
+            <View
+              style={styles.rankDigitsRow}
+              accessibilityElementsHidden
+              importantForAccessibility="no">
+              {String(rank)
+                .split('')
+                .map((digit, index) => (
+                  <Text
+                    key={`${rank}-${index}`}
+                    style={[styles.rankDigit, index === 0 ? styles.rankDigitLeading : null]}
+                    allowFontScaling={false}>
+                    {digit}
+                  </Text>
+                ))}
+            </View>
+          ) : (
+            <Text
+              style={styles.rankNumber}
+              allowFontScaling={false}
+              accessibilityElementsHidden
+              importantForAccessibility="no">
+              {rank}
+            </Text>
+          )}
+        </View>
+      </View>
+      <View style={styles.rankedCardColumn}>{card}</View>
+    </View>
+  );
 });
 
 const styles = StyleSheet.create({
+  rankedRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    overflow: 'visible',
+  },
+  rankColumn: {
+    position: 'relative',
+    flexShrink: 0,
+    overflow: 'visible',
+  },
+  rankNumberAnchor: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  rankedCardColumn: {
+    flexShrink: 0,
+  },
+  rankDigitsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    transform: [{ translateY: LISTEN_RANKED_RAIL.rankTenOffsetY }],
+  },
+  rankDigit: {
+    fontSize: LISTEN_RANKED_RAIL.rankFontSizeDouble,
+    fontWeight: '900',
+    lineHeight: LISTEN_RANKED_RAIL.rankFontSizeDouble,
+    letterSpacing: 0,
+    color: Palette.text,
+    includeFontPadding: false,
+    textShadowColor: Palette.gold,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
+  },
+  rankDigitLeading: {
+    marginRight: -2,
+  },
+  rankNumber: {
+    fontSize: LISTEN_RANKED_RAIL.rankFontSize,
+    fontWeight: '900',
+    lineHeight: LISTEN_RANKED_RAIL.rankFontSize,
+    letterSpacing: -3,
+    color: Palette.text,
+    textAlign: 'center',
+    includeFontPadding: false,
+    textShadowColor: Palette.gold,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
+  },
   wrap: {},
   card: {
     borderWidth: StyleSheet.hairlineWidth,

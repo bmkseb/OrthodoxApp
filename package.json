@@ -13,7 +13,8 @@
     "ingest:books": "node scripts/ingestion/seed.mjs --books",
     "ingest:seed": "node scripts/ingestion/seed.mjs",
     "onboard:db": "node scripts/ingestion/onboard.mjs",
-    "build:lectionary": "node scripts/build-eotc-lectionary.mjs"
+    "build:lectionary": "node scripts/build-eotc-lectionary.mjs",
+    "build:mezmur-youtube-stats": "node scripts/build-mezmur-youtube-stats.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

@@ -54,6 +54,7 @@ const am = {
   },
   listen: {
     hymns: 'መዝሙር',
+    discover: 'ያስሱ',
     sermons: 'ስብከት',
     melodies: 'ዜማ',
     yaredMelody: 'ዜማ',

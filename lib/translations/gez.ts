@@ -33,6 +33,7 @@ const gez = {
   },
   listen: {
     hymns: 'መዝሙር',
+    discover: 'መርምር',
     sermons: 'ስብከት',
     melodies: 'ዜማ',
     yaredMelody: 'ዜማ',
