@@ -3,6 +3,7 @@ export {
   AudioPlayerProvider,
   AudioPlayerProvider as PlaybackProvider,
   useAudioPlayer,
+  useOptionalAudioPlayer,
   usePlayback,
   type AudioTrack,
   type AudioTrack as PlaybackTrack,

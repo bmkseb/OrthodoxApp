@@ -2,7 +2,7 @@ import { useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FloatingBottom, getFloatingBottomInset } from '@/constants/floating-bottom';
-import { usePlayback } from '@/contexts/playback-context';
+import { useOptionalAudioPlayer } from '@/contexts/audio-player-context';
 
 /** Bottom padding for scroll content above floating tab bar + mini player. */
 export function useFloatingBottomInset(
@@ -12,7 +12,7 @@ export function useFloatingBottomInset(
   const insets = useSafeAreaInsets();
   const segments = useSegments();
   const onTabs = segments[0] === '(tabs)';
-  const { isMiniPlayerVisible } = usePlayback();
+  const isMiniPlayerVisible = useOptionalAudioPlayer()?.isMiniPlayerVisible ?? false;
 
   const miniStack =
     includeFloatingChrome && isMiniPlayerVisible

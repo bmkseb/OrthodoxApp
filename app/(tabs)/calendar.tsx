@@ -1,68 +1,27 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CalendarDayDetailSheet } from '@/components/calendar/calendar-day-detail-sheet';
+import { CalendarInfoModal } from '@/components/calendar/calendar-info-modal';
 import { CalendarMonthGrid } from '@/components/calendar/calendar-month-grid';
-import { CalendarRecentSearchesPanel } from '@/components/calendar/calendar-recent-searches-panel';
-import { SaintDetailSheet } from '@/components/calendar/saint-detail-sheet';
+import { SeasonBanner } from '@/components/calendar/season-banner';
+import { TodayHeader } from '@/components/calendar/today-header';
+import { UpcomingFasts } from '@/components/calendar/upcoming-fasts';
 import { UpcomingFeasts } from '@/components/calendar/upcoming-feasts';
 import { PageHeader } from '@/components/orthodox/PageHeader';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
-import { ContentSearchResults } from '@/components/search/content-search-results';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { GoldCrossSpinner } from '@/components/ui/gold-cross-spinner';
-import { SearchBar } from '@/components/ui/search-bar';
-import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
-import { useCalendarRecentSearches, type CalendarRecentSearchEntry } from '@/hooks/use-calendar-recent-searches';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
-import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { useTranslation } from '@/hooks/use-translation';
-import {
-  getUpcomingMajorFeasts,
-  type UpcomingFeast,
-} from '@/data/orthodoxCalendar';
-import {
-  hasCalendarSearchResults,
-  searchCalendar,
-  type CalendarSearchHit,
-} from '@/lib/calendar-search';
-import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
+import { getUpcomingMajorFeasts, type UpcomingFeast } from '@/data/orthodoxCalendar';
+import { getEthiopianMonthsInGregorianMonth, getUpcomingFasts } from '@/lib/eotc-liturgical-calendar';
+import { Layout, Space } from '@/constants/theme';
 
-function CalendarLegend() {
-  return (
-    <View style={styles.legend}>
-      <View style={styles.legendItem}>
-        <View style={styles.legendLine} />
-        <Text style={styles.legendLabel}>Fasting day</Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={styles.legendRing} />
-        <Text style={styles.legendLabel}>Feast day</Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={styles.legendFill} />
-        <Text style={styles.legendLabel}>Today</Text>
-      </View>
-    </View>
-  );
-}
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+const GREGORIAN_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 export default function CalendarScreen() {
@@ -77,140 +36,39 @@ export default function CalendarScreen() {
 
   const [viewYear, setViewYear] = useState(today.year);
   const [viewMonth, setViewMonth] = useState(today.month);
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(today.day);
   const [sheetVisible, setSheetVisible] = useState(false);
-  const [returningToCalendar, setReturningToCalendar] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
-  const searchBlurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [legendVisible, setLegendVisible] = useState(false);
 
-  const {
-    entries: recentSearchEntries,
-    addRecentSearch,
-    removeRecentSearch,
-    clearRecentSearches,
-  } = useCalendarRecentSearches();
-
-  const {
-    values: scrollIndicator,
-    scrollHandler,
-    onLayout: onScrollShellLayout,
-    onContentSizeChange: onScrollContentSizeChange,
-  } = useScrollIndicator();
-
+  const upcomingFasts = useMemo(() => getUpcomingFasts(4, now), [now]);
   const upcomingFeasts = useMemo(() => getUpcomingMajorFeasts(5, now), [now]);
-  const trimmedSearchQuery = searchQuery.trim();
-  const debouncedQuery = useDebouncedValue(trimmedSearchQuery, 300);
-  const showRecentLayout = searchFocused && !trimmedSearchQuery;
-  const keyboardHeight = useKeyboardHeight();
-  const searchKeyboardActive =
-    keyboardHeight > 0 && (showRecentLayout || Boolean(trimmedSearchQuery));
 
-  const searchResults = useMemo(() => {
-    if (!debouncedQuery) return { feasts: [], fasting: [] };
-    return searchCalendar(debouncedQuery, now);
-  }, [debouncedQuery, now]);
-
-  const hasSearchHits = hasCalendarSearchResults(searchResults);
-  const recentBottomInset = keyboardHeight > 0 ? keyboardHeight + Space.s16 : scrollBottomPadding;
-  const searchResultsBottomInset =
-    keyboardHeight > 0 ? keyboardHeight + Space.s16 : scrollBottomPadding;
-
-  useEffect(() => {
-    return () => {
-      if (searchBlurTimerRef.current) clearTimeout(searchBlurTimerRef.current);
+  const { gregorianMonthLabel, ethiopianMonthLabel } = useMemo(() => {
+    const { monthNames, ethYear } = getEthiopianMonthsInGregorianMonth(viewYear, viewMonth);
+    return {
+      gregorianMonthLabel: `${GREGORIAN_MONTHS[viewMonth]} ${viewYear}`,
+      ethiopianMonthLabel:
+        monthNames.length > 0 ? `${monthNames.join(' / ')} ${ethYear}` : `${ethYear}`,
     };
-  }, []);
+  }, [viewMonth, viewYear]);
 
-  const handleSearchFocusChange = useCallback((focused: boolean) => {
-    if (searchBlurTimerRef.current) clearTimeout(searchBlurTimerRef.current);
-    if (focused) {
-      setSearchFocused(true);
-      return;
-    }
-    searchBlurTimerRef.current = setTimeout(() => setSearchFocused(false), 150);
-  }, []);
-
-  const monthLabel = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
   const sheetDay = selectedDay ?? today.day;
 
-  const goToDate = useCallback(
-    (date: Date, hit?: CalendarSearchHit) => {
-      setViewYear(date.getFullYear());
-      setViewMonth(date.getMonth());
-      setSelectedDay(date.getDate());
-      setSheetVisible(true);
-      setSearchQuery('');
-      setSearchFocused(false);
-
-      if (hit) {
-        void addRecentSearch({
-          kind: hit.group === 'fasting' ? 'fasting' : 'feast',
-          title: hit.title,
-          subtitle: hit.subtitle,
-          dateIso: hit.date.toISOString(),
-        });
-      }
-    },
-    [addRecentSearch]
-  );
+  const bannerDate = useMemo(() => {
+    if (sheetVisible) {
+      return new Date(viewYear, viewMonth, sheetDay);
+    }
+    return now;
+  }, [now, sheetDay, sheetVisible, viewMonth, viewYear]);
 
   const openSheetForDay = useCallback((day: number) => {
     setSelectedDay(day);
     setSheetVisible(true);
   }, []);
 
-  const handleSearchSubmit = useCallback(
-    (term: string) => {
-      const trimmed = term.trim();
-      if (!trimmed) return;
-      void addRecentSearch({
-        kind: 'query',
-        title: trimmed,
-        query: trimmed,
-        subtitle: 'Search',
-      });
-    },
-    [addRecentSearch]
-  );
-
-  const handleRecentEntryPress = useCallback(
-    (entry: CalendarRecentSearchEntry) => {
-      if (entry.kind === 'query') {
-        const query = entry.query ?? entry.title;
-        setSearchQuery(query);
-        setSearchFocused(true);
-        return;
-      }
-
-      if (entry.dateIso) {
-        goToDate(new Date(entry.dateIso));
-      }
-    },
-    [goToDate]
-  );
-
-  const handleFeastPress = useCallback((feast: UpcomingFeast) => {
-    setViewYear(feast.date.getFullYear());
-    setViewMonth(feast.date.getMonth());
-    setSelectedDay(feast.date.getDate());
-    setSheetVisible(true);
-  }, []);
-
   const handleCloseSheet = useCallback(() => {
     setSheetVisible(false);
   }, []);
-
-  const handleDismissStart = useCallback(() => {
-    setReturningToCalendar(true);
-  }, []);
-
-  useEffect(() => {
-    if (!returningToCalendar) return;
-    const timer = setTimeout(() => setReturningToCalendar(false), 320);
-    return () => clearTimeout(timer);
-  }, [returningToCalendar]);
 
   const goPrevMonth = useCallback(() => {
     if (viewMonth === 0) {
@@ -246,226 +104,85 @@ export default function CalendarScreen() {
 
   const navigateDay = useCallback(
     (delta: number) => {
-      const currentDay = selectedDay ?? today.day;
-      const next = new Date(viewYear, viewMonth, currentDay + delta);
+      const next = new Date(viewYear, viewMonth, sheetDay + delta);
       setViewYear(next.getFullYear());
       setViewMonth(next.getMonth());
       setSelectedDay(next.getDate());
     },
-    [selectedDay, today.day, viewMonth, viewYear]
+    [sheetDay, viewMonth, viewYear]
   );
 
-  const isViewingToday = viewYear === today.year && viewMonth === today.month;
+  const handleFeastPress = useCallback((feast: UpcomingFeast) => {
+    setViewYear(feast.date.getFullYear());
+    setViewMonth(feast.date.getMonth());
+    setSelectedDay(feast.date.getDate());
+    setSheetVisible(true);
+  }, []);
 
   return (
     <ThemedView style={styles.screen}>
       <SacredAtmosphere />
-      <KeyboardAvoidingView
-        style={[
-          styles.keyboardAvoid,
-          Platform.OS === 'android' &&
-            searchKeyboardActive && { paddingBottom: keyboardHeight },
-        ]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        enabled={searchKeyboardActive && Platform.OS === 'ios'}>
+      <BottomSheetModalProvider>
         <View
           style={[
             styles.screenBody,
             {
               paddingTop: insets.top + Space.s8,
-              paddingBottom:
-                showRecentLayout && keyboardHeight === 0 ? scrollBottomPadding : 0,
+              paddingBottom: scrollBottomPadding,
             },
           ]}>
-          <PageHeader title="Calendar" geez="ቀን" />
+          <PageHeader title={t('nav.calendar')} geez="ቀን ዘመን" />
 
-          <View style={styles.searchWrap}>
-            <SearchBar
-              placeholder={t('calendar.searchPlaceholder')}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSearchSubmit={handleSearchSubmit}
-              hideRecentChips
-              onFocusChange={handleSearchFocusChange}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}>
+            <SeasonBanner date={bannerDate} onOpenLegend={() => setLegendVisible(true)} />
+            <TodayHeader
+              date={now}
+              todayLabel={t('calendar.today')}
+              onPressToday={goToToday}
             />
-          </View>
-
-          {showRecentLayout ? (
-            <CalendarRecentSearchesPanel
-              entries={recentSearchEntries}
-              onPressEntry={handleRecentEntryPress}
-              onRemoveEntry={(id) => void removeRecentSearch(id)}
-              onClearAll={() => void clearRecentSearches()}
-              bottomInset={recentBottomInset}
-              showScrollIndicator={keyboardHeight > 0}
+            <CalendarMonthGrid
+              year={viewYear}
+              month={viewMonth}
+              today={today}
+              gregorianMonthLabel={gregorianMonthLabel}
+              ethiopianMonthLabel={ethiopianMonthLabel}
+              onSelectDay={openSheetForDay}
+              onPrevMonth={goPrevMonth}
+              onNextMonth={goNextMonth}
+              onPrevYear={goPrevYear}
+              onNextYear={goNextYear}
             />
-          ) : (
-            <View style={styles.scrollShell} onLayout={onScrollShellLayout}>
-              <Animated.ScrollView
-                style={styles.scroll}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                onScroll={scrollHandler}
-                scrollEventThrottle={16}
-                onContentSizeChange={onScrollContentSizeChange}
-                contentContainerStyle={{ paddingBottom: searchResultsBottomInset }}>
-                {trimmedSearchQuery ? (
-                  <>
-                    {!hasSearchHits && debouncedQuery === trimmedSearchQuery ? (
-                      <ThemedText type="muted" style={styles.searchEmpty}>
-                        No feasts or fasting days matched that search.
-                      </ThemedText>
-                    ) : (
-                      <>
-                        <ContentSearchResults
-                          heading="Feasts & Holidays"
-                          hits={searchResults.feasts.map((hit) => ({
-                            id: hit.id,
-                            title: hit.title,
-                            subtitle: hit.subtitle,
-                            isHeader: true,
-                            onPress: () => goToDate(hit.date, hit),
-                          }))}
-                        />
-                        <ContentSearchResults
-                          heading="Fasting Days"
-                          hits={searchResults.fasting.map((hit) => ({
-                            id: hit.id,
-                            title: hit.title,
-                            subtitle: hit.subtitle,
-                            isHeader: true,
-                            onPress: () => goToDate(hit.date, hit),
-                          }))}
-                        />
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <CalendarMonthGrid
-                      year={viewYear}
-                      month={viewMonth}
-                      today={today}
-                      isViewingToday={isViewingToday}
-                      todayLabel={t('calendar.today')}
-                      onSelectDay={openSheetForDay}
-                      onPrevMonth={goPrevMonth}
-                      onNextMonth={goNextMonth}
-                      onPrevYear={goPrevYear}
-                      onNextYear={goNextYear}
-                      onGoToToday={goToToday}
-                      monthLabel={monthLabel}
-                    />
-
-                    <CalendarLegend />
-
-                    <UpcomingFeasts feasts={upcomingFeasts} onPressFeast={handleFeastPress} />
-                  </>
-                )}
-              </Animated.ScrollView>
-
-              {(trimmedSearchQuery && keyboardHeight > 0) || !trimmedSearchQuery ? (
-                <ScrollIndicator
-                  values={scrollIndicator}
-                  persistent={Boolean(trimmedSearchQuery && keyboardHeight > 0)}
-                  trackRight={-Layout.pagePadding + 4}
-                  trackInsetBottom={scrollBottomPadding}
-                />
-              ) : null}
-            </View>
-          )}
+            <UpcomingFasts fasts={upcomingFasts} />
+            <UpcomingFeasts feasts={upcomingFeasts} onPressFeast={handleFeastPress} />
+          </ScrollView>
         </View>
-      </KeyboardAvoidingView>
 
-      {returningToCalendar ? (
-        <View style={styles.returnOverlay} pointerEvents="none">
-          <GoldCrossSpinner />
-        </View>
-      ) : null}
+        <CalendarDayDetailSheet
+          visible={sheetVisible}
+          year={viewYear}
+          month={viewMonth}
+          day={sheetDay}
+          onClose={handleCloseSheet}
+          onPrevDay={() => navigateDay(-1)}
+          onNextDay={() => navigateDay(1)}
+        />
 
-      <SaintDetailSheet
-        visible={sheetVisible}
-        year={viewYear}
-        month={viewMonth}
-        day={sheetDay}
-        bookmarked={bookmarked}
-        onDismissStart={handleDismissStart}
-        onClose={handleCloseSheet}
-        onToggleBookmark={() => setBookmarked((b) => !b)}
-        onPrevDay={() => navigateDay(-1)}
-        onNextDay={() => navigateDay(1)}
-      />
+        <CalendarInfoModal visible={legendVisible} onClose={() => setLegendVisible(false)} />
+      </BottomSheetModalProvider>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  keyboardAvoid: { flex: 1 },
   screenBody: {
     flex: 1,
     minHeight: 0,
     paddingHorizontal: Layout.pagePadding,
   },
-  returnOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(16, 13, 10, 0.72)',
-    zIndex: 20,
-  },
-  searchWrap: { marginBottom: Layout.sectionHeaderBottom },
-  searchEmpty: {
-    fontSize: 14,
-    lineHeight: 21,
-    paddingTop: Space.s8,
-  },
-  scrollShell: {
-    flex: 1,
-    minHeight: 0,
-    overflow: 'visible',
-  },
-  scroll: {
-    flex: 1,
-  },
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 20,
-    marginTop: Layout.headerContentGap,
-    marginBottom: Layout.sectionHeaderBottom,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendLine: {
-    width: 16,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: Palette.gold,
-  },
-  legendRing: {
-    width: 12,
-    height: 12,
-    borderRadius: BorderRadius.full,
-    borderWidth: 2,
-    borderColor: Palette.gold,
-  },
-  legendFill: {
-    width: 12,
-    height: 12,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Palette.gold,
-  },
-  legendLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: Palette.muted,
-    letterSpacing: 0.2,
+  scrollContent: {
+    paddingBottom: Space.s32,
   },
 });

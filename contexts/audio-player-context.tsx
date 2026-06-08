@@ -1,5 +1,4 @@
 import React, {
-  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -25,6 +24,7 @@ import {
 import { getTrackPlayerModule, isTrackPlayerNativeAvailable } from '@/lib/track-player/native-client';
 import { setupTrackPlayer } from '@/lib/track-player/setup';
 import { toTrackPlayerItem } from '@/lib/track-player/tracks';
+import { AudioPlayerContext } from '@/contexts/audio-player-context-ref';
 
 export type AudioTrack = {
   id: string;
@@ -134,8 +134,6 @@ function listeningProgressFromTrack(
   };
 }
 
-const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
-
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null);
   const [queue, setQueue] = useState<AudioTrack[]>([]);
@@ -201,30 +199,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     [insertedQueueIds, resolveTracksByIds]
   );
 
-  const syncMergedQueue = useCallback(
-    (insertedIds: string[] = insertedQueueIds, options?: { syncNative?: boolean }) => {
-      applyDisplayQueue(buildMergedPlaybackQueue(insertedIds), {
-        keepCurrentId: currentTrackRef.current?.id ?? null,
-        syncNative: options?.syncNative ?? !isYoutubeTrack(currentTrackRef.current),
-      });
-    },
-    [applyDisplayQueue, buildMergedPlaybackQueue, insertedQueueIds]
-  );
-
-  const queuedTrackCount = insertedQueueIds.length;
-
-  useEffect(() => {
-    currentTrackRef.current = currentTrack;
-  }, [currentTrack]);
-
-  useEffect(() => {
-    isPlayingRef.current = isPlaying;
-  }, [isPlaying]);
-
-  useEffect(() => {
-    isShuffleEnabledRef.current = isShuffleEnabled;
-  }, [isShuffleEnabled]);
-
   const rebuildNativeQueue = useCallback(
     async (tracks: AudioTrack[], activeId: string | null, shouldPlay: boolean) => {
       if (!HAS_TRACK_PLAYER || !nativePlayerReady) return;
@@ -266,6 +240,30 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     },
     [rebuildNativeQueue, syncQueueRefs]
   );
+
+  const syncMergedQueue = useCallback(
+    (insertedIds: string[] = insertedQueueIds, options?: { syncNative?: boolean }) => {
+      applyDisplayQueue(buildMergedPlaybackQueue(insertedIds), {
+        keepCurrentId: currentTrackRef.current?.id ?? null,
+        syncNative: options?.syncNative ?? !isYoutubeTrack(currentTrackRef.current),
+      });
+    },
+    [applyDisplayQueue, buildMergedPlaybackQueue, insertedQueueIds]
+  );
+
+  const queuedTrackCount = insertedQueueIds.length;
+
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    isShuffleEnabledRef.current = isShuffleEnabled;
+  }, [isShuffleEnabled]);
 
   useEffect(() => {
     if (!HAS_TRACK_PLAYER) return;
@@ -887,13 +885,17 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   return <AudioPlayerContext.Provider value={value}>{children}</AudioPlayerContext.Provider>;
 }
 
-export function useAudioPlayer() {
-  const ctx = useContext(AudioPlayerContext);
+export function useOptionalAudioPlayer(): AudioPlayerContextValue | null {
+  return useContext(AudioPlayerContext) as AudioPlayerContextValue | null;
+}
+
+export function useAudioPlayer(): AudioPlayerContextValue {
+  const ctx = useOptionalAudioPlayer();
   if (!ctx) throw new Error('useAudioPlayer must be used within AudioPlayerProvider');
   return ctx;
 }
 
-export function usePlayback() {
+export function usePlayback(): AudioPlayerContextValue {
   return useAudioPlayer();
 }
 

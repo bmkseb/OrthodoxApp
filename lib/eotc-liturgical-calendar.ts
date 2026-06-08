@@ -471,3 +471,321 @@ export function getDayInfo(date: Date): LiturgicalDayInfo {
 export function isCurrentlyFasting(date: Date): boolean {
   return getDayInfo(date).isFasting;
 }
+
+const AMETE_ALEM_OFFSET = 5500;
+
+export type EvangelistYear = {
+  name: string;
+  nameAm: string;
+};
+
+export function getEvangelistYear(ethYear: number): EvangelistYear {
+  const remainder = (ethYear + AMETE_ALEM_OFFSET) % 4;
+  switch (remainder) {
+    case 1:
+      return { name: 'Matthew', nameAm: 'ማቴዎስ' };
+    case 2:
+      return { name: 'Mark', nameAm: 'ማርቆስ' };
+    case 3:
+      return { name: 'Luke', nameAm: 'ሉቃስ' };
+    default:
+      return { name: 'John', nameAm: 'ዮሐንስ' };
+  }
+}
+
+export type LiturgicalSeasonKey =
+  | 'advent'
+  | 'christmas'
+  | 'epiphany'
+  | 'ordinary'
+  | 'nineveh'
+  | 'lent'
+  | 'holyWeek'
+  | 'easter'
+  | 'ascension'
+  | 'pentecost'
+  | 'apostlesFast'
+  | 'marysFast';
+
+export function getLiturgicalSeason(date: Date): LiturgicalSeasonKey {
+  const current = gregorianToEthiopian(date);
+  const year = current.year;
+
+  const [hosaenaMonth, hosaenaDay] = getFeast(FEAST_HOSAENA, year);
+  const [tinsaeMonth, tinsaeDay] = getFeast(FEAST_TINSAE, year);
+  const [ergetMonth, ergetDay] = getFeast(FEAST_ERGET, year);
+  const [pentecostMonth, pentecostDay] = getFeast(FEAST_PERAQLITOS, year);
+  const [lentMonth, lentDay] = getFeast(FEAST_ABIY_TSOM, year);
+  const [ninevehMonth, ninevehDay] = getNineveh(year);
+  const [apostlesMonth, apostlesDay] = getFeast(FEAST_TSOME_HAWARIAT, year);
+
+  const beforeEaster = addEthiopianDays({ year, month: tinsaeMonth, day: tinsaeDay }, -1);
+  if (
+    compareEthiopian(current, { year, month: hosaenaMonth, day: hosaenaDay }) >= 0 &&
+    compareEthiopian(current, beforeEaster) <= 0
+  ) {
+    return 'holyWeek';
+  }
+
+  const ninevehEnd = addEthiopianDays({ year, month: ninevehMonth, day: ninevehDay }, NINEVEH_FAST_DAYS - 1);
+  if (
+    compareEthiopian(current, { year, month: ninevehMonth, day: ninevehDay }) >= 0 &&
+    compareEthiopian(current, ninevehEnd) <= 0
+  ) {
+    return 'nineveh';
+  }
+
+  const beforeHolyWeek = addEthiopianDays({ year, month: hosaenaMonth, day: hosaenaDay }, -1);
+  if (
+    compareEthiopian(current, { year, month: lentMonth, day: lentDay }) >= 0 &&
+    compareEthiopian(current, beforeHolyWeek) <= 0
+  ) {
+    return 'lent';
+  }
+
+  if (
+    isBetweenEthiopian(
+      current,
+      { month: tinsaeMonth, day: tinsaeDay },
+      { month: pentecostMonth, day: pentecostDay }
+    )
+  ) {
+    return 'easter';
+  }
+
+  if (current.month === ergetMonth && current.day === ergetDay) {
+    return 'ascension';
+  }
+
+  if (current.month === pentecostMonth && current.day === pentecostDay) {
+    return 'pentecost';
+  }
+
+  if (
+    isBetweenEthiopian(current, { month: apostlesMonth, day: apostlesDay }, { month: MONTH_SENE, day: 27 })
+  ) {
+    return 'apostlesFast';
+  }
+
+  if (isBetweenEthiopian(current, { month: 12, day: 1 }, { month: 12, day: 16 })) {
+    return 'marysFast';
+  }
+
+  if (isBetweenEthiopian(current, { month: 3, day: 15 }, { month: 4, day: 28 })) {
+    return 'advent';
+  }
+
+  if (isBetweenEthiopian(current, { month: 4, day: 29 }, { month: 5, day: 10 })) {
+    return 'christmas';
+  }
+
+  if (current.month === 5 && current.day === 11) {
+    return 'epiphany';
+  }
+
+  return 'ordinary';
+}
+
+/** Fast periods tracked separately for accent color and upcoming-fasts carousel. */
+const FAST_ONLY_BANNER_SEASONS: ReadonlySet<LiturgicalSeasonKey> = new Set([
+  'nineveh',
+  'apostlesFast',
+  'marysFast',
+]);
+
+export function getActiveFastSeason(date: Date): LiturgicalSeasonKey | null {
+  const season = getLiturgicalSeason(date);
+  return FAST_ONLY_BANNER_SEASONS.has(season) ? season : null;
+}
+
+function ethiopianPartsToDate(parts: EthiopianParts): Date {
+  const [gYear, gMonth, gDay] = toGregorian([parts.year, parts.month, parts.day]);
+  return new Date(gYear, gMonth - 1, gDay);
+}
+
+function ethiopianDayOffset(current: EthiopianParts, start: EthiopianParts): number {
+  const startMs = ethiopianPartsToDate(start).getTime();
+  const currentMs = ethiopianPartsToDate(current).getTime();
+  return Math.floor((currentMs - startMs) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function ethiopianInclusiveSpan(start: EthiopianParts, end: EthiopianParts): number {
+  return ethiopianDayOffset(end, start);
+}
+
+export type SeasonBannerMeta = {
+  bannerSeason: LiturgicalSeasonKey;
+  activeFastSeason: LiturgicalSeasonKey | null;
+  subtitle: string | null;
+  showFastingBadge: boolean;
+};
+
+export function getSeasonBannerMeta(date: Date): SeasonBannerMeta {
+  const current = gregorianToEthiopian(date);
+  const year = current.year;
+  const actualSeason = getLiturgicalSeason(date);
+  const activeFast = getActiveFastSeason(date);
+  const bannerSeason = actualSeason;
+  const isFasting = getDayInfo(date).isFasting;
+
+  let subtitle: string | null = null;
+
+  if (actualSeason === 'lent') {
+    const [lentMonth, lentDay] = getFeast(FEAST_ABIY_TSOM, year);
+    const lentStart = { year, month: lentMonth, day: lentDay };
+    const dayNum = ethiopianDayOffset(current, lentStart);
+    subtitle = `${LENT_DAYS}-day fast · Day ${dayNum} of ${LENT_DAYS}`;
+  } else if (actualSeason === 'advent') {
+    const adventStart = { year, month: 3, day: 15 };
+    const dayNum = ethiopianDayOffset(current, adventStart);
+    subtitle = `40-day fast · Day ${dayNum} of 40`;
+  } else if (actualSeason === 'marysFast') {
+    const marysStart = { year, month: 12, day: 1 };
+    const dayNum = ethiopianDayOffset(current, marysStart);
+    subtitle = `16-day fast · Day ${dayNum} of 16`;
+  } else if (actualSeason === 'apostlesFast') {
+    const [apostlesMonth, apostlesDay] = getFeast(FEAST_TSOME_HAWARIAT, year);
+    const apostlesStart = { year, month: apostlesMonth, day: apostlesDay };
+    const apostlesEnd = { year, month: MONTH_SENE, day: 27 };
+    const dayNum = ethiopianDayOffset(current, apostlesStart);
+    const total = ethiopianInclusiveSpan(apostlesStart, apostlesEnd);
+    subtitle = `${total}-day fast · Day ${dayNum} of ${total}`;
+  } else if (actualSeason === 'nineveh') {
+    subtitle = '3-day fast · Fast of Nineveh';
+  } else if (actualSeason === 'holyWeek') {
+    subtitle = 'Holy Week · Himamat';
+  } else if (actualSeason === 'easter') {
+    const [tinsaeMonth, tinsaeDay] = getFeast(FEAST_TINSAE, year);
+    const [pentecostMonth, pentecostDay] = getFeast(FEAST_PERAQLITOS, year);
+    const dayNum = ethiopianDayOffset(current, { year, month: tinsaeMonth, day: tinsaeDay });
+    const total = ethiopianInclusiveSpan(
+      { year, month: tinsaeMonth, day: tinsaeDay },
+      { year, month: pentecostMonth, day: pentecostDay }
+    );
+    subtitle = `50-day season · Day ${dayNum} of ${total}`;
+  }
+
+  return {
+    bannerSeason,
+    activeFastSeason: activeFast,
+    subtitle,
+    showFastingBadge: isFasting,
+  };
+}
+
+export type UpcomingFastPeriod = {
+  key: LiturgicalSeasonKey;
+  name: string;
+  nameAm: string;
+  startDate: Date;
+  endDate: Date;
+  daysRemaining: number;
+  isActive: boolean;
+};
+
+function buildFastPeriod(
+  key: LiturgicalSeasonKey,
+  name: string,
+  nameAm: string,
+  start: EthiopianParts,
+  end: EthiopianParts
+): UpcomingFastPeriod {
+  const startDate = ethiopianPartsToDate(start);
+  const endDate = ethiopianPartsToDate(end);
+  return { key, name, nameAm, startDate, endDate, daysRemaining: 0, isActive: false };
+}
+
+function fastPeriodsForEthYear(ethYear: number): UpcomingFastPeriod[] {
+  const [ninevehMonth, ninevehDay] = getNineveh(ethYear);
+  const [lentMonth, lentDay] = getFeast(FEAST_ABIY_TSOM, ethYear);
+  const [hosaenaMonth, hosaenaDay] = getFeast(FEAST_HOSAENA, ethYear);
+  const [apostlesMonth, apostlesDay] = getFeast(FEAST_TSOME_HAWARIAT, ethYear);
+
+  const lentStart = { year: ethYear, month: lentMonth, day: lentDay };
+  const lentEnd = addEthiopianDays(lentStart, LENT_DAYS - 1);
+  const ninevehStart = { year: ethYear, month: ninevehMonth, day: ninevehDay };
+  const ninevehEnd = addEthiopianDays(ninevehStart, NINEVEH_FAST_DAYS - 1);
+  const holyWeekStart = { year: ethYear, month: hosaenaMonth, day: hosaenaDay };
+  const [tinsaeMonth, tinsaeDay] = getFeast(FEAST_TINSAE, ethYear);
+  const holyWeekEnd = addEthiopianDays({ year: ethYear, month: tinsaeMonth, day: tinsaeDay }, -1);
+  const apostlesStart = { year: ethYear, month: apostlesMonth, day: apostlesDay };
+  const apostlesEnd = { year: ethYear, month: MONTH_SENE, day: 27 };
+  const marysStart = { year: ethYear, month: 12, day: 1 };
+  const marysEnd = { year: ethYear, month: 12, day: 16 };
+  const adventStart = { year: ethYear, month: 3, day: 15 };
+  const adventEnd = { year: ethYear, month: 4, day: 28 };
+
+  return [
+    buildFastPeriod('nineveh', 'Fast of Nineveh', 'ጾመ ነነዌ', ninevehStart, ninevehEnd),
+    buildFastPeriod('lent', 'Great Lent (Hudadi)', 'ዐቢይ ጾም', lentStart, lentEnd),
+    buildFastPeriod('holyWeek', 'Holy Week (Himamat)', 'ሰሙነ ሕማማት', holyWeekStart, holyWeekEnd),
+    buildFastPeriod('apostlesFast', 'Fast of the Apostles', 'ጾመ ሐዋርያት', apostlesStart, apostlesEnd),
+    buildFastPeriod('marysFast', 'Fast of Mary (Filseta)', 'ጾመ ፍልሰታ', marysStart, marysEnd),
+    buildFastPeriod('advent', 'Advent Fast', 'ጾመ ነቢያት', adventStart, adventEnd),
+  ];
+}
+
+export function getUpcomingFasts(count = 4, fromDate = new Date()): UpcomingFastPeriod[] {
+  const today = new Date(fromDate);
+  today.setHours(0, 0, 0, 0);
+  const eth = gregorianToEthiopian(today);
+
+  const periods = [...fastPeriodsForEthYear(eth.year), ...fastPeriodsForEthYear(eth.year + 1)];
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const enriched = periods.map((period) => {
+    const start = new Date(period.startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(period.endDate);
+    end.setHours(23, 59, 59, 999);
+    const isActive = today >= start && today <= end;
+    const daysRemaining = isActive
+      ? 0
+      : Math.max(0, Math.ceil((start.getTime() - today.getTime()) / msPerDay));
+    return { ...period, isActive, daysRemaining };
+  });
+
+  const active = enriched.filter((p) => p.isActive);
+  const upcoming = enriched
+    .filter((p) => !p.isActive && p.startDate >= today)
+    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+
+  const seen = new Set<string>();
+  const result: UpcomingFastPeriod[] = [];
+
+  for (const period of [...active, ...upcoming]) {
+    const dedupeKey = `${period.key}-${period.startDate.toISOString()}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    result.push(period);
+    if (result.length >= count) break;
+  }
+
+  return result;
+}
+
+export function getEthiopianMonthsInGregorianMonth(
+  year: number,
+  month: number
+): { monthNames: string[]; ethYear: number } {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthSet = new Set<number>();
+  let ethYear = 0;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const info = getDayInfo(new Date(year, month, day));
+    monthSet.add(info.ethiopianDate.month);
+    ethYear = info.ethiopianDate.year;
+  }
+
+  const monthNames = Array.from(monthSet)
+    .sort((a, b) => a - b)
+    .map((m) => ETHIOPIAN_MONTH_NAMES_EN[m] ?? '')
+    .filter(Boolean);
+
+  return { monthNames, ethYear };
+}
+
+export function formatEthiopianDateLong(eth: EthiopianDateInfo): string {
+  return `${eth.monthName} ${eth.day}, ${eth.year} E.C.`;
+}

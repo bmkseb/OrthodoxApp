@@ -1,104 +1,129 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { Icon } from '@/components/Icon';
-import { getDayInfo } from '@/data/orthodoxCalendar';
-import { BorderRadius, Layout, Opacity, Palette, Space } from '@/constants/theme';
+import { CALENDAR_VISUAL } from '@/lib/calendar-visual';
+import { getDayInfo } from '@/lib/eotc-liturgical-calendar';
+import { BorderRadius, Palette, Space } from '@/constants/theme';
 
-const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const SWIPE_DISTANCE = 48;
 const SWIPE_VELOCITY = 500;
+const FAST_COLUMNS = new Set([3, 5]);
+
+const COLORS = CALENDAR_VISUAL;
+
+type DayVisual = {
+  feastBg?: string;
+  dotColor?: string;
+};
+
+function getDayVisual(info: ReturnType<typeof getDayInfo>): DayVisual {
+  const majorLord = info.feasts.some(
+    (f) => f.isMajor && (f.type === 'lord' || f.type === 'new_year')
+  );
+  const majorMary = info.feasts.some((f) => f.isMajor && f.type === 'mary');
+  const hasMary = info.feasts.some((f) => f.type === 'mary');
+  const hasAngel = info.feasts.some((f) => f.type === 'angel');
+  const hasFeast = info.feasts.length > 0;
+
+  if (majorLord) return { feastBg: COLORS.majorLordBg, dotColor: COLORS.dotGold };
+  if (majorMary) return { feastBg: COLORS.majorMaryBg, dotColor: COLORS.dotBlue };
+  if (hasMary) return { feastBg: COLORS.majorMaryBg, dotColor: COLORS.dotBlue };
+  if (hasAngel) return { dotColor: COLORS.dotPurple };
+  if (hasFeast && info.isFasting) return { dotColor: COLORS.dotGrey };
+  if (info.isFasting) return { dotColor: COLORS.dotGrey };
+  if (hasFeast) return { dotColor: COLORS.dotGold };
+
+  return {};
+}
+
+function formatEthDayLabel(info: ReturnType<typeof getDayInfo>): string {
+  if (info.ethiopianDate.day === 1) {
+    return `${info.ethiopianDate.monthName} ${info.ethiopianDate.day}`;
+  }
+  return String(info.ethiopianDate.day);
+}
 
 type CalendarMonthGridProps = {
   year: number;
   month: number;
   today: { year: number; month: number; day: number };
+  gregorianMonthLabel: string;
+  ethiopianMonthLabel: string;
   onSelectDay: (day: number) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onPrevYear: () => void;
   onNextYear: () => void;
-  onGoToToday: () => void;
-  isViewingToday: boolean;
-  todayLabel: string;
-  monthLabel: string;
 };
+
+function NavSquare({
+  onPress,
+  label,
+  children,
+}: {
+  onPress: () => void;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <OrthodoxPressable onPress={onPress} style={styles.navSquare} accessibilityLabel={label}>
+      {children}
+    </OrthodoxPressable>
+  );
+}
 
 function DayCell({
   day,
   year,
   month,
+  column,
   isToday,
   onPress,
-  pulseMajor,
 }: {
   day: number;
   year: number;
   month: number;
+  column: number;
   isToday: boolean;
   onPress: () => void;
-  pulseMajor: boolean;
 }) {
-  const info = getDayInfo(year, month, day);
-  const isMajor = !!info.majorFeast;
-  const isFeast = info.hasFeast || info.hasMarian;
-  const showCross = isMajor;
-  const showFeastRing = isFeast || isMajor;
-
-  const pulse = useSharedValue(1);
-
-  useEffect(() => {
-    if (pulseMajor && isMajor) {
-      pulse.value = withRepeat(
-        withSequence(
-          withTiming(1.08, { duration: 900, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) })
-        ),
-        -1,
-        false
-      );
-    } else {
-      pulse.value = 1;
-    }
-  }, [pulseMajor, isMajor, pulse]);
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-  }));
+  const info = getDayInfo(new Date(year, month, day));
+  const visual = getDayVisual(info);
+  const isFastColumn = FAST_COLUMNS.has(column);
 
   return (
-    <OrthodoxPressable style={styles.dayCell} onPress={onPress} haptic={false}>
-      <Animated.View style={[styles.dayInner, pulseStyle]}>
-        {showCross ? <Text style={styles.feastCross}>☩</Text> : <View style={styles.crossSpacer} />}
-        <View
-          style={[
-            styles.dayCircle,
-            showFeastRing && !isToday && styles.dayFeastRing,
-            isToday && styles.dayTodayFill,
-          ]}>
-          <Text
-            style={[
-              styles.dayText,
-              info.fasting && !isToday && styles.dayFasting,
-              isToday && styles.dayTextToday,
-            ]}>
-            {day}
-          </Text>
+    <OrthodoxPressable
+      style={[styles.dayCell, isFastColumn && styles.fastColumnCell]}
+      onPress={onPress}
+      haptic={false}>
+      <View
+        style={[
+          styles.dayBox,
+          visual.feastBg ? { backgroundColor: visual.feastBg } : null,
+          isToday && styles.dayTodayRing,
+        ]}>
+        <Text style={[styles.dayGregorian, isToday && styles.dayTextToday]}>{day}</Text>
+        <Text
+          style={[styles.dayEthiopian, isToday && styles.dayEthiopianToday]}
+          numberOfLines={1}>
+          {formatEthDayLabel(info)}
+        </Text>
+        <View style={styles.dotSlot}>
+          {visual.dotColor ? <View style={[styles.dot, { backgroundColor: visual.dotColor }]} /> : null}
         </View>
-      </Animated.View>
+      </View>
     </OrthodoxPressable>
   );
 }
@@ -107,25 +132,23 @@ export function CalendarMonthGrid({
   year,
   month,
   today,
+  gregorianMonthLabel,
+  ethiopianMonthLabel,
   onSelectDay,
   onPrevMonth,
   onNextMonth,
   onPrevYear,
   onNextYear,
-  onGoToToday,
-  isViewingToday,
-  todayLabel,
-  monthLabel,
 }: CalendarMonthGridProps) {
   const slideX = useSharedValue(0);
   const dragX = useSharedValue(0);
   const opacity = useSharedValue(1);
 
   useEffect(() => {
-    slideX.value = 12;
+    slideX.value = 10;
     opacity.value = 0;
-    slideX.value = withTiming(0, { duration: 280 });
-    opacity.value = withTiming(1, { duration: 280 });
+    slideX.value = withTiming(0, { duration: 220 });
+    opacity.value = withTiming(1, { duration: 220 });
   }, [year, month, slideX, opacity]);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -133,34 +156,22 @@ export function CalendarMonthGrid({
     transform: [{ translateX: slideX.value + dragX.value }],
   }));
 
-  const handlePrev = () => {
+  const bump = (fn: () => void) => {
     Haptics.selectionAsync();
-    onPrevMonth();
-  };
-
-  const handleNext = () => {
-    Haptics.selectionAsync();
-    onNextMonth();
+    fn();
   };
 
   const monthSwipe = Gesture.Pan()
     .activeOffsetX([-20, 20])
     .failOffsetY([-18, 18])
     .onUpdate((event) => {
-      dragX.value = event.translationX * 0.45;
+      dragX.value = event.translationX * 0.4;
     })
     .onEnd((event) => {
-      const goNext =
-        event.translationX < -SWIPE_DISTANCE || event.velocityX < -SWIPE_VELOCITY;
-      const goPrev =
-        event.translationX > SWIPE_DISTANCE || event.velocityX > SWIPE_VELOCITY;
-
-      if (goNext) {
-        runOnJS(handleNext)();
-      } else if (goPrev) {
-        runOnJS(handlePrev)();
-      }
-
+      const goNext = event.translationX < -SWIPE_DISTANCE || event.velocityX < -SWIPE_VELOCITY;
+      const goPrev = event.translationX > SWIPE_DISTANCE || event.velocityX > SWIPE_VELOCITY;
+      if (goNext) runOnJS(bump)(onNextMonth);
+      else if (goPrev) runOnJS(bump)(onPrevMonth);
       dragX.value = withSpring(0, { damping: 22, stiffness: 320 });
     })
     .onFinalize(() => {
@@ -186,231 +197,201 @@ export function CalendarMonthGrid({
     weeks.push(week);
   }
 
-  const handlePrevYear = () => {
-    Haptics.selectionAsync();
-    onPrevYear();
-  };
-
-  const handleNextYear = () => {
-    Haptics.selectionAsync();
-    onNextYear();
-  };
-
-  const handleGoToToday = () => {
-    if (isViewingToday) return;
-    Haptics.selectionAsync();
-    onGoToToday();
-  };
-
   const isCurrentMonth = today.year === year && today.month === month;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.monthHeader}>
-        <View style={styles.navGroup}>
-          <OrthodoxPressable
-            onPress={handlePrevYear}
-            style={styles.navBtn}
-            accessibilityLabel="Previous year">
+        <View style={styles.navCluster}>
+          <NavSquare onPress={() => bump(onPrevYear)} label="Previous year">
             <Text style={styles.yearSkip}>«</Text>
-          </OrthodoxPressable>
-          <OrthodoxPressable
-            onPress={handlePrev}
-            style={styles.navBtn}
-            accessibilityLabel="Previous month">
-            <Icon name="chevron-left" size={22} color={Palette.gold} />
-          </OrthodoxPressable>
+          </NavSquare>
+          <NavSquare onPress={() => bump(onPrevMonth)} label="Previous month">
+            <Icon name="chevron-left" size={18} color={Palette.text} />
+          </NavSquare>
         </View>
 
-        <Text style={styles.monthTitle}>{monthLabel}</Text>
+        <View style={styles.monthCenter}>
+          <Text style={styles.gregorianTitle}>{gregorianMonthLabel}</Text>
+          <Text style={styles.ethiopianTitle}>{ethiopianMonthLabel}</Text>
+        </View>
 
-        <View style={styles.navGroup}>
-          <OrthodoxPressable
-            onPress={handleNext}
-            style={styles.navBtn}
-            accessibilityLabel="Next month">
-            <Icon name="chevron-right" size={22} color={Palette.gold} />
-          </OrthodoxPressable>
-          <OrthodoxPressable
-            onPress={handleNextYear}
-            style={styles.navBtn}
-            accessibilityLabel="Next year">
+        <View style={styles.navCluster}>
+          <NavSquare onPress={() => bump(onNextMonth)} label="Next month">
+            <Icon name="chevron-right" size={18} color={Palette.text} />
+          </NavSquare>
+          <NavSquare onPress={() => bump(onNextYear)} label="Next year">
             <Text style={styles.yearSkip}>»</Text>
-          </OrthodoxPressable>
+          </NavSquare>
         </View>
       </View>
 
-      <OrthodoxPressable
-        onPress={handleGoToToday}
-        style={[styles.todayBtn, isViewingToday && styles.todayBtnActive]}
-        accessibilityLabel={todayLabel}
-        accessibilityState={{ disabled: isViewingToday }}>
-        <Icon name="calendar" size={11} color={isViewingToday ? Palette.background : Palette.gold} />
-        <Text style={[styles.todayBtnText, isViewingToday && styles.todayBtnTextActive]}>
-          {todayLabel}
-        </Text>
-      </OrthodoxPressable>
-
-      <GestureDetector gesture={monthSwipe}>
-        <Animated.View style={styles.swipeArea}>
-          <View style={styles.weekdayRow}>
-            {WEEKDAYS.map((label) => (
-              <Text key={label} style={styles.weekdayLabel}>
-                {label}
-              </Text>
-            ))}
-          </View>
-
+      <View style={styles.card}>
+        <GestureDetector gesture={monthSwipe}>
           <Animated.View style={animStyle}>
+            <View style={styles.weekdayRow}>
+              {WEEKDAYS.map((label, col) => (
+                <View
+                  key={label}
+                  style={[styles.weekdayCell, FAST_COLUMNS.has(col) && styles.fastColumnCell]}>
+                  <Text style={styles.weekdayLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+
             {weeks.map((week, wi) => (
               <View key={`w-${wi}`} style={styles.weekRow}>
-                {week.map((dayNum, di) =>
+                {week.map((dayNum, col) =>
                   dayNum !== null ? (
                     <DayCell
                       key={`d-${dayNum}`}
                       day={dayNum}
                       year={year}
                       month={month}
+                      column={col}
                       isToday={isCurrentMonth && dayNum === today.day}
                       onPress={() => onSelectDay(dayNum)}
-                      pulseMajor={isCurrentMonth}
                     />
                   ) : (
-                    <View key={`e-${wi}-${di}`} style={styles.dayCell} />
+                    <View
+                      key={`e-${wi}-${col}`}
+                      style={[styles.dayCell, FAST_COLUMNS.has(col) && styles.fastColumnCell]}
+                    />
                   )
                 )}
               </View>
             ))}
           </Animated.View>
-        </Animated.View>
-      </GestureDetector>
+        </GestureDetector>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: Layout.sectionGap,
+    marginBottom: Space.s8,
   },
   monthHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Space.s8,
+    marginBottom: Space.s12,
   },
-  navGroup: {
+  navCluster: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: Space.s4,
   },
-  navBtn: {
-    padding: 8,
-    minWidth: 36,
+  navSquare: {
+    width: 34,
+    height: 34,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   yearSkip: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '600',
-    color: Palette.gold,
-    lineHeight: 24,
+    color: Palette.text,
+    lineHeight: 20,
   },
-  monthTitle: {
+  monthCenter: {
     flex: 1,
-    textAlign: 'center',
-    fontSize: 20,
-    fontWeight: '600',
+    alignItems: 'center',
+    paddingHorizontal: Space.s8,
+  },
+  gregorianTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     color: Palette.text,
     letterSpacing: -0.3,
   },
-  todayBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    gap: 5,
-    paddingHorizontal: Space.s12,
-    paddingVertical: 5,
-    marginBottom: Space.s8,
-    borderRadius: BorderRadius.full,
+  ethiopianTitle: {
+    fontSize: 12,
+    color: Palette.muted,
+    marginTop: 2,
+  },
+  card: {
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: `rgba(201, 147, 58, ${Opacity.goldBorder})`,
-    backgroundColor: 'rgba(201, 147, 58, 0.08)',
-  },
-  todayBtnActive: {
-    backgroundColor: Palette.gold,
-    borderColor: Palette.gold,
-  },
-  todayBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Palette.gold,
-    letterSpacing: 0.2,
-  },
-  todayBtnTextActive: {
-    color: Palette.background,
-  },
-  swipeArea: {
-    flexGrow: 0,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingTop: Space.s8,
+    paddingBottom: Space.s8,
   },
   weekdayRow: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: Space.s4,
+  },
+  weekdayCell: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: Space.s4,
   },
   weekdayLabel: {
-    flex: 1,
-    textAlign: 'center',
     fontSize: 11,
     fontWeight: '600',
-    letterSpacing: 1,
-    color: '#FFFFFF',
+    color: Palette.muted,
   },
   weekRow: {
     flexDirection: 'row',
   },
+  fastColumnCell: {
+    backgroundColor: COLORS.fastColumn,
+  },
   dayCell: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 6,
-    minHeight: 52,
+    paddingVertical: 2,
+    minHeight: 58,
   },
-  dayInner: {
+  dayBox: {
+    width: 42,
+    minHeight: 54,
+    borderRadius: BorderRadius.sm,
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 4,
+    paddingBottom: 2,
   },
-  feastCross: {
-    fontSize: 8,
-    color: Palette.gold,
-    lineHeight: 10,
-    marginBottom: 2,
-  },
-  crossSpacer: {
-    height: 10,
-    marginBottom: 2,
-  },
-  dayCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  dayFeastRing: {
-    borderWidth: 2,
+  dayTodayRing: {
+    borderWidth: 1.5,
     borderColor: Palette.gold,
-    backgroundColor: 'transparent',
   },
-  dayTodayFill: {
-    backgroundColor: Palette.gold,
+  dayGregorian: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Palette.text,
+    lineHeight: 18,
   },
-  dayText: {
-    fontSize: 14,
+  dayEthiopian: {
+    fontSize: 9,
     fontWeight: '500',
-    color: '#FFFFFF',
-  },
-  dayFasting: {
-    color: Palette.gold,
+    color: Palette.muted,
+    lineHeight: 11,
+    marginTop: 2,
+    maxWidth: 40,
+    textAlign: 'center',
   },
   dayTextToday: {
-    color: Palette.background,
-    fontWeight: '700',
+    color: Palette.gold,
+  },
+  dayEthiopianToday: {
+    color: Palette.gold,
+  },
+  dotSlot: {
+    height: 8,
+    marginTop: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
 });

@@ -9,7 +9,7 @@ import { BilingualHeader } from '@/components/ui/bilingual-header';
 import { SacredImage } from '@/components/ui/sacred-image';
 import { useTranslation } from '@/hooks/use-translation';
 import { UpcomingFeast } from '@/data/orthodoxCalendar';
-import { Layout, Opacity, Palette } from '@/constants/theme';
+import { Layout, Opacity, Palette, Space } from '@/constants/theme';
 
 type UpcomingFeastsProps = {
   feasts: UpcomingFeast[];
@@ -66,7 +66,9 @@ export const UpcomingFeasts = memo(function UpcomingFeasts({ feasts, onPressFeas
 });
 
 const styles = StyleSheet.create({
-  wrap: {},
+  wrap: {
+    marginTop: Space.s24,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
