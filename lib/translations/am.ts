@@ -142,6 +142,7 @@ const am = {
     yaredPlaylistComingSoonHint: 'ለዚህ ስብስብ መዝሙሮች እዚህ ይታያሉ።',
   },
   calendar: {
+    catalog: 'የቀን መቁጠሪያ ስብስብ',
     searchPlaceholder: 'ቀኖችን ይፈልጉ',
     all: 'ሁሉ',
     feasts: 'በዓላት',
@@ -162,6 +163,62 @@ const am = {
     daysRemaining: 'በ{{count}} ቀን',
     fastInProgress: 'በመካሄድ ላይ',
     shareReading: 'የዛሬ ንባብ ያጋሩ',
+    noFastingToday: 'ዛሬ ጾም የለም',
+    noFastingRequired: 'በዚህ ቀን ጾም አያስፈልግም።',
+    easterSuspendedFasting: 'በትንሣኤ ወቅት የረቡዕና የአርብ ጾም ተሰናክሏል።',
+    fastingWithReason: 'ጾም — {{reason}}',
+    monthlyFeast: 'ወርሃዊ በዓል',
+    readings: 'ንባቦች',
+    qidaseEpistle: 'ቅዳሴ — መልእክት',
+    qidaseCatholicEpistle: 'ቅዳሴ — ካቶሊክ መልእክት',
+    qidaseActs: 'ቅዳሴ — ሐዋርያት',
+    qidasePsalm: 'ቅዳሴ — መዝሙር',
+    qidaseGospel: 'ቅዳሴ — ወንጌል',
+    previousDay: 'ቀዳሚ ቀን',
+    nextDay: 'ቀጣይ ቀን',
+    infoAccessibility: 'የቀን መቁጠሪያ እና የሊቁርጊካል ዓመት መረጃ',
+    fastDayProgress: '{{total}} ቀን ጾም · {{current}}ኛ ከ{{total}}',
+    seasonDayProgress: '{{total}} ቀን ወቅት · {{current}}ኛ ከ{{total}}',
+    ninevehSubtitle: '3 ቀን ጾም · ጾመ ነነዌ',
+    holyWeekSubtitle: 'ሰሙነ ሕማማት',
+    infoTitle: 'የሃይማኖት በዓላት እና ቀን መቁጠሪያ',
+    infoSubtitle: 'የሊቁርጊካል ዓመት',
+    calendarKey: 'የቀን መቁጠሪያ ቁልፍ',
+    ethiopianMonths: 'የኢትዮጵያ ወሮች',
+    daysOfWeek: 'የሳምንት ቀናት',
+    monthlyFeastDays: 'ወርሃዊ የበዓል ቀናት',
+    nationalFeasts: 'ብሔራዊ እና ሃይማኖታዊ በዓላት',
+    liturgicalYear: 'የሊቁርጊካል ዓመት',
+    close: 'ዝጋ',
+    legendDayLabels: 'የቀን ምልክቶች',
+    legendDayLabelsDetail:
+      'ላይ የግሪጎሪያን ቀን፤ ታች የኢትዮጵያ ቀን። የኢትዮጵያ ወር መጀመሪያ ላይ የወሩ ስም ከቀን ጋር ይታያል።',
+    legendMajorLord: 'ዐቢይ በዓል ክርስቶስ',
+    legendMajorLordDetail:
+      'ወርህብ ወርቃማ ቀለም በቀን ላይ (በተከታዩ ቀናት የሚገናኝ) እና ወርቃማ ነጥብ። ገና፣ ፋሲካ፣ ጥምቀት፣ መስቀል እና ሌሎች ዐቢይ በዓላት።',
+    legendMajorMary: 'ዐቢይ የማርያም በዓል',
+    legendMajorMaryDetail:
+      'ሰማያዊ ቀለም በቀን ላይ እና ሰማያዊ ነጥብ። ፍልሰታ፣ ኪዳነ ምሕረት እና ሌሎች ዐቢይ የእመቤታችን በዓላት።',
+    legendMarian: 'የማርያም ቀን',
+    legendMarianDetail:
+      'ሰማያዊ ነጥብ ብቻ — በየወሩ 21ኛ የእመቤታችን ሞት ወይም በሰማይ ልደት ይታሰባል፤ ሌሎች የማርያም ቀኖችም አሉ።',
+    legendAngel: 'የመልአክ በዓል',
+    legendAngelDetail:
+      'ሐምራዊ ነጥብ — ቅዱስ ሚካኤል (የወሩ 12ኛ)፣ ቅዱስ ገብርኤል እና ሌሎች የመልአክ ቀኖች።',
+    legendOtherFeast: 'ሌላ በዓል ወይም ቅዱስ',
+    legendOtherFeastDetail:
+      'ወርቃማ ነጥብ — ቅድስት ሥላሴ (7ኛ)፣ የቅዱሳን ቀኖች እና ሌሎች ወርሃዊ ቀኖች።',
+    legendSeasonalFast: 'የወቅት ጾም',
+    legendSeasonalFastDetail:
+      'ለአቢይ ጾም፣ ጾመ ነቢያት፣ ጾመ ነነዌ፣ ጾመ ሐዋርያት ወይም ጾመ ፍልሰታ ተከታዩ ቀናት የሚገናኝ ለስላሳ ወርቃማ ቀለም። በዓል ሲኖር ወርቃማ ነጥብ አይታይም።',
+    legendWedFri: 'ረቡዕ እና አርብ',
+    legendWedFriDetail:
+      'ቋሚ የሳምንት ጾም ለረቡዕና አርብ የግራጫ ምሰሶ። ምሰሶው ሙሉ ወር ይሰፍራል፤ በሳምንቱ ረገዶች መካከል ትንሽ ክፍተት አለ።',
+    legendFeastOnFast: 'በዓል በጾም ውስጥ',
+    legendFeastOnFastDetail:
+      'በዓል በጾም ወቅት ሲደርስ የበዓሉ ቀለምና ነጥብ የጾም ቀለምን ይተኩፋል።',
+    legendTodayDetail:
+      'ዛሬ ቀን በወርቅ ዙርያ የተከበበ ሲሆን የግሪጎሪያንና የኢትዮጵያ ቁጥሮች ወርቅ ይሆናሉ።',
   },
   catalog: {
     searchPlaceholder: 'መጽሐፍ ቅዱስን ይፈልጉ',

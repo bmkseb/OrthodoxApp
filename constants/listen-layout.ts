@@ -17,6 +17,14 @@ export const LISTEN_RAIL_SCROLL_CONTENT = {
   paddingRight: Layout.pagePadding,
 } as const;
 
+/** Full row height for catalog playlist rails (thumbnail + title + subtitle). */
+export const LISTEN_CATALOG_RAIL_ROW_HEIGHT =
+  LISTEN_RAIL_FRAME.height +
+  LISTEN_RAIL_FRAME.gap +
+  17 * 2 +
+  2 +
+  13;
+
 /** Netflix-style ranked hymn rail — fixed rank column keeps thumbnails aligned. */
 export const LISTEN_RANKED_RAIL = {
   rankColumnWidth: 44,

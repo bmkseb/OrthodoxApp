@@ -2,8 +2,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { useTranslation } from '@/hooks/use-translation';
 import { SEASONS } from '@/lib/calendar-content';
-import { getSeasonBannerMeta } from '@/lib/eotc-liturgical-calendar';
+import { seasonBannerLabels } from '@/lib/calendar-i18n';
+import { getSeasonBannerMeta, type SeasonBannerSubtitle } from '@/lib/eotc-liturgical-calendar';
+import type { TranslationKey } from '@/lib/translations';
 import { BorderRadius, Opacity, Palette, Space } from '@/constants/theme';
 
 const BANNER_GRADIENT = ['#3A2F28', '#2A221C', '#1C1712'] as const;
@@ -13,10 +16,28 @@ type SeasonBannerProps = {
   onOpenLegend?: () => void;
 };
 
+function formatBannerSubtitle(
+  subtitle: SeasonBannerSubtitle,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string
+): string {
+  switch (subtitle.kind) {
+    case 'fast':
+      return t('calendar.fastDayProgress', { total: subtitle.total, current: subtitle.current });
+    case 'season':
+      return t('calendar.seasonDayProgress', { total: subtitle.total, current: subtitle.current });
+    case 'nineveh':
+      return t('calendar.ninevehSubtitle');
+    case 'holyWeek':
+      return t('calendar.holyWeekSubtitle');
+  }
+}
+
 export function SeasonBanner({ date = new Date(), onOpenLegend }: SeasonBannerProps) {
+  const { t, mode } = useTranslation();
   const meta = getSeasonBannerMeta(date);
   const season = SEASONS[meta.bannerSeason];
   const accent = meta.activeFastSeason ? SEASONS[meta.activeFastSeason].color : season.color;
+  const labels = seasonBannerLabels(season, mode);
 
   return (
     <View style={styles.wrap}>
@@ -29,9 +50,13 @@ export function SeasonBanner({ date = new Date(), onOpenLegend }: SeasonBannerPr
 
         <View style={styles.body}>
           <View style={styles.copy}>
-            <Text style={styles.seasonName}>{season.name}</Text>
-            <Text style={styles.seasonEn}>{season.nameEn}</Text>
-            {meta.subtitle ? <Text style={styles.subtitle}>{meta.subtitle}</Text> : null}
+            <Text style={styles.seasonName}>{labels.primary}</Text>
+            {labels.secondary ? (
+              <Text style={styles.seasonAlias}>{labels.secondary}</Text>
+            ) : null}
+            {meta.subtitle ? (
+              <Text style={styles.subtitle}>{formatBannerSubtitle(meta.subtitle, t)}</Text>
+            ) : null}
           </View>
 
           <View style={styles.actions}>
@@ -39,13 +64,13 @@ export function SeasonBanner({ date = new Date(), onOpenLegend }: SeasonBannerPr
               <OrthodoxPressable
                 onPress={onOpenLegend}
                 style={styles.infoBtn}
-                accessibilityLabel="Calendar and liturgical year information">
+                accessibilityLabel={t('calendar.infoAccessibility')}>
                 <Text style={styles.infoIcon}>ⓘ</Text>
               </OrthodoxPressable>
             ) : null}
             {meta.showFastingBadge ? (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>Fasting</Text>
+                <Text style={styles.badgeText}>{t('calendar.fasting')}</Text>
               </View>
             ) : null}
           </View>
@@ -57,7 +82,6 @@ export function SeasonBanner({ date = new Date(), onOpenLegend }: SeasonBannerPr
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: Space.s12,
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
     borderWidth: 1,
@@ -67,7 +91,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     paddingVertical: Space.s16,
     paddingHorizontal: Space.s16,
-    paddingLeft: Space.s20,
+    paddingLeft: Space.s16,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -96,10 +120,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     marginBottom: 2,
   },
-  seasonEn: {
+  seasonAlias: {
     fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(201, 147, 58, 0.85)',
+    color: Palette.gold,
     marginBottom: Space.s4,
   },
   subtitle: {

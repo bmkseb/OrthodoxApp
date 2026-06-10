@@ -42,9 +42,10 @@ export function FloatingMiniPlayer() {
   const progress = duration > 0 ? position / duration : 0;
   const copy = currentTrack ? resolvePlayerCopyFromTrack(mode, currentTrack) : null;
 
-  const navBarTop = onTabs
+  const tabBarTop = onTabs
     ? getTabBarBottom(insets) + FloatingBottom.tabBarHeight
     : insets.bottom + Space.s8;
+  const playerBottom = tabBarTop + FloatingBottom.miniPlayerGap;
   const slideOffset = FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap;
 
   const translateY = useSharedValue(slideOffset);
@@ -78,7 +79,7 @@ export function FloatingMiniPlayer() {
       style={[
         styles.clip,
         {
-          bottom: navBarTop,
+          bottom: playerBottom,
           left: FloatingBottom.horizontalMargin,
           right: FloatingBottom.horizontalMargin,
         },
@@ -93,11 +94,11 @@ export function FloatingMiniPlayer() {
             <BlurView
               intensity={72}
               tint="dark"
-              style={StyleSheet.absoluteFill}
+              style={styles.blurFill}
               pointerEvents="none"
             />
           ) : null}
-          <View style={styles.glass} pointerEvents="none" />
+          {Platform.OS === 'ios' ? <View style={styles.glass} pointerEvents="none" /> : null}
 
           <View style={styles.row}>
             <Pressable
@@ -148,19 +149,21 @@ export function FloatingMiniPlayer() {
 const styles = StyleSheet.create({
   clip: {
     position: 'absolute',
-    height: FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap,
+    height: FloatingBottom.miniPlayerHeight,
     overflow: 'hidden',
+    backgroundColor: 'transparent',
     zIndex: 1100,
     elevation: 1100,
   },
   slider: {
-    height: FloatingBottom.miniPlayerHeight + FloatingBottom.miniPlayerGap,
-    justifyContent: 'flex-start',
+    height: FloatingBottom.miniPlayerHeight,
+    backgroundColor: 'transparent',
   },
   pill: {
     height: FloatingBottom.miniPlayerHeight,
     borderRadius: FloatingBottom.miniPlayerRadius,
     overflow: 'hidden',
+    backgroundColor: Platform.OS === 'ios' ? 'transparent' : 'rgba(12, 10, 8, 0.92)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     borderTopWidth: 1,
@@ -184,9 +187,13 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: Palette.gold,
   },
+  blurFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: FloatingBottom.miniPlayerRadius,
+  },
   glass: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(12, 10, 8, 0.74)' : 'rgba(12, 10, 8, 0.92)',
+    backgroundColor: 'rgba(12, 10, 8, 0.74)',
   },
   row: {
     flex: 1,

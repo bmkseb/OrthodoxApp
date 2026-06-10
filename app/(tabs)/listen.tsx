@@ -82,7 +82,11 @@ import { userPlaylistArtistForKind } from '@/data/userPlaylists';
 import { useGlobalMezmurPlayStats } from '@/hooks/use-global-mezmur-play-stats';
 import { useMezmurPlayStats } from '@/hooks/use-mezmur-play-stats';
 import { useUserPlaylists } from '@/hooks/use-user-playlists';
-import { rankPopularMezmur, resolvePopularMezmurPlayStats } from '@/lib/mezmur-popularity';
+import {
+  rankPopularMezmur,
+  rankPopularSermons,
+  resolvePopularMezmurPlayStats,
+} from '@/lib/mezmur-popularity';
 import { userPlaylistCollageUris, userPlaylistCoverUri } from '@/lib/user-playlists';
 import { YARED_MELODY_SHELVES } from '@/data/yaredMelodiesCatalog';
 import { translate, type LanguageMode, type TranslationKey } from '@/lib/translations';
@@ -632,6 +636,17 @@ export default function ListenScreen() {
     }));
   }, [mezmurCatalog, popularMezmurPlayStats, playSong]);
 
+  const popularSermonsShelf = useMemo(() => {
+    return rankPopularSermons(mezmurCatalog, popularMezmurPlayStats, 10).map((entry) => ({
+      key: entry.song.videoId,
+      title: entry.song.title,
+      subtitle: entry.song.artist,
+      imageUri: entry.song.thumbnailUrl,
+      rank: entry.rank,
+      onPress: () => void playSong(entry.song, 'sermon'),
+    }));
+  }, [mezmurCatalog, popularMezmurPlayStats, playSong]);
+
   const playlistShelf = useMemo(() => {
     const playlistArtist = userPlaylistArtistForKind(savedKind);
     const isSermonTab = savedKind === 'sermon';
@@ -891,6 +906,11 @@ export default function ListenScreen() {
                       </>
                     ) : activeTab === 'sermons' ? (
                       <>
+                        <MezmurCatalogShelf
+                          title={t('listen.discover')}
+                          items={popularSermonsShelf}
+                          compactBottom
+                        />
                         <MezmurCatalogShelf
                           title={t('listen.mezmurPlaylistsShelf')}
                           items={playlistShelf.items}

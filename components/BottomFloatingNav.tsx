@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   glass: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(14, 12, 10, 0.76)' : 'rgba(14, 12, 10, 0.92)',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(14, 12, 10, 0.88)' : 'rgba(14, 12, 10, 0.94)',
   },
   capsule: {
     position: 'absolute',

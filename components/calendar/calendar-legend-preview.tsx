@@ -8,7 +8,10 @@ type CalendarLegendPreviewProps = {
   dotColor?: string;
   today?: boolean;
   fastColumn?: boolean;
+  fastSeason?: boolean;
   dayLabel?: string;
+  ethiopianLabel?: string;
+  todayOnCell?: boolean;
 };
 
 export function CalendarLegendPreview({
@@ -16,49 +19,74 @@ export function CalendarLegendPreview({
   dotColor,
   today = false,
   fastColumn = false,
+  fastSeason = false,
   dayLabel = '7',
+  ethiopianLabel = '7',
+  todayOnCell = false,
 }: CalendarLegendPreviewProps) {
   return (
-    <View style={[styles.wrap, fastColumn && styles.fastColumn]}>
-      <View
-        style={[
-          styles.dayBox,
-          feastBg ? { backgroundColor: feastBg } : null,
-          today && styles.todayRing,
-        ]}>
+    <View
+      style={[
+        styles.cell,
+        todayOnCell && styles.todayCellRing,
+        fastColumn && styles.fastColumn,
+        fastSeason && !feastBg && styles.fastSeasonCell,
+        feastBg ? { backgroundColor: feastBg } : null,
+      ]}>
+      <View style={[styles.dayBox, today && !todayOnCell && styles.todayRing]}>
         <Text style={[styles.gregorian, today && styles.todayText]}>{dayLabel}</Text>
-        <Text style={[styles.ethiopian, today && styles.todayText]}>7</Text>
-        <View style={styles.dotSlot}>
-          {dotColor ? <View style={[styles.dot, { backgroundColor: dotColor }]} /> : null}
-        </View>
+        <Text style={[styles.ethiopian, today && styles.todayText]} numberOfLines={1}>
+          {ethiopianLabel}
+        </Text>
+        {dotColor || fastSeason ? (
+          <View style={styles.dotSlot}>
+            {dotColor ? (
+              <View style={[styles.dot, { backgroundColor: dotColor }]} />
+            ) : (
+              <View style={styles.fastMarker} />
+            )}
+          </View>
+        ) : null}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  cell: {
     width: 48,
+    minHeight: 56,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+  todayCellRing: {
+    borderWidth: 1.5,
+    borderColor: CALENDAR_VISUAL.todayRing,
     borderRadius: BorderRadius.sm,
-    paddingVertical: 2,
   },
   fastColumn: {
     backgroundColor: CALENDAR_VISUAL.fastColumn,
+    borderRadius: BorderRadius.sm,
+  },
+  fastSeasonCell: {
+    backgroundColor: CALENDAR_VISUAL.fastSeasonFill,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: CALENDAR_VISUAL.fastSeasonBorder,
   },
   dayBox: {
-    width: 42,
-    minHeight: 54,
-    borderRadius: BorderRadius.sm,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 4,
-    paddingBottom: 2,
   },
   todayRing: {
     borderWidth: 1.5,
     borderColor: CALENDAR_VISUAL.todayRing,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingBottom: 2,
   },
   gregorian: {
     fontSize: 15,
@@ -77,14 +105,19 @@ const styles = StyleSheet.create({
     color: CALENDAR_VISUAL.dotGold,
   },
   dotSlot: {
-    height: 8,
-    marginTop: 2,
+    marginTop: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  fastMarker: {
+    width: 16,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: CALENDAR_VISUAL.fastSeasonMarker,
   },
 });

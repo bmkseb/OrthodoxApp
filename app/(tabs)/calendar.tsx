@@ -13,19 +13,27 @@ import { UpcomingFeasts } from '@/components/calendar/upcoming-feasts';
 import { PageHeader } from '@/components/orthodox/PageHeader';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
+import { SectionHeader } from '@/components/ui/section-header';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
 import { useTranslation } from '@/hooks/use-translation';
 import { getUpcomingMajorFeasts, type UpcomingFeast } from '@/data/orthodoxCalendar';
-import { getEthiopianMonthsInGregorianMonth, getUpcomingFasts } from '@/lib/eotc-liturgical-calendar';
+import {
+  formatEthiopianMonthsLabel,
+  formatGregorianMonthYear,
+} from '@/lib/calendar-i18n';
+import {
+  getEthiopianMonthsInGregorianMonth,
+  getUpcomingFasts,
+  type UpcomingFastPeriod,
+} from '@/lib/eotc-liturgical-calendar';
+import { ListenSectionSpacing } from '@/constants/listen-layout';
 import { Layout, Space } from '@/constants/theme';
+import type { IconName } from '@/components/Icon';
 
-const GREGORIAN_MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+const CALENDAR_CATALOG_ICON: IconName = 'scroll';
 
 export default function CalendarScreen() {
-  const { t } = useTranslation();
+  const { t, mode } = useTranslation();
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = useFloatingBottomInset();
   const now = useMemo(() => new Date(), []);
@@ -44,13 +52,12 @@ export default function CalendarScreen() {
   const upcomingFeasts = useMemo(() => getUpcomingMajorFeasts(5, now), [now]);
 
   const { gregorianMonthLabel, ethiopianMonthLabel } = useMemo(() => {
-    const { monthNames, ethYear } = getEthiopianMonthsInGregorianMonth(viewYear, viewMonth);
+    const { months, ethYear } = getEthiopianMonthsInGregorianMonth(viewYear, viewMonth);
     return {
-      gregorianMonthLabel: `${GREGORIAN_MONTHS[viewMonth]} ${viewYear}`,
-      ethiopianMonthLabel:
-        monthNames.length > 0 ? `${monthNames.join(' / ')} ${ethYear}` : `${ethYear}`,
+      gregorianMonthLabel: formatGregorianMonthYear(viewMonth, viewYear, mode),
+      ethiopianMonthLabel: formatEthiopianMonthsLabel(months, ethYear, mode),
     };
-  }, [viewMonth, viewYear]);
+  }, [mode, viewMonth, viewYear]);
 
   const sheetDay = selectedDay ?? today.day;
 
@@ -112,12 +119,30 @@ export default function CalendarScreen() {
     [sheetDay, viewMonth, viewYear]
   );
 
-  const handleFeastPress = useCallback((feast: UpcomingFeast) => {
-    setViewYear(feast.date.getFullYear());
-    setViewMonth(feast.date.getMonth());
-    setSelectedDay(feast.date.getDate());
-    setSheetVisible(true);
-  }, []);
+  const openCalendarDate = useCallback(
+    (date: Date) => {
+      setViewYear(date.getFullYear());
+      setViewMonth(date.getMonth());
+      setSelectedDay(date.getDate());
+      setSheetVisible(true);
+    },
+    []
+  );
+
+  const handleFeastPress = useCallback(
+    (feast: UpcomingFeast) => {
+      openCalendarDate(feast.date);
+    },
+    [openCalendarDate]
+  );
+
+  const handleFastPress = useCallback(
+    (fast: UpcomingFastPeriod) => {
+      const target = fast.isActive ? now : fast.startDate;
+      openCalendarDate(target);
+    },
+    [now, openCalendarDate]
+  );
 
   return (
     <ThemedView style={styles.screen}>
@@ -126,36 +151,47 @@ export default function CalendarScreen() {
         <View
           style={[
             styles.screenBody,
-            {
-              paddingTop: insets.top + Space.s8,
-              paddingBottom: scrollBottomPadding,
-            },
+            { paddingTop: insets.top + Space.s8 },
           ]}>
           <PageHeader title={t('nav.calendar')} geez="ቀን ዘመን" />
 
           <ScrollView
+            style={styles.scroll}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}>
-            <SeasonBanner date={bannerDate} onOpenLegend={() => setLegendVisible(true)} />
-            <TodayHeader
-              date={now}
-              todayLabel={t('calendar.today')}
-              onPressToday={goToToday}
-            />
+            contentContainerStyle={{ paddingBottom: scrollBottomPadding }}>
+            <View style={styles.seasonSection}>
+              <SeasonBanner date={bannerDate} onOpenLegend={() => setLegendVisible(true)} />
+            </View>
+            <TodayHeader date={now} todayLabel={t('calendar.today')} />
             <CalendarMonthGrid
               year={viewYear}
               month={viewMonth}
               today={today}
               gregorianMonthLabel={gregorianMonthLabel}
               ethiopianMonthLabel={ethiopianMonthLabel}
+              todayLabel={t('calendar.today')}
+              onGoToToday={goToToday}
               onSelectDay={openSheetForDay}
               onPrevMonth={goPrevMonth}
               onNextMonth={goNextMonth}
               onPrevYear={goPrevYear}
               onNextYear={goNextYear}
             />
-            <UpcomingFasts fasts={upcomingFasts} />
-            <UpcomingFeasts feasts={upcomingFeasts} onPressFeast={handleFeastPress} />
+
+            <View style={styles.catalogSection}>
+              <SectionHeader title={t('calendar.catalog')} icon={CALENDAR_CATALOG_ICON} />
+              <UpcomingFasts
+                title={t('sections.upcomingFasts')}
+                fasts={upcomingFasts}
+                onPressFast={handleFastPress}
+                compactBottom={upcomingFeasts.length > 0}
+              />
+              <UpcomingFeasts
+                title={t('sections.upcomingFeasts')}
+                feasts={upcomingFeasts}
+                onPressFeast={handleFeastPress}
+              />
+            </View>
           </ScrollView>
         </View>
 
@@ -182,7 +218,13 @@ const styles = StyleSheet.create({
     minHeight: 0,
     paddingHorizontal: Layout.pagePadding,
   },
-  scrollContent: {
-    paddingBottom: Space.s32,
+  scroll: {
+    flex: 1,
+  },
+  seasonSection: {
+    marginBottom: ListenSectionSpacing.primary,
+  },
+  catalogSection: {
+    marginTop: Space.s24,
   },
 });

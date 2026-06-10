@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { useTranslation } from '@/hooks/use-translation';
 import { getReadingsByDate } from '@/data/lectionary';
 import {
   FEASTS_INFO,
@@ -12,7 +13,15 @@ import {
   SEASONS,
 } from '@/lib/calendar-content';
 import {
+  feastDisplayLabels,
   formatEthiopianDateLong,
+  formatEvangelistYearLabel,
+  formatGregorianWeekdayDate,
+  localizeFastingReason,
+  seasonBannerLabels,
+  showsEnglishCalendarCopy,
+} from '@/lib/calendar-i18n';
+import {
   getActiveFastSeason,
   getDayInfo,
   getEvangelistYear,
@@ -20,12 +29,6 @@ import {
 } from '@/lib/eotc-liturgical-calendar';
 import { expandScriptureRef } from '@/lib/lectionary-display';
 import { BorderRadius, Palette, Space } from '@/constants/theme';
-
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const GREGORIAN_MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 
 type CalendarDayDetailSheetProps = {
   visible: boolean;
@@ -41,13 +44,26 @@ function SectionLabel({ title }: { title: string }) {
   return <Text style={styles.sectionLabel}>{title}</Text>;
 }
 
-function formatRefs(refs: string[]): string[] {
-  return refs
+function normalizeRefs(refs: string | string[] | undefined): string[] {
+  if (!refs) return [];
+  return Array.isArray(refs) ? refs : [refs];
+}
+
+function formatRefs(refs: string | string[] | undefined): string[] {
+  return normalizeRefs(refs)
     .map((r) => expandScriptureRef(r))
     .filter((r) => r.length > 0);
 }
 
-function ReadingGroup({ title, refs, isLast = false }: { title: string; refs: string[]; isLast?: boolean }) {
+function ReadingGroup({
+  title,
+  refs,
+  isLast = false,
+}: {
+  title: string;
+  refs: string | string[] | undefined;
+  isLast?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const lines = formatRefs(refs);
   if (lines.length === 0) return null;
@@ -80,6 +96,7 @@ export function CalendarDayDetailSheet({
   onPrevDay,
   onNextDay,
 }: CalendarDayDetailSheetProps) {
+  const { t, mode } = useTranslation();
   const sheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
   const date = useMemo(() => new Date(year, month, day), [year, month, day]);
@@ -107,21 +124,27 @@ export function CalendarDayDetailSheet({
     []
   );
 
-  const gregorianLabel = `${WEEKDAY_NAMES[date.getDay()]}, ${GREGORIAN_MONTHS[month]} ${day}`;
+  const gregorianLabel = formatGregorianWeekdayDate(date, month, day, mode);
+  const seasonLabels = seasonBannerLabels(season, mode);
+  const localizedFastingReason = localizeFastingReason(liturgical.fastingReason, mode);
+
+  const fastSeasonLabels = fastSeason ? seasonBannerLabels(fastSeason, mode) : null;
 
   const fastingTitle = liturgical.isFasting
-    ? fastSeason
-      ? `${fastSeason.name}`
-      : liturgical.fastingReason
-        ? `Fasting — ${liturgical.fastingReason}`
-        : 'Fasting'
-    : 'No fasting today';
+    ? fastSeasonLabels
+      ? fastSeasonLabels.primary
+      : localizedFastingReason
+        ? t('calendar.fastingWithReason', { reason: localizedFastingReason })
+        : t('calendar.fasting')
+    : t('calendar.noFastingToday');
 
   const fastingBody = liturgical.isFasting
-    ? fastSeason?.description ?? season.fastingRule
+    ? showsEnglishCalendarCopy(mode)
+      ? fastSeason?.description ?? season.fastingRule
+      : null
     : seasonKey === 'easter'
-      ? 'Wednesday and Friday fasting is suspended during the Easter season.'
-      : 'No fasting is required on this day.';
+      ? t('calendar.easterSuspendedFasting')
+      : t('calendar.noFastingRequired');
 
   return (
     <BottomSheet
@@ -138,45 +161,52 @@ export function CalendarDayDetailSheet({
           <OrthodoxPressable
             style={styles.dayNavBtn}
             onPress={onPrevDay}
-            accessibilityLabel="Previous day">
+            accessibilityLabel={t('calendar.previousDay')}>
             <Icon name="chevron-left" size={20} color="#1C1510" />
           </OrthodoxPressable>
 
           <View style={styles.dateCopy}>
             <Text style={styles.gregorianDate}>{gregorianLabel}</Text>
             <Text style={styles.ethiopianMeta}>
-              {formatEthiopianDateLong(liturgical.ethiopianDate)} · Year of {evangelist.name}
+              {formatEthiopianDateLong(liturgical.ethiopianDate, mode)} ·{' '}
+              {formatEvangelistYearLabel(evangelist, mode)}
             </Text>
-            <Text style={styles.seasonMeta}>
-              {season.name}
-            </Text>
+            <Text style={styles.seasonMeta}>{seasonLabels.primary}</Text>
+            {seasonLabels.secondary ? (
+              <Text style={styles.seasonMetaAlias}>{seasonLabels.secondary}</Text>
+            ) : null}
           </View>
 
           <OrthodoxPressable
             style={styles.dayNavBtn}
             onPress={onNextDay}
-            accessibilityLabel="Next day">
+            accessibilityLabel={t('calendar.nextDay')}>
             <Icon name="chevron-right" size={20} color="#1C1510" />
           </OrthodoxPressable>
         </View>
 
         <View style={styles.section}>
-          <SectionLabel title="Fasting" />
+          <SectionLabel title={t('calendar.fasting')} />
           <View style={[styles.fastingCard, liturgical.isFasting && styles.fastingCardActive]}>
             <Text style={[styles.fastingTitle, liturgical.isFasting && styles.fastingTitleActive]}>
               {fastingTitle}
             </Text>
-            <Text style={styles.fastingBody}>{fastingBody}</Text>
+            {fastSeasonLabels?.secondary ? (
+              <Text style={styles.fastingTitleAlias}>{fastSeasonLabels.secondary}</Text>
+            ) : null}
+            {fastingBody ? <Text style={styles.fastingBody}>{fastingBody}</Text> : null}
           </View>
         </View>
 
         {liturgical.feasts.length > 0 ? (
           <View style={styles.section}>
-            <SectionLabel title="Feasts" />
+            <SectionLabel title={t('calendar.feasts')} />
             {liturgical.feasts.map((feast) => {
               const infoKey = resolveFeastInfoKey(feast);
               const info = infoKey ? FEASTS_INFO[infoKey] : null;
-              const description = getFeastDescription(feast) ?? info?.description;
+              const description =
+                showsEnglishCalendarCopy(mode) ? getFeastDescription(feast) ?? info?.description : null;
+              const labels = feastDisplayLabels(feast.name, feast.nameAm, mode);
 
               return (
                 <View key={`${feast.name}-${feast.nameAm}`} style={styles.feastCard}>
@@ -186,12 +216,14 @@ export function CalendarDayDetailSheet({
                     </Text>
                   </View>
                   <View style={styles.feastCopy}>
-                    <Text style={styles.feastName}>{feast.name}</Text>
-                    <Text style={styles.feastNameAm}>{feast.nameAm}</Text>
+                    <Text style={styles.feastName}>{labels.primary}</Text>
+                    {labels.secondary ? (
+                      <Text style={styles.feastNameAlias}>{labels.secondary}</Text>
+                    ) : null}
                     {description ? <Text style={styles.feastDescription}>{description}</Text> : null}
                     <View style={styles.feastBadge}>
                       <Text style={styles.feastBadgeText}>
-                        {feast.isMajor ? 'Major feast' : 'Monthly feast'}
+                        {feast.isMajor ? t('calendar.majorFeast') : t('calendar.monthlyFeast')}
                       </Text>
                     </View>
                   </View>
@@ -203,21 +235,30 @@ export function CalendarDayDetailSheet({
 
         {readings ? (
           <View style={styles.section}>
-            <SectionLabel title="Readings" />
+            <SectionLabel title={t('calendar.readings')} />
             <View style={styles.readingsCard}>
               {(
                 [
-                  { title: 'Morning', refs: readings.morning },
+                  { title: t('content.morning'), refs: readings.morning },
                   readings.qidase.epistle
-                    ? { title: 'Qidase — Epistle', refs: [readings.qidase.epistle] }
+                    ? { title: t('calendar.qidaseEpistle'), refs: [readings.qidase.epistle] }
                     : null,
                   readings.qidase.catholicEpistle
-                    ? { title: 'Qidase — Catholic Epistle', refs: [readings.qidase.catholicEpistle] }
+                    ? {
+                        title: t('calendar.qidaseCatholicEpistle'),
+                        refs: [readings.qidase.catholicEpistle],
+                      }
                     : null,
-                  readings.qidase.acts ? { title: 'Qidase — Acts', refs: [readings.qidase.acts] } : null,
-                  { title: 'Qidase — Psalm', refs: [readings.qidase.psalm] },
-                  { title: 'Qidase — Gospel', refs: [readings.qidase.gospel] },
-                  { title: 'Evening', refs: readings.evening },
+                  readings.qidase.acts
+                    ? { title: t('calendar.qidaseActs'), refs: [readings.qidase.acts] }
+                    : null,
+                  readings.qidase.psalm
+                    ? { title: t('calendar.qidasePsalm'), refs: [readings.qidase.psalm] }
+                    : null,
+                  readings.qidase.gospel
+                    ? { title: t('calendar.qidaseGospel'), refs: [readings.qidase.gospel] }
+                    : null,
+                  { title: t('content.evening'), refs: readings.evening },
                 ].filter((group): group is { title: string; refs: string[] } => group !== null)
               ).map((group, index, groups) => (
                 <ReadingGroup
@@ -278,6 +319,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Space.s8,
   },
+  seasonMetaAlias: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#C9933A',
+    textAlign: 'center',
+    marginTop: 2,
+  },
   section: {
     marginBottom: Space.s24,
   },
@@ -305,6 +353,12 @@ const styles = StyleSheet.create({
   },
   fastingTitleActive: {
     color: '#6B2C2C',
+  },
+  fastingTitleAlias: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#C9933A',
+    marginBottom: Space.s8,
   },
   fastingBody: {
     fontSize: 13,
@@ -341,9 +395,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1C1510',
   },
-  feastNameAm: {
+  feastNameAlias: {
     fontSize: 13,
-    color: '#6B6258',
+    fontWeight: '500',
+    color: '#C9933A',
     marginTop: 2,
     marginBottom: Space.s8,
   },

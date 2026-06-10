@@ -33,9 +33,19 @@ export default function TabLayout() {
       lazy: false,
       detachInactiveScreens: false,
       sceneStyle: { backgroundColor: Palette.background },
-      // Hide the in-navigator tab bar slot — it still captures touches on device.
-      // Chrome renders in TabBarOverlay; scroll padding uses useFloatingBottomInset().
-      tabBarStyle: { display: 'none' as const },
+      // Collapse the in-navigator tab bar slot; pill renders in TabBarOverlay for reliable taps.
+      tabBarStyle: {
+        display: 'none' as const,
+        position: 'absolute' as const,
+        height: 0,
+        maxHeight: 0,
+        minHeight: 0,
+        opacity: 0,
+        backgroundColor: 'transparent',
+        borderTopWidth: 0,
+        elevation: 0,
+        shadowOpacity: 0,
+      },
     }),
     []
   );

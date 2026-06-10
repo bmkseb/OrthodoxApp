@@ -613,10 +613,16 @@ function ethiopianInclusiveSpan(start: EthiopianParts, end: EthiopianParts): num
   return ethiopianDayOffset(end, start);
 }
 
+export type SeasonBannerSubtitle =
+  | { kind: 'fast'; total: number; current: number }
+  | { kind: 'season'; total: number; current: number }
+  | { kind: 'nineveh' }
+  | { kind: 'holyWeek' };
+
 export type SeasonBannerMeta = {
   bannerSeason: LiturgicalSeasonKey;
   activeFastSeason: LiturgicalSeasonKey | null;
-  subtitle: string | null;
+  subtitle: SeasonBannerSubtitle | null;
   showFastingBadge: boolean;
 };
 
@@ -628,32 +634,32 @@ export function getSeasonBannerMeta(date: Date): SeasonBannerMeta {
   const bannerSeason = actualSeason;
   const isFasting = getDayInfo(date).isFasting;
 
-  let subtitle: string | null = null;
+  let subtitle: SeasonBannerSubtitle | null = null;
 
   if (actualSeason === 'lent') {
     const [lentMonth, lentDay] = getFeast(FEAST_ABIY_TSOM, year);
     const lentStart = { year, month: lentMonth, day: lentDay };
     const dayNum = ethiopianDayOffset(current, lentStart);
-    subtitle = `${LENT_DAYS}-day fast · Day ${dayNum} of ${LENT_DAYS}`;
+    subtitle = { kind: 'fast', total: LENT_DAYS, current: dayNum };
   } else if (actualSeason === 'advent') {
     const adventStart = { year, month: 3, day: 15 };
     const dayNum = ethiopianDayOffset(current, adventStart);
-    subtitle = `40-day fast · Day ${dayNum} of 40`;
+    subtitle = { kind: 'fast', total: 40, current: dayNum };
   } else if (actualSeason === 'marysFast') {
     const marysStart = { year, month: 12, day: 1 };
     const dayNum = ethiopianDayOffset(current, marysStart);
-    subtitle = `16-day fast · Day ${dayNum} of 16`;
+    subtitle = { kind: 'fast', total: 16, current: dayNum };
   } else if (actualSeason === 'apostlesFast') {
     const [apostlesMonth, apostlesDay] = getFeast(FEAST_TSOME_HAWARIAT, year);
     const apostlesStart = { year, month: apostlesMonth, day: apostlesDay };
     const apostlesEnd = { year, month: MONTH_SENE, day: 27 };
     const dayNum = ethiopianDayOffset(current, apostlesStart);
     const total = ethiopianInclusiveSpan(apostlesStart, apostlesEnd);
-    subtitle = `${total}-day fast · Day ${dayNum} of ${total}`;
+    subtitle = { kind: 'fast', total, current: dayNum };
   } else if (actualSeason === 'nineveh') {
-    subtitle = '3-day fast · Fast of Nineveh';
+    subtitle = { kind: 'nineveh' };
   } else if (actualSeason === 'holyWeek') {
-    subtitle = 'Holy Week · Himamat';
+    subtitle = { kind: 'holyWeek' };
   } else if (actualSeason === 'easter') {
     const [tinsaeMonth, tinsaeDay] = getFeast(FEAST_TINSAE, year);
     const [pentecostMonth, pentecostDay] = getFeast(FEAST_PERAQLITOS, year);
@@ -662,7 +668,7 @@ export function getSeasonBannerMeta(date: Date): SeasonBannerMeta {
       { year, month: tinsaeMonth, day: tinsaeDay },
       { year, month: pentecostMonth, day: pentecostDay }
     );
-    subtitle = `50-day season · Day ${dayNum} of ${total}`;
+    subtitle = { kind: 'season', total, current: dayNum };
   }
 
   return {
@@ -767,7 +773,7 @@ export function getUpcomingFasts(count = 4, fromDate = new Date()): UpcomingFast
 export function getEthiopianMonthsInGregorianMonth(
   year: number,
   month: number
-): { monthNames: string[]; ethYear: number } {
+): { months: number[]; ethYear: number } {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthSet = new Set<number>();
   let ethYear = 0;
@@ -778,12 +784,15 @@ export function getEthiopianMonthsInGregorianMonth(
     ethYear = info.ethiopianDate.year;
   }
 
-  const monthNames = Array.from(monthSet)
-    .sort((a, b) => a - b)
-    .map((m) => ETHIOPIAN_MONTH_NAMES_EN[m] ?? '')
-    .filter(Boolean);
+  return { months: Array.from(monthSet).sort((a, b) => a - b), ethYear };
+}
 
-  return { monthNames, ethYear };
+export function formatGregorianDateLong(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 export function formatEthiopianDateLong(eth: EthiopianDateInfo): string {

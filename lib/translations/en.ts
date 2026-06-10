@@ -142,6 +142,7 @@ const en = {
     yaredPlaylistComingSoonHint: 'Recordings for this collection will appear here.',
   },
   calendar: {
+    catalog: 'Calendar Catalog',
     searchPlaceholder: 'Search feasts, fasts, and holidays...',
     all: 'All',
     feasts: 'Feasts',
@@ -162,6 +163,62 @@ const en = {
     daysRemaining: 'In {{count}} days',
     fastInProgress: 'In progress',
     shareReading: "Share today's reading",
+    noFastingToday: 'No fasting today',
+    noFastingRequired: 'No fasting is required on this day.',
+    easterSuspendedFasting: 'Wednesday and Friday fasting is suspended during the Easter season.',
+    fastingWithReason: 'Fasting — {{reason}}',
+    monthlyFeast: 'Monthly feast',
+    readings: 'Readings',
+    qidaseEpistle: 'Qidase — Epistle',
+    qidaseCatholicEpistle: 'Qidase — Catholic Epistle',
+    qidaseActs: 'Qidase — Acts',
+    qidasePsalm: 'Qidase — Psalm',
+    qidaseGospel: 'Qidase — Gospel',
+    previousDay: 'Previous day',
+    nextDay: 'Next day',
+    infoAccessibility: 'Calendar and liturgical year information',
+    fastDayProgress: '{{total}}-day fast · Day {{current}} of {{total}}',
+    seasonDayProgress: '{{total}}-day season · Day {{current}} of {{total}}',
+    ninevehSubtitle: '3-day fast · Fast of Nineveh',
+    holyWeekSubtitle: 'Holy Week · Himamat',
+    infoTitle: 'Religious Holidays & Calendar',
+    infoSubtitle: 'The Liturgical Year',
+    calendarKey: 'Calendar Key',
+    ethiopianMonths: 'Ethiopian Months',
+    daysOfWeek: 'Days of the Week',
+    monthlyFeastDays: 'Monthly Feast Days',
+    nationalFeasts: 'National & Religious Feasts',
+    liturgicalYear: 'The Liturgical Year',
+    close: 'Close',
+    legendDayLabels: 'Day labels',
+    legendDayLabelsDetail:
+      'Gregorian date on top; Ethiopian date below. On the first day of an Ethiopian month, the month name appears with the day.',
+    legendMajorLord: 'Major feast of the Lord',
+    legendMajorLordDetail:
+      'Warm gold tint across the day (linked when several days in a row) and a gold dot. Christmas, Easter, Epiphany, Meskel, and other great feasts of Christ.',
+    legendMajorMary: 'Major Marian feast',
+    legendMajorMaryDetail:
+      'Blue tint across the day and a blue dot. Filseta, Kidane Mihret, and other principal feasts of the Virgin Mary.',
+    legendMarian: 'Marian commemoration',
+    legendMarianDetail:
+      'Blue dot only — the 21st of each month commemorates the death or birth in heaven of the Virgin Mary, plus other Marian days.',
+    legendAngel: 'Angel feast',
+    legendAngelDetail:
+      'Purple dot — St. Michael (12th of each month), St. Gabriel, and other angelic feasts.',
+    legendOtherFeast: 'Other feast or saint',
+    legendOtherFeastDetail:
+      'Gold dot — Holy Trinity (7th), saints’ days, and other monthly or local commemorations.',
+    legendSeasonalFast: 'Seasonal fast',
+    legendSeasonalFastDetail:
+      'Soft gold band linking consecutive days during Lent, Advent, Nineveh, the Apostles’ Fast, or Mary’s Fast. A short gold bar appears under the date on plain fast days without a feast.',
+    legendWedFri: 'Wednesday & Friday',
+    legendWedFriDetail:
+      'Grey columns under We and Fr for the standing weekly fast. The stripe runs the full month; small gaps appear between week rows.',
+    legendFeastOnFast: 'Feast during a fast',
+    legendFeastOnFastDetail:
+      'When a feast falls in a fast season, the feast tint and dot take priority over the fast band.',
+    legendTodayDetail:
+      'Gold ring around the entire day cell; Gregorian and Ethiopian numbers turn gold.',
   },
   catalog: {
     searchPlaceholder: 'Search Orthodox Scripture',
