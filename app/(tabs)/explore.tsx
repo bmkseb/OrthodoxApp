@@ -6,6 +6,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { ExploreSectionFrame } from '@/components/explore/explore-section-frame';
 import { PrayerStreakCard } from '@/components/explore/prayer-streak-card';
 import { WeeklyExplore } from '@/components/explore/weekly-explore';
+import { DidYouKnow } from '@/components/learn/did-you-know';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { PageHeader } from '@/components/orthodox/PageHeader';
 import { VerseOfTheDayCard } from '@/components/sacred/verse-of-the-day-card';
@@ -112,6 +113,11 @@ export default function ExploreScreen() {
               </OrthodoxPressable>
             ))}
           </View>
+        </ExploreSectionFrame>
+
+        {/* Did You Know — canon and tradition facts */}
+        <ExploreSectionFrame headerKey="learn.didYouKnow" icon="sparkle">
+          <DidYouKnow />
         </ExploreSectionFrame>
 
         {/* Weekly Explore — curated, rotating highlights */}

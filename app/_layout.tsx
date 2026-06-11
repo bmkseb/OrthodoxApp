@@ -63,6 +63,10 @@ export default function RootLayout() {
                     options={{ headerShown: false, animation: 'slide_from_bottom' }}
                   />
                   <Stack.Screen
+                    name="learn/daily"
+                    options={{ headerShown: false, animation: 'slide_from_bottom' }}
+                  />
+                  <Stack.Screen
                     name="prayer/[slug]"
                     options={{ headerShown: false, animation: 'slide_from_bottom' }}
                   />

@@ -86,7 +86,7 @@ export default function LearnCatalogScreen() {
         onFallback={() => router.push('/(tabs)/learn')}
       />
 
-      <ThemedText style={styles.pageTitle}>Catechism Catalog</ThemedText>
+      <ThemedText style={styles.pageTitle}>{t('learn.learningCatalog')}</ThemedText>
       {mode !== 'en' ? <ThemedText style={styles.pageGeez}>ትምህርት</ThemedText> : null}
       <ThemedText type="muted" style={styles.description}>
         The doctrine and teachings of the Ethiopian Orthodox Tewahedo Church.

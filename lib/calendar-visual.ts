@@ -29,6 +29,24 @@ export const CALENDAR_VISUAL = {
 
   fastSeasonMarker: 'rgba(201, 147, 58, 0.6)',
 
+  /** Thin underline — Wednesday & Friday fasts. */
+
+  fastWeekdayLine: 'rgba(201, 147, 58, 0.6)',
+
+  /** Thicker underline — major fasting seasons. */
+
+  fastSeasonLine: 'rgba(201, 147, 58, 0.65)',
+
+  /** Full-opacity underline when the day is selected. */
+
+  fastLineActive: Palette.gold,
+
+  selectedCellBg: 'rgba(201, 147, 58, 0.1)',
+
+  selectedCellBorder: Palette.gold,
+
+  todayCellBorder: 'rgba(201, 147, 58, 0.38)',
+
   dotPurple: '#7E57C2',
 
   dotBlue: '#42A5F5',
@@ -39,7 +57,16 @@ export const CALENDAR_VISUAL = {
 
 } as const;
 
+export type FastIndicatorLevel = 'weekday' | 'seasonal';
 
+export function getFastIndicatorLevel(
+  isFasting: boolean,
+  fastingReason: string | null
+): FastIndicatorLevel | null {
+  if (!isFasting || fastingReason == null) return null;
+  if (fastingReason === 'Wednesday' || fastingReason === 'Friday') return 'weekday';
+  return 'seasonal';
+}
 
 export const CALENDAR_RAIL = {
 

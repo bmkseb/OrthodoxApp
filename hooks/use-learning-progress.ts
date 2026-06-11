@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = '@orthodox/learning-progress';
 const MAX_ENTRIES = 12;
+/** Lessons only appear in Continue Learning after the reader scrolls. */
+export const MIN_LEARNING_PROGRESS = 0.01;
 
 export type LearningProgressEntry = {
   /** Doctrine subtopic slug — the lesson route segment. */
@@ -38,7 +40,9 @@ function ensureLoaded(): Promise<void> {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const parsed = raw ? (JSON.parse(raw) as unknown) : [];
-      cache = Array.isArray(parsed) ? parsed.filter(isValidEntry) : [];
+      cache = Array.isArray(parsed)
+        ? parsed.filter(isValidEntry).filter((entry) => entry.progress >= MIN_LEARNING_PROGRESS)
+        : [];
     } catch {
       cache = [];
     } finally {
@@ -68,6 +72,7 @@ export function getLearningProgress(slug: string): LearningProgressEntry | undef
  */
 export async function recordLearningProgress(entry: LearningProgressEntry): Promise<void> {
   await ensureLoaded();
+  if (entry.progress < MIN_LEARNING_PROGRESS) return;
   const existing = cache.find((e) => e.slug === entry.slug);
   const merged: LearningProgressEntry = {
     ...entry,
@@ -107,5 +112,7 @@ export function useLearningProgress() {
     };
   }, []);
 
-  return { entries, ready };
+  const readableEntries = entries.filter((entry) => entry.progress >= MIN_LEARNING_PROGRESS);
+
+  return { entries: readableEntries, ready };
 }

@@ -6,50 +6,47 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
+import { FastDayUnderline } from '@/components/calendar/fast-day-underline';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { Icon } from '@/components/Icon';
 import { useTranslation } from '@/hooks/use-translation';
 import { weekdayShortLabels } from '@/lib/calendar-i18n';
-import { CALENDAR_VISUAL } from '@/lib/calendar-visual';
+import {
+  CALENDAR_VISUAL,
+  getFastIndicatorLevel,
+  type FastIndicatorLevel,
+} from '@/lib/calendar-visual';
 import { getDayInfo } from '@/lib/eotc-liturgical-calendar';
 import { BorderRadius, Palette, Space } from '@/constants/theme';
+
+const AnimatedView = Animated.createAnimatedComponent(View);
+
 const SWIPE_DISTANCE = 48;
 const SWIPE_VELOCITY = 500;
-const FAST_COLUMNS = [3, 5] as const;
 const WEEKDAY_LABEL_LINE_HEIGHT = 13;
-/** Weekday label row through its bottom margin — aligns day stripes with row 1. */
-const FAST_WEEKDAY_BAND_HEIGHT = Space.s4 * 2 + WEEKDAY_LABEL_LINE_HEIGHT + Space.s4;
 /** Fixed day row height — grid grows/shrinks by week count, not cell size. */
 const DAY_ROW_HEIGHT = 62;
-/** Vertical gap between week rows; grey stripes skip this space. */
+/** Vertical gap between week rows. */
 const DAY_ROW_GAP = Space.s4;
 const COLORS = CALENDAR_VISUAL;
-
-const SEASONAL_FAST_REASONS = new Set([
-  'Lent',
-  'Fast of Nineveh',
-  'Fast of Apostles',
-  'Fast of Mary',
-  'Advent',
-]);
 
 type DayVisual = {
   feastBg?: string;
   dotColor?: string;
-  seasonalFast?: boolean;
+  fastLevel: FastIndicatorLevel | null;
 };
 
-type RowBandKind = 'fast' | 'feast';
+type RowBandKind = 'feast';
 type BandPosition = 'single' | 'start' | 'middle' | 'end';
 
 function getDayBandKind(day: number, year: number, month: number): RowBandKind | null {
   const visual = getDayVisual(getDayInfo(new Date(year, month, day)));
   if (visual.feastBg) return 'feast';
-  if (visual.seasonalFast) return 'fast';
   return null;
 }
 
@@ -85,54 +82,13 @@ function getRowBandPositions(week: (number | null)[], year: number, month: numbe
   return positions;
 }
 
-function isFastWeekdayColumn(col: number): boolean {
-  return (FAST_COLUMNS as readonly number[]).includes(col);
-}
-
-function getFirstSeasonalFastRowForColumn(
-  weeks: (number | null)[][],
-  year: number,
-  month: number,
-  col: number
-): number | null {
-  for (let wi = 0; wi < weeks.length; wi++) {
-    const dayNum = weeks[wi][col];
-    if (dayNum !== null && getDayBandKind(dayNum, year, month) === 'fast') {
-      return wi;
-    }
-  }
-  return null;
-}
-
-function getLastSeasonalFastRowForColumn(
-  weeks: (number | null)[][],
-  year: number,
-  month: number,
-  col: number
-): number | null {
-  let lastRow: number | null = null;
-
-  weeks.forEach((week, wi) => {
-    const dayNum = week[col];
-    if (dayNum !== null && getDayBandKind(dayNum, year, month) === 'fast') {
-      lastRow = wi;
-    }
-  });
-
-  return lastRow;
-}
-
-function bandRadius(
-  position: BandPosition,
-  options?: { flatTop?: boolean; flatBottom?: boolean }
-) {
+function bandRadius(position: BandPosition) {
   const r = BorderRadius.sm;
-  const { flatTop = false, flatBottom = false } = options ?? {};
 
-  const topLeft = !flatTop && (position === 'single' || position === 'start');
-  const topRight = !flatTop && (position === 'single' || position === 'end');
-  const bottomLeft = !flatBottom && (position === 'single' || position === 'start');
-  const bottomRight = !flatBottom && (position === 'single' || position === 'end');
+  const topLeft = position === 'single' || position === 'start';
+  const topRight = position === 'single' || position === 'end';
+  const bottomLeft = position === 'single' || position === 'start';
+  const bottomRight = position === 'single' || position === 'end';
 
   return {
     ...(topLeft ? { borderTopLeftRadius: r } : {}),
@@ -160,10 +116,6 @@ function bandOutline(position: BandPosition, color: string) {
   }
 }
 
-function isSeasonalFastDay(info: ReturnType<typeof getDayInfo>): boolean {
-  return info.fastingReason != null && SEASONAL_FAST_REASONS.has(info.fastingReason);
-}
-
 function getDayVisual(info: ReturnType<typeof getDayInfo>): DayVisual {
   const majorLord = info.feasts.some(
     (f) => f.isMajor && (f.type === 'lord' || f.type === 'new_year')
@@ -172,19 +124,19 @@ function getDayVisual(info: ReturnType<typeof getDayInfo>): DayVisual {
   const hasMary = info.feasts.some((f) => f.type === 'mary');
   const hasAngel = info.feasts.some((f) => f.type === 'angel');
   const hasFeast = info.feasts.length > 0;
-  const seasonalFast = isSeasonalFastDay(info);
+  const fastLevel = getFastIndicatorLevel(info.isFasting, info.fastingReason);
 
   if (majorLord) {
-    return { feastBg: COLORS.majorLordBg, dotColor: COLORS.dotGold, seasonalFast };
+    return { feastBg: COLORS.majorLordBg, dotColor: COLORS.dotGold, fastLevel };
   }
   if (majorMary) {
-    return { feastBg: COLORS.majorMaryBg, dotColor: COLORS.dotBlue, seasonalFast };
+    return { feastBg: COLORS.majorMaryBg, dotColor: COLORS.dotBlue, fastLevel };
   }
-  if (hasMary) return { dotColor: COLORS.dotBlue, seasonalFast };
-  if (hasAngel) return { dotColor: COLORS.dotPurple, seasonalFast };
-  if (hasFeast) return { dotColor: COLORS.dotGold, seasonalFast };
+  if (hasMary) return { dotColor: COLORS.dotBlue, fastLevel };
+  if (hasAngel) return { dotColor: COLORS.dotPurple, fastLevel };
+  if (hasFeast) return { dotColor: COLORS.dotGold, fastLevel };
 
-  return { seasonalFast };
+  return { fastLevel };
 }
 
 function formatEthDayLabel(info: ReturnType<typeof getDayInfo>): string {
@@ -198,6 +150,7 @@ type CalendarMonthGridProps = {
   year: number;
   month: number;
   today: { year: number; month: number; day: number };
+  selectedDay?: number | null;
   gregorianMonthLabel: string;
   ethiopianMonthLabel: string;
   todayLabel?: string;
@@ -230,26 +183,42 @@ function DayCell({
   year,
   month,
   isToday,
-  column,
+  isSelected,
   bandKind,
   bandPosition,
-  isFirstFastRowInColumn,
-  isLastFastRowInColumn,
+  monthKey,
   onPress,
 }: {
   day: number;
   year: number;
   month: number;
   isToday: boolean;
-  column: number;
+  isSelected: boolean;
   bandKind: RowBandKind | null;
   bandPosition: BandPosition | null;
-  isFirstFastRowInColumn: boolean;
-  isLastFastRowInColumn: boolean;
+  monthKey: string;
   onPress: () => void;
 }) {
   const info = getDayInfo(new Date(year, month, day));
   const visual = getDayVisual(info);
+  const isFastingDay = visual.fastLevel != null;
+  const selectScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (isSelected) {
+      selectScale.value = withSequence(
+        withSpring(1.06, { damping: 11, stiffness: 420 }),
+        withSpring(1, { damping: 14, stiffness: 300 })
+      );
+    } else {
+      selectScale.value = withSpring(1, { damping: 16, stiffness: 320 });
+    }
+  }, [isSelected, selectScale]);
+
+  const cellAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: selectScale.value }],
+  }));
+
   const feastBorder =
     bandKind === 'feast' && visual.feastBg === COLORS.majorLordBg
       ? COLORS.feastLordBorder
@@ -259,14 +228,8 @@ function DayCell({
 
   const bandStyle = [
     styles.dayBand,
-    bandKind === 'fast' && styles.fastSeasonBand,
     bandKind === 'feast' && visual.feastBg ? { backgroundColor: visual.feastBg } : null,
-    bandPosition
-      ? bandRadius(bandPosition, {
-          flatTop: bandKind === 'fast' && isFirstFastRowInColumn && isFastWeekdayColumn(column),
-          flatBottom: bandKind === 'fast' && isLastFastRowInColumn && isFastWeekdayColumn(column),
-        })
-      : null,
+    bandPosition ? bandRadius(bandPosition) : null,
     bandPosition && bandKind === 'feast' && feastBorder
       ? bandOutline(bandPosition, feastBorder)
       : null,
@@ -274,52 +237,55 @@ function DayCell({
 
   const content = (
     <View style={styles.dayBox}>
-      <Text style={[styles.dayGregorian, isToday && styles.dayTextToday]}>{day}</Text>
+      <View style={styles.dateStack}>
+        <Text
+          style={[
+            styles.dayGregorian,
+            isSelected && styles.dayTextSelected,
+            isToday && !isSelected && styles.dayTextToday,
+            isFastingDay && !isSelected && !isToday && styles.dayTextFast,
+          ]}>
+          {day}
+        </Text>
+        {isFastingDay && visual.fastLevel ? (
+          <FastDayUnderline
+            key={monthKey}
+            level={visual.fastLevel}
+            selected={isSelected}
+          />
+        ) : null}
+      </View>
       <Text
-        style={[styles.dayEthiopian, isToday && styles.dayEthiopianToday]}
-        numberOfLines={1}>
+        style={[
+          styles.dayEthiopian,
+          info.ethiopianDate.day === 1 && styles.dayEthiopianMonthStart,
+          isSelected && styles.dayEthiopianSelected,
+          isToday && !isSelected && styles.dayEthiopianToday,
+        ]}
+        numberOfLines={info.ethiopianDate.day === 1 ? 2 : 1}>
         {formatEthDayLabel(info)}
       </Text>
-      {visual.dotColor || visual.seasonalFast ? (
+      {visual.dotColor ? (
         <View style={styles.dotSlot}>
-          {visual.dotColor ? (
-            <View style={[styles.dot, { backgroundColor: visual.dotColor }]} />
-          ) : (
-            <View style={styles.fastMarker} />
-          )}
+          <View style={[styles.dot, { backgroundColor: visual.dotColor }]} />
         </View>
       ) : null}
     </View>
   );
 
   return (
-    <OrthodoxPressable
-      style={[styles.dayCell, isToday && styles.dayTodayRing]}
-      onPress={onPress}
-      haptic={false}>
-      {bandKind ? <View style={bandStyle}>{content}</View> : content}
-    </OrthodoxPressable>
-  );
-}
-
-function FastColumnStripes() {
-  return (
-    <View style={styles.fastColumnLayer} pointerEvents="none">
-      {FAST_COLUMNS.map((col) => (
-        <View
-          key={col}
-          style={[
-            styles.fastColumnSlot,
-            {
-              top: FAST_WEEKDAY_BAND_HEIGHT,
-              left: `${(col / 7) * 100}%`,
-              width: `${100 / 7}%`,
-            },
-          ]}>
-          <View style={styles.fastColumnStripe} />
-        </View>
-      ))}
-    </View>
+    <AnimatedView style={[styles.dayCellWrap, cellAnimStyle]}>
+      <OrthodoxPressable
+        style={[
+          styles.dayCell,
+          isSelected && styles.daySelected,
+          isToday && !isSelected && styles.dayTodayRing,
+        ]}
+        onPress={onPress}
+        haptic={false}>
+        {bandKind ? <View style={bandStyle}>{content}</View> : content}
+      </OrthodoxPressable>
+    </AnimatedView>
   );
 }
 
@@ -327,6 +293,7 @@ export function CalendarMonthGrid({
   year,
   month,
   today,
+  selectedDay = null,
   gregorianMonthLabel,
   ethiopianMonthLabel,
   todayLabel = 'Today',
@@ -342,6 +309,7 @@ export function CalendarMonthGrid({
   const slideX = useSharedValue(0);
   const dragX = useSharedValue(0);
   const opacity = useSharedValue(1);
+  const monthKey = `${year}-${month}`;
 
   useEffect(() => {
     slideX.value = 10;
@@ -398,14 +366,6 @@ export function CalendarMonthGrid({
 
   const isCurrentMonth = today.year === year && today.month === month;
 
-  const firstFastRowByColumn = Object.fromEntries(
-    FAST_COLUMNS.map((col) => [col, getFirstSeasonalFastRowForColumn(weeks, year, month, col)])
-  ) as Record<number, number | null>;
-
-  const lastFastRowByColumn = Object.fromEntries(
-    FAST_COLUMNS.map((col) => [col, getLastSeasonalFastRowForColumn(weeks, year, month, col)])
-  ) as Record<number, number | null>;
-
   return (
     <View style={styles.wrap}>
       <View style={styles.monthHeader}>
@@ -443,19 +403,12 @@ export function CalendarMonthGrid({
         <GestureDetector gesture={monthSwipe}>
           <Animated.View style={animStyle}>
             <View style={styles.gridArea}>
-              <FastColumnStripes />
-
               <View style={styles.weekdayRow}>
-                {weekdays.map((label, col) => {
-                  const isFastColumn = (FAST_COLUMNS as readonly number[]).includes(col);
-                  return (
-                    <View
-                      key={label}
-                      style={[styles.weekdayCell, isFastColumn && styles.weekdayCellFast]}>
-                      <Text style={styles.weekdayLabel}>{label}</Text>
-                    </View>
-                  );
-                })}
+                {weekdays.map((label) => (
+                  <View key={label} style={styles.weekdayCell}>
+                    <Text style={styles.weekdayLabel}>{label}</Text>
+                  </View>
+                ))}
               </View>
 
               <View style={styles.weeksBlock}>
@@ -471,20 +424,17 @@ export function CalendarMonthGrid({
                             day={dayNum}
                             year={year}
                             month={month}
-                            column={col}
                             isToday={isCurrentMonth && dayNum === today.day}
+                            isSelected={selectedDay === dayNum}
                             bandKind={getDayBandKind(dayNum, year, month)}
                             bandPosition={bandPositions[col]}
-                            isFirstFastRowInColumn={
-                              firstFastRowByColumn[col] !== null && wi === firstFastRowByColumn[col]
-                            }
-                            isLastFastRowInColumn={
-                              lastFastRowByColumn[col] !== null && wi === lastFastRowByColumn[col]
-                            }
+                            monthKey={monthKey}
                             onPress={() => onSelectDay(dayNum)}
                           />
                         ) : (
-                          <View key={`e-${wi}-${col}`} style={styles.dayCell} />
+                          <View key={`e-${wi}-${col}`} style={styles.dayCellWrap}>
+                            <View style={styles.dayCell} />
+                          </View>
                         )
                       )}
                     </View>
@@ -603,19 +553,6 @@ const styles = StyleSheet.create({
   gridArea: {
     position: 'relative',
   },
-  fastColumnLayer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  fastColumnSlot: {
-    position: 'absolute',
-    bottom: 0,
-  },
-  fastColumnStripe: {
-    flex: 1,
-    backgroundColor: COLORS.fastColumn,
-    borderBottomLeftRadius: BorderRadius.sm,
-    borderBottomRightRadius: BorderRadius.sm,
-  },
   weekdayRow: {
     flexDirection: 'row',
     marginBottom: Space.s4,
@@ -624,11 +561,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: Space.s4,
-  },
-  weekdayCellFast: {
-    backgroundColor: COLORS.fastColumn,
-    borderTopLeftRadius: BorderRadius.sm,
-    borderTopRightRadius: BorderRadius.sm,
   },
   weekdayLabel: {
     fontSize: 11,
@@ -643,15 +575,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: DAY_ROW_HEIGHT,
   },
+  dayCellWrap: {
+    flex: 1,
+    height: DAY_ROW_HEIGHT,
+    overflow: 'visible',
+  },
   dayBand: {
     width: '100%',
     height: DAY_ROW_HEIGHT,
     alignItems: 'center',
     justifyContent: 'flex-start',
-  },
-  fastSeasonBand: {
-    backgroundColor: COLORS.fastSeasonFill,
-    marginHorizontal: 2,
   },
   dayCell: {
     flex: 1,
@@ -659,55 +592,76 @@ const styles = StyleSheet.create({
     height: DAY_ROW_HEIGHT,
     alignItems: 'center',
     justifyContent: 'flex-start',
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  daySelected: {
+    borderColor: CALENDAR_VISUAL.selectedCellBorder,
+    backgroundColor: CALENDAR_VISUAL.selectedCellBg,
+  },
+  dayTodayRing: {
+    borderColor: CALENDAR_VISUAL.todayCellBorder,
   },
   dayBox: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 6,
+    paddingTop: 7,
     paddingBottom: 4,
+    paddingHorizontal: 2,
   },
-  dayTodayRing: {
-    borderWidth: 1.5,
-    borderColor: Palette.gold,
-    borderRadius: BorderRadius.sm,
+  dateStack: {
+    alignItems: 'center',
+    minHeight: 23,
   },
   dayGregorian: {
     fontSize: 15,
     fontWeight: '600',
     color: Palette.text,
-    lineHeight: 18,
+    lineHeight: 17,
   },
   dayEthiopian: {
     fontSize: 9,
     fontWeight: '500',
     color: Palette.muted,
     lineHeight: 11,
-    marginTop: 2,
-    maxWidth: 40,
+    marginTop: 3,
+    maxWidth: 48,
     textAlign: 'center',
   },
+  dayEthiopianMonthStart: {
+    fontSize: 8,
+    lineHeight: 10,
+    maxWidth: 52,
+  },
+  dayTextSelected: {
+    color: Palette.gold,
+    fontWeight: '700',
+  },
   dayTextToday: {
+    color: Palette.mutedGold,
+    fontWeight: '600',
+  },
+  dayTextFast: {
+    color: Palette.gold,
+  },
+  dayEthiopianSelected: {
     color: Palette.gold,
   },
   dayEthiopianToday: {
-    color: Palette.gold,
+    color: Palette.mutedGold,
   },
   dotSlot: {
-    marginTop: 4,
+    marginTop: 3,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 5,
   },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-  },
-  fastMarker: {
-    width: 16,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: COLORS.fastSeasonMarker,
   },
 });

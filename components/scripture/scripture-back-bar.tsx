@@ -7,22 +7,35 @@ import { TextSizeControl } from '@/components/reader/text-size-control';
 import { AppBackButton } from '@/components/ui/app-back-button';
 import { Layout, Palette, Space } from '@/constants/theme';
 import { toggleBookmark, useIsBookmarked, type BookmarkSeed } from '@/hooks/use-bookmarks';
+import { toggleSavedTeaching, useSavedTeachings } from '@/hooks/use-saved-teachings';
 
 type ScriptureBackBarProps = {
   /** When provided, shows a toggle that bookmarks this page. */
   bookmark?: BookmarkSeed;
+  /** When provided, shows a toggle that saves this doctrine lesson. */
+  teachingSave?: {
+    slug: string;
+    title: string;
+    subtitle?: string;
+  };
   /** Shows the reading-text size control (use on actual reading pages). */
   showTextSize?: boolean;
 };
 
-export function ScriptureBackBar({ bookmark, showTextSize = false }: ScriptureBackBarProps) {
+export function ScriptureBackBar({
+  bookmark,
+  teachingSave,
+  showTextSize = false,
+}: ScriptureBackBarProps) {
   const isBookmarked = useIsBookmarked(bookmark?.bookId ?? '', bookmark?.chapter ?? -1);
+  const { isSaved } = useSavedTeachings();
+  const teachingSaved = teachingSave ? isSaved(teachingSave.slug) : false;
 
   return (
     <View style={styles.bar}>
       <AppBackButton style={styles.backBtn} />
 
-      {showTextSize || bookmark ? (
+      {showTextSize || bookmark || teachingSave ? (
         <View style={styles.actions}>
           {showTextSize ? <TextSizeControl /> : null}
           {bookmark ? (
@@ -40,6 +53,24 @@ export function ScriptureBackBar({ bookmark, showTextSize = false }: ScriptureBa
                 name={isBookmarked ? 'bookmark-filled' : 'bookmark'}
                 size={20}
                 color={isBookmarked ? Palette.gold : Palette.muted}
+              />
+            </OrthodoxPressable>
+          ) : null}
+          {teachingSave ? (
+            <OrthodoxPressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                void toggleSavedTeaching(teachingSave);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={teachingSaved ? 'Remove saved teaching' : 'Save this teaching'}
+              accessibilityState={{ selected: teachingSaved }}
+              hitSlop={10}
+              style={styles.iconBtn}>
+              <Icon
+                name={teachingSaved ? 'bookmark-filled' : 'bookmark'}
+                size={20}
+                color={teachingSaved ? Palette.gold : Palette.muted}
               />
             </OrthodoxPressable>
           ) : null}

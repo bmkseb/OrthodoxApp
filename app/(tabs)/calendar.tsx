@@ -1,5 +1,5 @@
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -47,6 +47,8 @@ export default function CalendarScreen() {
   const [selectedDay, setSelectedDay] = useState<number | null>(today.day);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [legendVisible, setLegendVisible] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const gridOffsetY = useRef(0);
 
   const upcomingFasts = useMemo(() => getUpcomingFasts(4, now), [now]);
   const upcomingFeasts = useMemo(() => getUpcomingMajorFeasts(5, now), [now]);
@@ -68,10 +70,23 @@ export default function CalendarScreen() {
     return now;
   }, [now, sheetDay, sheetVisible, viewMonth, viewYear]);
 
-  const openSheetForDay = useCallback((day: number) => {
-    setSelectedDay(day);
-    setSheetVisible(true);
+  const revealMonthGrid = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, gridOffsetY.current - Space.s8),
+        animated: true,
+      });
+    });
   }, []);
+
+  const openSheetForDay = useCallback(
+    (day: number) => {
+      setSelectedDay(day);
+      setSheetVisible(true);
+      revealMonthGrid();
+    },
+    [revealMonthGrid]
+  );
 
   const handleCloseSheet = useCallback(() => {
     setSheetVisible(false);
@@ -125,8 +140,9 @@ export default function CalendarScreen() {
       setViewMonth(date.getMonth());
       setSelectedDay(date.getDate());
       setSheetVisible(true);
+      revealMonthGrid();
     },
-    []
+    [revealMonthGrid]
   );
 
   const handleFeastPress = useCallback(
@@ -156,6 +172,7 @@ export default function CalendarScreen() {
           <PageHeader title={t('nav.calendar')} geez="ቀን ዘመን" />
 
           <ScrollView
+            ref={scrollRef}
             style={styles.scroll}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: scrollBottomPadding }}>
@@ -163,10 +180,15 @@ export default function CalendarScreen() {
               <SeasonBanner date={bannerDate} onOpenLegend={() => setLegendVisible(true)} />
             </View>
             <TodayHeader date={now} todayLabel={t('calendar.today')} />
-            <CalendarMonthGrid
+            <View
+              onLayout={(event) => {
+                gridOffsetY.current = event.nativeEvent.layout.y;
+              }}>
+              <CalendarMonthGrid
               year={viewYear}
               month={viewMonth}
               today={today}
+              selectedDay={selectedDay}
               gregorianMonthLabel={gregorianMonthLabel}
               ethiopianMonthLabel={ethiopianMonthLabel}
               todayLabel={t('calendar.today')}
@@ -176,7 +198,8 @@ export default function CalendarScreen() {
               onNextMonth={goNextMonth}
               onPrevYear={goPrevYear}
               onNextYear={goNextYear}
-            />
+              />
+            </View>
 
             <View style={styles.catalogSection}>
               <SectionHeader title={t('calendar.catalog')} icon={CALENDAR_CATALOG_ICON} />

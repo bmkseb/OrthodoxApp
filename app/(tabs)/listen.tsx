@@ -16,6 +16,7 @@ import {
 } from '@/components/listen/mezmur-catalog-shelf';
 import { YaredMelodyShelf } from '@/components/listen/yared-melody-shelf';
 import { MezmurSongRow } from '@/components/listen/mezmur-song-row';
+import { BookshelfSection } from '@/components/read/bookshelf-section';
 import { PageHeader } from '@/components/orthodox/PageHeader';
 import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
 import { ContentSearchResults } from '@/components/search/content-search-results';
@@ -125,6 +126,7 @@ const TAB_SECTION_META: Record<
     featuredTitleKey: TranslationKey;
     catalogTitleKey: TranslationKey;
     savedTitleKey: TranslationKey;
+    emptySavedKey: TranslationKey;
     savedIcon: IconName;
     fallbackImage: string;
   }
@@ -134,6 +136,7 @@ const TAB_SECTION_META: Record<
     featuredTitleKey: 'listen.featuredHymns',
     catalogTitleKey: 'listen.hymnsCatalog',
     savedTitleKey: 'listen.savedHymns',
+    emptySavedKey: 'listen.noSavedHymns',
     savedIcon: 'bookmark-filled',
     fallbackImage: SacredImagery.listenHymns,
   },
@@ -142,6 +145,7 @@ const TAB_SECTION_META: Record<
     featuredTitleKey: 'listen.featuredSermons',
     catalogTitleKey: 'listen.sermonCatalog',
     savedTitleKey: 'listen.savedSermons',
+    emptySavedKey: 'listen.noSavedSermons',
     savedIcon: 'church',
     fallbackImage: SacredImagery.listenSermons,
   },
@@ -150,6 +154,7 @@ const TAB_SECTION_META: Record<
     featuredTitleKey: 'listen.featuredMelodies',
     catalogTitleKey: 'listen.melodiesCatalog',
     savedTitleKey: 'listen.savedMelodies',
+    emptySavedKey: 'listen.noSavedMelodies',
     savedIcon: 'music',
     fallbackImage: SacredImagery.listenMelodies,
   },
@@ -561,7 +566,6 @@ export default function ListenScreen() {
   );
 
   const tabSections = TAB_SECTION_META[activeTab];
-  const showSavedSection = savedForTab.length > 0;
   const keyboardContentGap = Space.s12;
   const recentBottomInset = keyboardHeight > 0 ? keyboardContentGap : scrollBottomPadding;
   const searchResultsBottomInset = keyboardHeight > 0 ? keyboardContentGap : scrollBottomPadding;
@@ -862,7 +866,7 @@ export default function ListenScreen() {
                     </View>
                   ) : null}
 
-                  <View style={[styles.sectionSecondary, !showSavedSection && styles.lastSection]}>
+                  <View style={styles.sectionSecondary}>
                     <SectionHeader
                       title={t(tabSections.catalogTitleKey)}
                       icon={LISTEN_CATALOG_ICON}
@@ -892,7 +896,6 @@ export default function ListenScreen() {
                           title={t('listen.mezmurChannelsShelf')}
                           railKind="channel"
                           items={hymnChannelShelf.items}
-                          compactBottom={!showSavedSection}
                           onSeeAll={
                             hymnChannelShelf.totalCount > LISTEN_SHELF_PREVIEW_LIMIT
                               ? () =>
@@ -929,7 +932,6 @@ export default function ListenScreen() {
                           title={t('listen.mezmurChannelsShelf')}
                           railKind="channel"
                           items={sermonChannelShelf.items}
-                          compactBottom={!showSavedSection}
                           onSeeAll={
                             sermonChannelShelf.totalCount > LISTEN_SHELF_PREVIEW_LIMIT
                               ? () =>
@@ -946,7 +948,7 @@ export default function ListenScreen() {
                         <YaredMelodyShelf
                           key={shelf.id}
                           shelf={shelf}
-                          compactBottom={showSavedSection && index === shelves.length - 1}
+                          compactBottom={index === shelves.length - 1}
                           onSeeAll={() =>
                             router.push({
                               pathname: '/listen/melodies',
@@ -958,21 +960,27 @@ export default function ListenScreen() {
                     ) : null}
                   </View>
 
-                  {showSavedSection ? (
-                    <View style={[styles.sectionTertiary, styles.lastSection]}>
-                      <SectionHeader
-                        title={t(tabSections.savedTitleKey)}
-                        icon={tabSections.savedIcon}
-                        onSeeAllPress={
-                          showSavedSeeAll
-                            ? () =>
-                                router.push({
-                                  pathname: '/listen/saved',
-                                  params: { kind: savedKind },
-                                } as never)
-                            : undefined
-                        }
-                      />
+                  <View style={[styles.sectionTertiary, styles.lastSection]}>
+                    <SectionHeader
+                      title={t(tabSections.savedTitleKey)}
+                      icon={tabSections.savedIcon}
+                      onSeeAllPress={
+                        showSavedSeeAll
+                          ? () =>
+                              router.push({
+                                pathname: '/listen/saved',
+                                params: { kind: savedKind },
+                              } as never)
+                          : undefined
+                      }
+                    />
+                    {savedForTab.length === 0 ? (
+                      <BookshelfSection list>
+                        <ThemedText type="muted" style={styles.savedEmpty}>
+                          {t(tabSections.emptySavedKey)}
+                        </ThemedText>
+                      </BookshelfSection>
+                    ) : (
                       <View style={styles.savedHymnsList}>
                         {savedPreview.map((entry, index) => (
                           <View key={entry.videoId}>
@@ -993,8 +1001,8 @@ export default function ListenScreen() {
                           </View>
                         ))}
                       </View>
-                    </View>
-                  ) : null}
+                    )}
+                  </View>
                 </>
               )}
               </AnimatedScrollView>
@@ -1068,6 +1076,10 @@ const styles = StyleSheet.create({
   sectionTertiary: { marginBottom: ListenSectionSpacing.tertiary },
   lastSection: { marginBottom: 0 },
   savedHymnsList: { marginTop: Space.s4 },
+  savedEmpty: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
   savedHymnDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Layout.cardBorder,

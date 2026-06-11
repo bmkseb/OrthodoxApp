@@ -1,6 +1,7 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
@@ -28,6 +29,8 @@ import {
   getLiturgicalSeason,
 } from '@/lib/eotc-liturgical-calendar';
 import { expandScriptureRef } from '@/lib/lectionary-display';
+import { getFloatingBottomInset } from '@/constants/floating-bottom';
+import { useOptionalAudioPlayer } from '@/contexts/audio-player-context';
 import { BorderRadius, Palette, Space } from '@/constants/theme';
 
 type CalendarDayDetailSheetProps = {
@@ -97,6 +100,12 @@ export function CalendarDayDetailSheet({
   onNextDay,
 }: CalendarDayDetailSheetProps) {
   const { t, mode } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const hasMiniPlayer = useOptionalAudioPlayer()?.isMiniPlayerVisible ?? false;
+  const scrollBottomPadding = useMemo(
+    () => getFloatingBottomInset(hasMiniPlayer, insets),
+    [hasMiniPlayer, insets]
+  );
   const sheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
   const date = useMemo(() => new Date(year, month, day), [year, month, day]);
@@ -156,7 +165,11 @@ export function CalendarDayDetailSheet({
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheetBg}
       handleIndicatorStyle={styles.handle}>
-      <BottomSheetScrollView contentContainerStyle={styles.content}>
+      <BottomSheetScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: scrollBottomPadding },
+        ]}>
         <View style={styles.dateHeader}>
           <OrthodoxPressable
             style={styles.dayNavBtn}
@@ -288,7 +301,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Space.s24,
-    paddingBottom: Space.s48,
   },
   dateHeader: {
     flexDirection: 'row',

@@ -148,7 +148,7 @@ export function CalendarInfoModal({ visible, onClose }: CalendarInfoModalProps) 
         id: 'wed-fri',
         titleKey: 'calendar.legendWedFri',
         detailKey: 'calendar.legendWedFriDetail',
-        preview: <CalendarLegendPreview fastColumn />,
+        preview: <CalendarLegendPreview fastWeekday />,
       },
       {
         id: 'feast-on-fast',
@@ -158,6 +158,7 @@ export function CalendarInfoModal({ visible, onClose }: CalendarInfoModalProps) 
           <CalendarLegendPreview
             feastBg={CALENDAR_VISUAL.majorLordBg}
             dotColor={CALENDAR_VISUAL.dotGold}
+            fastSeason
           />
         ),
       },
