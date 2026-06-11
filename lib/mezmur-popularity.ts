@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { POPULAR_HYMN_FALLBACK_IDS } from '@/data/popularHymns';
+import { POPULAR_SERMON_FALLBACK_IDS } from '@/data/popularSermons';
 import { incrementGlobalMezmurPlay } from '@/lib/mezmur-global-plays';
 import type { Mezmur } from '@/lib/mezmur';
 import { isSermonCatalogSong } from '@/lib/sermon-catalog';
@@ -140,6 +141,43 @@ export function rankPopularMezmur(
 
   const seen = new Set(ranked.map((entry) => entry.song.videoId));
   for (const videoId of POPULAR_HYMN_FALLBACK_IDS) {
+    if (ranked.length >= limit) break;
+    const song = byId.get(videoId);
+    if (!song || seen.has(videoId)) continue;
+    ranked.push({
+      rank: ranked.length + 1,
+      song,
+      playCount: 0,
+    });
+    seen.add(videoId);
+  }
+
+  return ranked;
+}
+
+/** Rank sermons by in-app listen frequency (local play counts). */
+export function rankPopularSermons(
+  songs: Mezmur[],
+  stats: MezmurPlayStat[],
+  limit = 10
+): RankedPopularMezmur[] {
+  const sermons = songs.filter((song) => isSermonCatalogSong(song));
+  const byId = new Map(sermons.map((song) => [song.videoId, song]));
+
+  const ranked: RankedPopularMezmur[] = stats
+    .filter((stat) => stat.playCount > 0 && byId.has(stat.videoId))
+    .sort(comparePlayStats)
+    .slice(0, limit)
+    .map((stat, index) => ({
+      rank: index + 1,
+      song: byId.get(stat.videoId)!,
+      playCount: stat.playCount,
+    }));
+
+  if (ranked.length >= limit) return ranked;
+
+  const seen = new Set(ranked.map((entry) => entry.song.videoId));
+  for (const videoId of POPULAR_SERMON_FALLBACK_IDS) {
     if (ranked.length >= limit) break;
     const song = byId.get(videoId);
     if (!song || seen.has(videoId)) continue;

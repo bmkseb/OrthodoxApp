@@ -2,24 +2,26 @@ import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { DidYouKnow } from '@/components/learn/did-you-know';
-import { LearnTeachingCard } from '@/components/learn/learn-teaching-card';
+import { DailyTeachingShelf } from '@/components/learn/daily-teaching-shelf';
+import { LearnCatalogShelf } from '@/components/learn/learn-catalog-shelf';
+import { SavedLearnContent } from '@/components/learn/saved-learn-content';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { PageHeader } from '@/components/orthodox/PageHeader';
+import { BookshelfSection } from '@/components/read/bookshelf-section';
 import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
 import { SoftRailCard } from '@/components/ui/soft-rail-card';
 import {
   LEARN_COLLECTIONS,
-  LEARN_DAILY_ID,
   LEARN_FEATURED,
-  LEARN_SAVED_IDS,
-  findTopicById,
   type LearnCollection,
   type LearnTopic,
 } from '@/data/learnLibrary';
 import { ContentSearchResults } from '@/components/search/content-search-results';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { resolveLearnTopic, searchLearnHeaders, findFirstLesson } from '@/lib/learn-search';
+import { buildFaithAndOrderShelf, type LearnShelfLesson } from '@/lib/learn-catalog-shelves';
+import { resolveDailyTeaching } from '@/lib/daily-teaching';
+import { useTodayDailyTeachingCompleted } from '@/hooks/use-daily-teaching-completion';
 import {
   countDoctrineLessons,
   fetchDoctrineOutline,
@@ -28,18 +30,24 @@ import {
   type DoctrineSubtopic,
 } from '@/lib/doctrine';
 import { learnText } from '@/lib/learn-i18n';
-import { HorizontalContentRail } from '@/components/ui/horizontal-content-rail';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
-import { SectionBlock } from '@/components/ui/section-block';
+import { SectionHeader } from '@/components/ui/section-header';
+import {
+  HorizontalScrollIndicator,
+  useHorizontalScrollIndicator,
+} from '@/components/ui/scroll-indicator';
 import {
   removeLearningProgress,
   useLearningProgress,
 } from '@/hooks/use-learning-progress';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
+import { useSavedTeachings } from '@/hooks/use-saved-teachings';
 import { useTranslation } from '@/hooks/use-translation';
 import { Layout, Space, getTabChromeTokens } from '@/constants/theme';
 import { useThemeTokens } from '@/hooks/use-theme-tokens';
+
+const SAVED_PREVIEW_LIMIT = 3;
 
 const { width } = Dimensions.get('window');
 
@@ -54,8 +62,6 @@ function mapDoctrineSubtopic(sub: DoctrineSubtopic): LearnTopic {
   };
 }
 
-// Distinctive keyword for each curated featured card, used to match a real
-// loaded lesson (whose Supabase slug differs from the static featured id).
 const FEATURED_KEYWORDS: Record<string, string> = {
   trinity: 'trinity',
   eucharist: 'eucharist',
@@ -63,7 +69,6 @@ const FEATURED_KEYWORDS: Record<string, string> = {
   'holy-cross': 'cross',
 };
 
-/** First readable lesson (slug + passages) whose title contains `needle`. */
 function findRealLessonByKeyword(
   collections: LearnCollection[],
   needle: string
@@ -85,7 +90,6 @@ function findRealLessonByKeyword(
   return null;
 }
 
-/** First readable lesson anywhere in the library — a safe linking fallback. */
 function firstLessonAnywhere(
   collections: LearnCollection[]
 ): { topic: LearnTopic; collection: LearnCollection } | null {
@@ -103,14 +107,40 @@ export default function LearnScreen() {
     () => getTabChromeTokens(palette, colorScheme),
     [colorScheme, palette]
   );
+  const chipStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        chip: {
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: chrome.chipBorder,
+          backgroundColor: 'transparent',
+        },
+        chipLabel: {
+          fontSize: 13,
+          letterSpacing: 0.1,
+          color: chrome.chipLabel,
+          fontWeight: '500',
+        },
+      }),
+    [chrome]
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const { recentSearches, addRecentSearch } = useRecentSearches('learn');
   const [doctrineCollections, setDoctrineCollections] = useState<LearnCollection[]>([]);
   const [passageHits, setPassageHits] = useState<DoctrineSearchResult[]>([]);
   const [passageSearchLoading, setPassageSearchLoading] = useState(false);
+  const featuredWidth = width - Layout.pagePadding * 2;
 
-  // Load the doctrine outline from Supabase; subtopics become the lesson cards.
-  // Falls back silently to the bundled library when unavailable/offline.
+  const {
+    values: continueScroll,
+    scrollHandler: continueScrollHandler,
+    onLayout: continueScrollLayout,
+    onContentSizeChange: continueContentSizeChange,
+  } = useHorizontalScrollIndicator();
+
   useEffect(() => {
     let active = true;
     fetchDoctrineOutline()
@@ -146,12 +176,24 @@ export default function LearnScreen() {
   const collectionsToRender =
     doctrineCollections.length > 0 ? doctrineCollections : LEARN_COLLECTIONS;
 
-  const openLesson = (topic: LearnTopic, passageNumber?: number, seriesTitle?: string) => {
+  const openLesson = (
+    topic: LearnTopic,
+    passageNumber?: number,
+    seriesTitle?: string
+  ) => {
     const slug = topic.slug ?? topic.id;
     const params = new URLSearchParams({ title: topic.titleEn });
     if (seriesTitle) params.set('series', seriesTitle);
     if (passageNumber) params.set('passage', String(passageNumber));
     router.push(`/learn/${slug}?${params.toString()}`);
+  };
+
+  const openShelfLesson = (lesson: LearnShelfLesson) => {
+    openLesson(
+      lesson.topic,
+      undefined,
+      learnText(lesson.collection.titleEn, lesson.collection.titleAm, mode)
+    );
   };
 
   const handleSearchSubmit = (term: string) => {
@@ -217,39 +259,18 @@ export default function LearnScreen() {
   }, [effectiveQuery, collectionsToRender, mode]);
 
   const { entries: continueEntries } = useLearningProgress();
+  const { entries: savedEntries } = useSavedTeachings();
 
-  const dailyTopic = findTopicById(LEARN_DAILY_ID);
-
-  const savedItems = useMemo(
-    () =>
-      LEARN_SAVED_IDS.map((id) => findTopicById(id)).filter(Boolean) as NonNullable<
-        ReturnType<typeof findTopicById>
-      >[],
-    []
+  const catechismShelf = useMemo(
+    () => buildFaithAndOrderShelf(collectionsToRender, mode),
+    [collectionsToRender, mode]
   );
 
+  const dailyTeaching = useMemo(() => resolveDailyTeaching(new Date(), mode), [mode]);
+  const { completed: dailyCompleted } = useTodayDailyTeachingCompleted();
+
+  const showSavedSeeAll = savedEntries.length > SAVED_PREVIEW_LIMIT;
   const showLibrary = !effectiveQuery;
-
-  const chipStyles = useMemo(
-    () =>
-      StyleSheet.create({
-        chip: {
-          paddingHorizontal: 14,
-          paddingVertical: 8,
-          borderRadius: 999,
-          borderWidth: 1,
-          borderColor: chrome.chipBorder,
-          backgroundColor: 'transparent',
-        },
-        chipLabel: {
-          fontSize: 13,
-          letterSpacing: 0.1,
-          color: chrome.chipLabel,
-          fontWeight: '500',
-        },
-      }),
-    [chrome]
-  );
 
   return (
     <ScreenScrollView>
@@ -288,101 +309,84 @@ export default function LearnScreen() {
 
       {showLibrary ? (
         <>
-          <SectionBlock headerKey="featured" showDivider={false}>
+          <View style={styles.section}>
+            <SectionHeader headerKey="featured" icon="sparkle" />
             <FeaturedCarousel
               items={featuredItems}
-              width={width - Layout.pagePadding * 2}
+              width={featuredWidth}
               autoRotateMs={3200}
               cardHeight={Layout.featuredCardHeight}
             />
-          </SectionBlock>
+          </View>
 
           {continueEntries.length > 0 ? (
-            <SectionBlock title={t('learn.continueLearning')}>
-              <HorizontalContentRail>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.rail}>
-                  {continueEntries.map((entry) => (
-                    <SoftRailCard
-                      key={entry.slug}
-                      title={entry.title}
-                      subtitle={entry.subtitle}
-                      progress={entry.progress}
-                      onPress={() =>
-                        openLesson(
-                          { id: entry.slug, slug: entry.slug, titleEn: entry.title, titleAm: '' },
-                          undefined,
-                          entry.subtitle
-                        )
-                      }
-                      onRemove={() => void removeLearningProgress(entry.slug)}
-                      removeLabel={`Remove ${entry.title}`}
-                    />
-                  ))}
-                </ScrollView>
-              </HorizontalContentRail>
-            </SectionBlock>
-          ) : null}
-
-          <SectionBlock
-            title="Catechism Catalog"
-            onSeeAllPress={() => router.push('/learn/catalog' as never)}>
-            <HorizontalContentRail>
-              <ScrollView
+            <View style={styles.section}>
+              <SectionHeader headerKey="learn.continueLearning" icon="book" />
+              <BookshelfSection
                 horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.rail}>
-                {collectionsToRender.map((collection) => (
+                scrollProps={{
+                  onScroll: continueScrollHandler,
+                  onLayout: continueScrollLayout,
+                  onContentSizeChange: continueContentSizeChange,
+                }}>
+                {continueEntries.map((entry) => (
                   <SoftRailCard
-                    key={collection.id}
-                    title={learnText(collection.titleEn, collection.titleAm, mode)}
-                    subtitle={learnText(collection.descriptionEn, collection.descriptionAm, mode)}
-                    onPress={() => {
-                      const first = findFirstLesson(collection);
-                      if (first) {
-                        openLesson(
-                          first,
-                          undefined,
-                          learnText(collection.titleEn, collection.titleAm, mode)
-                        );
-                      }
-                    }}
+                    key={entry.slug}
+                    title={entry.title}
+                    subtitle={entry.subtitle}
+                    progress={entry.progress}
+                    onPress={() =>
+                      openLesson(
+                        { id: entry.slug, slug: entry.slug, titleEn: entry.title, titleAm: '' },
+                        undefined,
+                        entry.subtitle
+                      )
+                    }
+                    onRemove={() => void removeLearningProgress(entry.slug)}
+                    removeLabel={`Remove ${entry.title}`}
                   />
                 ))}
-              </ScrollView>
-            </HorizontalContentRail>
-          </SectionBlock>
-
-          <SectionBlock title="Did You Know?">
-            <DidYouKnow />
-          </SectionBlock>
-
-          {dailyTopic ? (
-            <SectionBlock title={t('learn.dailyTeaching')}>
-              <LearnTeachingCard
-                label={t('learn.dailyTeaching')}
-                title={learnText(dailyTopic.topic.titleEn, dailyTopic.topic.titleAm, mode)}
-                readMin={dailyTopic.topic.readMin}
-              />
-            </SectionBlock>
+              </BookshelfSection>
+              {continueEntries.length > 2 ? (
+                <View style={styles.railHint}>
+                  <HorizontalScrollIndicator values={continueScroll} />
+                </View>
+              ) : null}
+            </View>
           ) : null}
 
-          {savedItems.length > 0 ? (
-            <SectionBlock title={t('learn.savedTeachings')}>
-              <View style={styles.savedList}>
-                {savedItems.map(({ topic, collection }) => (
-                  <LearnTeachingCard
-                    key={topic.id}
-                    label={learnText(collection.titleEn, collection.titleAm, mode)}
-                    title={learnText(topic.titleEn, topic.titleAm, mode)}
-                    readMin={topic.readMin}
-                  />
-                ))}
-              </View>
-            </SectionBlock>
-          ) : null}
+          <View style={styles.section}>
+            <SectionHeader
+              headerKey="learn.learningCatalog"
+              icon="scroll"
+              onSeeAllPress={() => router.push('/learn/catalog' as never)}
+            />
+            <DailyTeachingShelf
+              title={dailyTeaching.title}
+              category={dailyTeaching.category}
+              dateLabel={dailyTeaching.dateLabel}
+              readMin={dailyTeaching.teaching.readMin}
+              completed={dailyCompleted}
+              onPress={() => router.push('/learn/daily' as never)}
+            />
+            <LearnCatalogShelf
+              title={t('learn.catechism')}
+              items={catechismShelf}
+              onSeeAll={() => router.push('/learn/catalog' as never)}
+              onLessonPress={openShelfLesson}
+            />
+          </View>
+
+          <View style={[styles.section, styles.lastSection]}>
+            <SectionHeader
+              headerKey="learn.savedTeachings"
+              icon="bookmark-filled"
+              onSeeAllPress={
+                showSavedSeeAll ? () => router.push('/learn/saved' as never) : undefined
+              }
+            />
+            <SavedLearnContent previewLimit={SAVED_PREVIEW_LIMIT} />
+          </View>
         </>
       ) : (
         <>
@@ -439,18 +443,18 @@ export default function LearnScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchWrap: { marginBottom: Layout.searchToSection },
-  filterWrap: { marginBottom: Layout.sectionInner },
-  rail: {
-    gap: Layout.cardGap,
-    paddingRight: Layout.pagePadding,
-    marginRight: -Layout.pagePadding,
-  },
+  searchWrap: { marginBottom: Space.s16 },
+  filterWrap: { marginBottom: Layout.sectionHeaderBottom },
+  section: { marginBottom: Layout.sectionContentBottom },
+  lastSection: { marginBottom: 0 },
   chipRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Space.s8,
     paddingRight: Layout.pagePadding,
   },
-  savedList: { gap: 0 },
+  railHint: {
+    marginTop: Space.s8,
+    alignItems: 'center',
+  },
 });

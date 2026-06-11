@@ -37,6 +37,7 @@ export type MezmurCatalogRailItem = {
   onPress: () => void;
   variant?: 'create' | 'playlist';
   rank?: number;
+  fallbackImageUri?: string;
 };
 
 type MezmurCatalogShelfProps = {
@@ -148,7 +149,7 @@ export function MezmurCatalogShelf({
               artist={item.artist}
               imageUri={item.imageUri}
               collageUris={item.collageUris}
-              fallbackImageUri={item.imageUri ? SacredImagery.listenHymns : undefined}
+              fallbackImageUri={item.fallbackImageUri ?? SacredImagery.listenHymns}
               rank={item.rank}
               onPress={item.onPress}
             />

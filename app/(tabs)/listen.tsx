@@ -16,6 +16,7 @@ import {
 } from '@/components/listen/mezmur-catalog-shelf';
 import { YaredMelodyShelf } from '@/components/listen/yared-melody-shelf';
 import { MezmurSongRow } from '@/components/listen/mezmur-song-row';
+import { BookshelfSection } from '@/components/read/bookshelf-section';
 import { PageHeader } from '@/components/orthodox/PageHeader';
 import { FeaturedCarousel, type FeaturedItem } from '@/components/sacred/featured-carousel';
 import { ContentSearchResults } from '@/components/search/content-search-results';
@@ -83,7 +84,11 @@ import { userPlaylistArtistForKind } from '@/data/userPlaylists';
 import { useGlobalMezmurPlayStats } from '@/hooks/use-global-mezmur-play-stats';
 import { useMezmurPlayStats } from '@/hooks/use-mezmur-play-stats';
 import { useUserPlaylists } from '@/hooks/use-user-playlists';
-import { rankPopularMezmur, resolvePopularMezmurPlayStats } from '@/lib/mezmur-popularity';
+import {
+  rankPopularMezmur,
+  rankPopularSermons,
+  resolvePopularMezmurPlayStats,
+} from '@/lib/mezmur-popularity';
 import { userPlaylistCollageUris, userPlaylistCoverUri } from '@/lib/user-playlists';
 import { YARED_MELODY_SHELVES } from '@/data/yaredMelodiesCatalog';
 import { translate, type LanguageMode, type TranslationKey } from '@/lib/translations';
@@ -121,6 +126,7 @@ const TAB_SECTION_META: Record<
     featuredTitleKey: TranslationKey;
     catalogTitleKey: TranslationKey;
     savedTitleKey: TranslationKey;
+    emptySavedKey: TranslationKey;
     savedIcon: IconName;
     fallbackImage: string;
   }
@@ -130,6 +136,7 @@ const TAB_SECTION_META: Record<
     featuredTitleKey: 'listen.featuredHymns',
     catalogTitleKey: 'listen.hymnsCatalog',
     savedTitleKey: 'listen.savedHymns',
+    emptySavedKey: 'listen.noSavedHymns',
     savedIcon: 'bookmark-filled',
     fallbackImage: SacredImagery.listenHymns,
   },
@@ -138,6 +145,7 @@ const TAB_SECTION_META: Record<
     featuredTitleKey: 'listen.featuredSermons',
     catalogTitleKey: 'listen.sermonCatalog',
     savedTitleKey: 'listen.savedSermons',
+    emptySavedKey: 'listen.noSavedSermons',
     savedIcon: 'church',
     fallbackImage: SacredImagery.listenSermons,
   },
@@ -146,6 +154,7 @@ const TAB_SECTION_META: Record<
     featuredTitleKey: 'listen.featuredMelodies',
     catalogTitleKey: 'listen.melodiesCatalog',
     savedTitleKey: 'listen.savedMelodies',
+    emptySavedKey: 'listen.noSavedMelodies',
     savedIcon: 'music',
     fallbackImage: SacredImagery.listenMelodies,
   },
@@ -312,6 +321,7 @@ export default function ListenScreen() {
     [savedForTab]
   );
   const showSavedSeeAll = savedForTab.length > LISTEN_SHELF_PREVIEW_LIMIT;
+  const showSavedSection = savedForTab.length > 0;
   const {
     entries: recentSearchEntries,
     addRecentSearch,
@@ -608,7 +618,6 @@ export default function ListenScreen() {
   );
 
   const tabSections = TAB_SECTION_META[activeTab];
-  const showSavedSection = savedForTab.length > 0;
   const keyboardContentGap = Space.s12;
   const recentBottomInset = keyboardHeight > 0 ? keyboardContentGap : scrollBottomPadding;
   const searchResultsBottomInset = keyboardHeight > 0 ? keyboardContentGap : scrollBottomPadding;
@@ -680,6 +689,17 @@ export default function ListenScreen() {
       imageUri: entry.song.thumbnailUrl,
       rank: entry.rank,
       onPress: () => void playSong(entry.song, 'hymn'),
+    }));
+  }, [mezmurCatalog, popularMezmurPlayStats, playSong]);
+
+  const popularSermonsShelf = useMemo(() => {
+    return rankPopularSermons(mezmurCatalog, popularMezmurPlayStats, 10).map((entry) => ({
+      key: entry.song.videoId,
+      title: entry.song.title,
+      subtitle: entry.song.artist,
+      imageUri: entry.song.thumbnailUrl,
+      rank: entry.rank,
+      onPress: () => void playSong(entry.song, 'sermon'),
     }));
   }, [mezmurCatalog, popularMezmurPlayStats, playSong]);
 
@@ -922,7 +942,6 @@ export default function ListenScreen() {
                           title={t('listen.mezmurChannelsShelf')}
                           railKind="channel"
                           items={hymnChannelShelf.items}
-                          compactBottom={!showSavedSection}
                           onSeeAll={
                             hymnChannelShelf.totalCount > LISTEN_SHELF_PREVIEW_LIMIT
                               ? () =>
@@ -936,6 +955,11 @@ export default function ListenScreen() {
                       </>
                     ) : activeTab === 'sermons' ? (
                       <>
+                        <MezmurCatalogShelf
+                          title={t('listen.discover')}
+                          items={popularSermonsShelf}
+                          compactBottom
+                        />
                         <MezmurCatalogShelf
                           title={t('listen.mezmurPlaylistsShelf')}
                           items={playlistShelf.items}
@@ -954,7 +978,6 @@ export default function ListenScreen() {
                           title={t('listen.mezmurChannelsShelf')}
                           railKind="channel"
                           items={sermonChannelShelf.items}
-                          compactBottom={!showSavedSection}
                           onSeeAll={
                             sermonChannelShelf.totalCount > LISTEN_SHELF_PREVIEW_LIMIT
                               ? () =>
@@ -971,7 +994,7 @@ export default function ListenScreen() {
                         <YaredMelodyShelf
                           key={shelf.id}
                           shelf={shelf}
-                          compactBottom={showSavedSection && index === shelves.length - 1}
+                          compactBottom={index === shelves.length - 1}
                           onSeeAll={() =>
                             router.push({
                               pathname: '/listen/melodies',
@@ -1053,6 +1076,10 @@ const styles = StyleSheet.create({
   },
   searchWrap: { marginBottom: Layout.searchToSection },
   savedHymnsList: { marginTop: Space.s4 },
+  savedEmpty: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
   savedHymnDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Layout.cardBorder,

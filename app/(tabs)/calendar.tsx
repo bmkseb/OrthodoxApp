@@ -1,6 +1,7 @@
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarDayDetailSheet } from '@/components/calendar/calendar-day-detail-sheet';
 import { CalendarInfoModal } from '@/components/calendar/calendar-info-modal';
@@ -10,20 +11,31 @@ import { TodayHeader } from '@/components/calendar/today-header';
 import { UpcomingFasts } from '@/components/calendar/upcoming-fasts';
 import { UpcomingFeasts } from '@/components/calendar/upcoming-feasts';
 import { PageHeader } from '@/components/orthodox/PageHeader';
-import { SectionBlock } from '@/components/ui/section-block';
-import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
+import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
+import { ThemedView } from '@/components/themed-view';
+import { SectionHeader } from '@/components/ui/section-header';
+import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
 import { useTranslation } from '@/hooks/use-translation';
 import { getUpcomingMajorFeasts, type UpcomingFeast } from '@/data/orthodoxCalendar';
-import { getEthiopianMonthsInGregorianMonth, getUpcomingFasts } from '@/lib/eotc-liturgical-calendar';
-import { Space } from '@/constants/theme';
+import {
+  formatEthiopianMonthsLabel,
+  formatGregorianMonthYear,
+} from '@/lib/calendar-i18n';
+import {
+  getEthiopianMonthsInGregorianMonth,
+  getUpcomingFasts,
+  type UpcomingFastPeriod,
+} from '@/lib/eotc-liturgical-calendar';
+import { ListenSectionSpacing } from '@/constants/listen-layout';
+import { Layout, Space } from '@/constants/theme';
+import type { IconName } from '@/components/Icon';
 
-const GREGORIAN_MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+const CALENDAR_CATALOG_ICON: IconName = 'scroll';
 
 export default function CalendarScreen() {
-  const { t } = useTranslation();
+  const { t, mode } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useFloatingBottomInset();
   const now = useMemo(() => new Date(), []);
   const today = useMemo(
     () => ({ year: now.getFullYear(), month: now.getMonth(), day: now.getDate() }),
@@ -35,18 +47,19 @@ export default function CalendarScreen() {
   const [selectedDay, setSelectedDay] = useState<number | null>(today.day);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [legendVisible, setLegendVisible] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const gridOffsetY = useRef(0);
 
   const upcomingFasts = useMemo(() => getUpcomingFasts(4, now), [now]);
   const upcomingFeasts = useMemo(() => getUpcomingMajorFeasts(5, now), [now]);
 
   const { gregorianMonthLabel, ethiopianMonthLabel } = useMemo(() => {
-    const { monthNames, ethYear } = getEthiopianMonthsInGregorianMonth(viewYear, viewMonth);
+    const { months, ethYear } = getEthiopianMonthsInGregorianMonth(viewYear, viewMonth);
     return {
-      gregorianMonthLabel: `${GREGORIAN_MONTHS[viewMonth]} ${viewYear}`,
-      ethiopianMonthLabel:
-        monthNames.length > 0 ? `${monthNames.join(' / ')} ${ethYear}` : `${ethYear}`,
+      gregorianMonthLabel: formatGregorianMonthYear(viewMonth, viewYear, mode),
+      ethiopianMonthLabel: formatEthiopianMonthsLabel(months, ethYear, mode),
     };
-  }, [viewMonth, viewYear]);
+  }, [mode, viewMonth, viewYear]);
 
   const sheetDay = selectedDay ?? today.day;
 
@@ -57,10 +70,23 @@ export default function CalendarScreen() {
     return now;
   }, [now, sheetDay, sheetVisible, viewMonth, viewYear]);
 
-  const openSheetForDay = useCallback((day: number) => {
-    setSelectedDay(day);
-    setSheetVisible(true);
+  const revealMonthGrid = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, gridOffsetY.current - Space.s8),
+        animated: true,
+      });
+    });
   }, []);
+
+  const openSheetForDay = useCallback(
+    (day: number) => {
+      setSelectedDay(day);
+      setSheetVisible(true);
+      revealMonthGrid();
+    },
+    [revealMonthGrid]
+  );
 
   const handleCloseSheet = useCallback(() => {
     setSheetVisible(false);
@@ -108,63 +134,120 @@ export default function CalendarScreen() {
     [sheetDay, viewMonth, viewYear]
   );
 
-  const handleFeastPress = useCallback((feast: UpcomingFeast) => {
-    setViewYear(feast.date.getFullYear());
-    setViewMonth(feast.date.getMonth());
-    setSelectedDay(feast.date.getDate());
-    setSheetVisible(true);
-  }, []);
+  const openCalendarDate = useCallback(
+    (date: Date) => {
+      setViewYear(date.getFullYear());
+      setViewMonth(date.getMonth());
+      setSelectedDay(date.getDate());
+      setSheetVisible(true);
+      revealMonthGrid();
+    },
+    [revealMonthGrid]
+  );
+
+  const handleFeastPress = useCallback(
+    (feast: UpcomingFeast) => {
+      openCalendarDate(feast.date);
+    },
+    [openCalendarDate]
+  );
+
+  const handleFastPress = useCallback(
+    (fast: UpcomingFastPeriod) => {
+      const target = fast.isActive ? now : fast.startDate;
+      openCalendarDate(target);
+    },
+    [now, openCalendarDate]
+  );
 
   return (
-    <BottomSheetModalProvider>
-      <ScreenScrollView contentContainerStyle={styles.scrollContent}>
-        <PageHeader title={t('nav.calendar')} geez="ቀን ዘመን" />
+    <ThemedView style={styles.screen}>
+      <SacredAtmosphere />
+      <BottomSheetModalProvider>
+        <View
+          style={[
+            styles.screenBody,
+            { paddingTop: insets.top + Space.s8 },
+          ]}>
+          <PageHeader title={t('nav.calendar')} geez="ቀን ዘመን" />
 
-        <SeasonBanner date={bannerDate} onOpenLegend={() => setLegendVisible(true)} />
-        <TodayHeader
-          date={now}
-          todayLabel={t('calendar.today')}
-          onPressToday={goToToday}
-        />
-        <CalendarMonthGrid
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: scrollBottomPadding }}>
+            <View style={styles.seasonSection}>
+              <SeasonBanner date={bannerDate} onOpenLegend={() => setLegendVisible(true)} />
+            </View>
+            <TodayHeader date={now} todayLabel={t('calendar.today')} />
+            <View
+              onLayout={(event) => {
+                gridOffsetY.current = event.nativeEvent.layout.y;
+              }}>
+              <CalendarMonthGrid
+              year={viewYear}
+              month={viewMonth}
+              today={today}
+              selectedDay={selectedDay}
+              gregorianMonthLabel={gregorianMonthLabel}
+              ethiopianMonthLabel={ethiopianMonthLabel}
+              todayLabel={t('calendar.today')}
+              onGoToToday={goToToday}
+              onSelectDay={openSheetForDay}
+              onPrevMonth={goPrevMonth}
+              onNextMonth={goNextMonth}
+              onPrevYear={goPrevYear}
+              onNextYear={goNextYear}
+              />
+            </View>
+
+            <View style={styles.catalogSection}>
+              <SectionHeader title={t('calendar.catalog')} icon={CALENDAR_CATALOG_ICON} />
+              <UpcomingFasts
+                title={t('sections.upcomingFasts')}
+                fasts={upcomingFasts}
+                onPressFast={handleFastPress}
+                compactBottom={upcomingFeasts.length > 0}
+              />
+              <UpcomingFeasts
+                title={t('sections.upcomingFeasts')}
+                feasts={upcomingFeasts}
+                onPressFeast={handleFeastPress}
+              />
+            </View>
+          </ScrollView>
+        </View>
+
+        <CalendarDayDetailSheet
+          visible={sheetVisible}
           year={viewYear}
           month={viewMonth}
-          today={today}
-          gregorianMonthLabel={gregorianMonthLabel}
-          ethiopianMonthLabel={ethiopianMonthLabel}
-          onSelectDay={openSheetForDay}
-          onPrevMonth={goPrevMonth}
-          onNextMonth={goNextMonth}
-          onPrevYear={goPrevYear}
-          onNextYear={goNextYear}
+          day={sheetDay}
+          onClose={handleCloseSheet}
+          onPrevDay={() => navigateDay(-1)}
+          onNextDay={() => navigateDay(1)}
         />
-        {upcomingFasts.length > 0 ? (
-          <SectionBlock headerKey="upcomingFasts">
-            <UpcomingFasts fasts={upcomingFasts} contentOnly />
-          </SectionBlock>
-        ) : null}
-        <SectionBlock headerKey="upcomingFeasts">
-          <UpcomingFeasts feasts={upcomingFeasts} onPressFeast={handleFeastPress} contentOnly />
-        </SectionBlock>
-      </ScreenScrollView>
 
-      <CalendarDayDetailSheet
-        visible={sheetVisible}
-        year={viewYear}
-        month={viewMonth}
-        day={sheetDay}
-        onClose={handleCloseSheet}
-        onPrevDay={() => navigateDay(-1)}
-        onNextDay={() => navigateDay(1)}
-      />
-
-      <CalendarInfoModal visible={legendVisible} onClose={() => setLegendVisible(false)} />
-    </BottomSheetModalProvider>
+        <CalendarInfoModal visible={legendVisible} onClose={() => setLegendVisible(false)} />
+      </BottomSheetModalProvider>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: Space.s16,
+  screen: { flex: 1 },
+  screenBody: {
+    flex: 1,
+    minHeight: 0,
+    paddingHorizontal: Layout.pagePadding,
+  },
+  scroll: {
+    flex: 1,
+  },
+  seasonSection: {
+    marginBottom: ListenSectionSpacing.primary,
+  },
+  catalogSection: {
+    marginTop: Space.s24,
   },
 });

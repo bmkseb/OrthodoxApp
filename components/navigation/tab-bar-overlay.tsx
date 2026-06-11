@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { FloatingBottomChrome } from '@/components/FloatingBottomChrome';
+import { BottomFloatingNav } from '@/components/BottomFloatingNav';
 import { useTabBarProps } from '@/contexts/tab-bar-props-context';
 
 /**
@@ -14,7 +14,7 @@ export function TabBarOverlay() {
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
-      <FloatingBottomChrome {...tabBarProps} />
+      <BottomFloatingNav {...tabBarProps} />
     </View>
   );
 }
@@ -24,5 +24,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 999,
     elevation: 999,
+    backgroundColor: 'transparent',
   },
 });

@@ -73,26 +73,14 @@ export default function DoctrineLessonScreen() {
     maxProgressRef.current = getLearningProgress(slugStr)?.progress ?? 0;
   }, [slugStr]);
 
-  // Add the lesson to Continue Learning as soon as it opens with content.
-  useEffect(() => {
-    if (!slugStr || !contentReady) return;
-    void recordLearningProgress({
-      slug: slugStr,
-      title: heading,
-      subtitle: seriesStr,
-      progress: maxProgressRef.current,
-      updatedAt: Date.now(),
-    });
-  }, [slugStr, contentReady, heading, seriesStr]);
-
   const handleScrollProgress = useCallback((fraction: number) => {
     if (fraction > maxProgressRef.current) maxProgressRef.current = fraction;
   }, []);
 
-  // Persist the furthest point reached when leaving the lesson.
+  // Persist only after the reader has scrolled into the lesson.
   useEffect(() => {
     return () => {
-      if (!slugStr) return;
+      if (!slugStr || maxProgressRef.current <= 0) return;
       void recordLearningProgress({
         slug: slugStr,
         title: heading,
@@ -109,7 +97,17 @@ export default function DoctrineLessonScreen() {
       includeFloatingChrome={false}
       onScrollProgress={handleScrollProgress}>
       <View ref={contentRef} collapsable={false}>
-        <ScriptureBackBar />
+        <ScriptureBackBar
+          teachingSave={
+            slugStr
+              ? {
+                  slug: slugStr,
+                  title: heading,
+                  subtitle: seriesStr,
+                }
+              : undefined
+          }
+        />
         <ScriptureBookHeader title={heading} subtitle="Doctrine" />
 
         {loading ? (

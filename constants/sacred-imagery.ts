@@ -30,6 +30,8 @@ export const SacredImagery = {
     'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=900&q=80&auto=format&fit=crop',
   readManuscript:
     'https://images.unsplash.com/photo-1509316975882-7a37f46b5c0e?w=600&q=80&auto=format&fit=crop',
+  learnContinue:
+    'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=900&q=80&auto=format&fit=crop',
 } as const;
 
 export const EXPLORE_QUICK_CHIPS = [

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { FastDayUnderline } from '@/components/calendar/fast-day-underline';
 import { getCalendarVisual } from '@/lib/calendar-visual';
 import { BorderRadius } from '@/constants/theme';
 import { useThemeTokens } from '@/hooks/use-theme-tokens';
@@ -9,94 +10,144 @@ type CalendarLegendPreviewProps = {
   feastBg?: string;
   dotColor?: string;
   today?: boolean;
-  fastColumn?: boolean;
+  selected?: boolean;
+  fastWeekday?: boolean;
+  fastSeason?: boolean;
   dayLabel?: string;
+  ethiopianLabel?: string;
+  todayOnCell?: boolean;
 };
 
 export function CalendarLegendPreview({
   feastBg,
   dotColor,
   today = false,
-  fastColumn = false,
+  selected = false,
+  fastWeekday = false,
+  fastSeason = false,
   dayLabel = '7',
+  ethiopianLabel = '7',
+  todayOnCell = false,
 }: CalendarLegendPreviewProps) {
   const { palette, colorScheme } = useThemeTokens();
-  const colors = useMemo(
+  const visual = useMemo(
     () => getCalendarVisual(palette, colorScheme),
-    [palette, colorScheme]
+    [colorScheme, palette]
   );
+  const isFasting = fastWeekday || fastSeason;
+  const fastLevel = fastSeason ? 'seasonal' : 'weekday';
 
-  const styles = useMemo(
+  const dynamic = useMemo(
     () =>
       StyleSheet.create({
-        wrap: {
-          width: 48,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: BorderRadius.sm,
-          paddingVertical: 2,
+        selectedCell: {
+          borderColor: visual.selectedCellBorder,
+          backgroundColor: visual.selectedCellBg,
         },
-        fastColumn: {
-          backgroundColor: colors.fastColumn,
-        },
-        dayBox: {
-          width: 42,
-          minHeight: 54,
-          borderRadius: BorderRadius.sm,
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: 4,
-          paddingBottom: 2,
+        todayCellRing: {
+          borderColor: visual.todayCellBorder,
         },
         todayRing: {
           borderWidth: 1.5,
-          borderColor: colors.todayRing,
+          borderColor: visual.todayCellBorder,
+          borderRadius: 4,
+          paddingHorizontal: 4,
+          paddingBottom: 2,
         },
-        gregorian: {
-          fontSize: 15,
-          fontWeight: '600',
-          color: palette.text,
-          lineHeight: 18,
-        },
-        ethiopian: {
-          fontSize: 9,
-          fontWeight: '500',
-          color: palette.muted,
-          lineHeight: 11,
-          marginTop: 2,
-        },
-        todayText: {
-          color: palette.gold,
-        },
-        dotSlot: {
-          height: 8,
-          marginTop: 2,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        dot: {
-          width: 5,
-          height: 5,
-          borderRadius: 2.5,
-        },
+        gregorian: { color: palette.text },
+        ethiopian: { color: palette.muted },
+        todayText: { color: palette.mutedGold },
+        fastText: { color: palette.gold },
+        selectedText: { color: visual.fastLineActive, fontWeight: '700' },
       }),
-    [colors, palette]
+    [palette, visual]
   );
 
   return (
-    <View style={[styles.wrap, fastColumn && styles.fastColumn]}>
-      <View
-        style={[
-          styles.dayBox,
-          feastBg ? { backgroundColor: feastBg } : null,
-          today && styles.todayRing,
-        ]}>
-        <Text style={[styles.gregorian, today && styles.todayText]}>{dayLabel}</Text>
-        <Text style={[styles.ethiopian, today && styles.todayText]}>7</Text>
-        <View style={styles.dotSlot}>
-          {dotColor ? <View style={[styles.dot, { backgroundColor: dotColor }]} /> : null}
+    <View
+      style={[
+        styles.cell,
+        selected && dynamic.selectedCell,
+        todayOnCell && !selected && dynamic.todayCellRing,
+        feastBg ? { backgroundColor: feastBg } : null,
+      ]}>
+      <View style={[styles.dayBox, today && !todayOnCell && !selected && dynamic.todayRing]}>
+        <View style={styles.dateStack}>
+          <Text
+            style={[
+              styles.gregorian,
+              dynamic.gregorian,
+              selected && dynamic.selectedText,
+              today && !selected && dynamic.todayText,
+              isFasting && !selected && !today && dynamic.fastText,
+            ]}>
+            {dayLabel}
+          </Text>
+          {isFasting ? (
+            <FastDayUnderline level={fastLevel} selected={selected} animate={false} />
+          ) : null}
         </View>
+        <Text
+          style={[
+            styles.ethiopian,
+            dynamic.ethiopian,
+            selected && dynamic.selectedText,
+            today && !selected && dynamic.todayText,
+          ]}
+          numberOfLines={1}>
+          {ethiopianLabel}
+        </Text>
+        {dotColor ? (
+          <View style={styles.dotSlot}>
+            <View style={[styles.dot, { backgroundColor: dotColor }]} />
+          </View>
+        ) : null}
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  cell: {
+    width: 48,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 6,
+    paddingBottom: 4,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  dayBox: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  dateStack: {
+    alignItems: 'center',
+    minHeight: 23,
+  },
+  gregorian: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  ethiopian: {
+    fontSize: 9,
+    fontWeight: '500',
+    lineHeight: 11,
+    marginTop: 3,
+  },
+  dotSlot: {
+    marginTop: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 5,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+});

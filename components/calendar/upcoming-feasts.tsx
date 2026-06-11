@@ -1,125 +1,90 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { memo } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
-import { ThemedText } from '@/components/themed-text';
-import { SectionHeader } from '@/components/ui/section-header';
-import { SacredImage } from '@/components/ui/sacred-image';
+import {
+  CalendarRailCard,
+  CALENDAR_RAIL_SCROLL_CONTENT,
+} from '@/components/calendar/calendar-rail-card';
+import { getFeastRailAccent } from '@/lib/calendar-visual';
+import { BookshelfSection } from '@/components/read/bookshelf-section';
+import { ShelfSubsectionHeader } from '@/components/read/shelf-subsection-header';
+import {
+  HorizontalScrollIndicator,
+  useHorizontalScrollIndicator,
+} from '@/components/ui/scroll-indicator';
 import { useTranslation } from '@/hooks/use-translation';
-import { UpcomingFeast } from '@/data/orthodoxCalendar';
-import { Layout, getExploreCardBorder } from '@/constants/theme';
-import { useThemeTokens } from '@/hooks/use-theme-tokens';
+import { calendarRailLabels, formatGregorianDateShort } from '@/lib/calendar-i18n';
+import type { UpcomingFeast } from '@/data/orthodoxCalendar';
+import { Space } from '@/constants/theme';
 
 type UpcomingFeastsProps = {
   feasts: UpcomingFeast[];
-  onPressFeast: (feast: UpcomingFeast) => void;
-  /** When true, omits header (parent SectionBlock owns rhythm). */
-  contentOnly?: boolean;
+  title: string;
+  onPressFeast?: (feast: UpcomingFeast) => void;
 };
 
 export const UpcomingFeasts = memo(function UpcomingFeasts({
   feasts,
+  title,
   onPressFeast,
-  contentOnly = false,
 }: UpcomingFeastsProps) {
-  const { t } = useTranslation();
-  const { palette, colorScheme } = useThemeTokens();
+  const { t, mode } = useTranslation();
+  const { values, scrollHandler, onLayout, onContentSizeChange } = useHorizontalScrollIndicator();
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        wrap: {
-          marginTop: 0,
-        },
-        scroll: {
-          gap: Layout.cardGap,
-          paddingRight: Layout.pagePadding,
-        },
-        card: {
-          width: 140,
-          height: 180,
-          borderRadius: Layout.cardRadius,
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: getExploreCardBorder(palette, colorScheme),
-        },
-        image: {
-          width: '100%',
-          height: '100%',
-        },
-        gradient: {
-          ...StyleSheet.absoluteFillObject,
-        },
-        textBlock: {
-          position: 'absolute',
-          left: 12,
-          right: 12,
-          bottom: 12,
-          gap: 2,
-        },
-        name: {
-          fontSize: 16,
-          fontWeight: '600',
-          color: '#FFFFFF',
-        },
-        date: {
-          fontSize: 13,
-          color: palette.gold,
-        },
-        remaining: {
-          fontSize: 11,
-        },
-      }),
-    [colorScheme, palette]
-  );
-
-  const list = (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.scroll}>
-        {feasts.map((feast) => {
-          const dateStr = feast.date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-          });
-          const feastKey = `${feast.date.getFullYear()}-${feast.month}-${feast.day}-${feast.nameEn}`;
-          return (
-            <OrthodoxPressable
-              key={feastKey}
-              onPress={() => onPressFeast(feast)}>
-              <View style={styles.card}>
-                <SacredImage
-                  uri={`https://picsum.photos/280/360?random=${feast.day + feast.month * 7}`}
-                  style={styles.image}
-                />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.88)']}
-                  style={styles.gradient}
-                />
-                <View style={styles.textBlock}>
-                  <Text style={styles.name} numberOfLines={2}>
-                    {feast.nameEn}
-                  </Text>
-                  <Text style={styles.date}>{dateStr}</Text>
-                  <ThemedText type="muted" style={styles.remaining}>
-                    {t('calendar.daysRemaining', { count: feast.daysRemaining })}
-                  </ThemedText>
-                </View>
-              </View>
-            </OrthodoxPressable>
-          );
-        })}
-      </ScrollView>
-  );
-
-  if (contentOnly) return list;
+  if (feasts.length === 0) return null;
 
   return (
     <View style={styles.wrap}>
-      <SectionHeader headerKey="upcomingFeasts" />
-      {list}
+      <ShelfSubsectionHeader title={title} />
+
+      <BookshelfSection
+        horizontal
+        scrollProps={{
+          onScroll: scrollHandler,
+          onLayout,
+          onContentSizeChange,
+          contentContainerStyle: CALENDAR_RAIL_SCROLL_CONTENT,
+        }}>
+        {feasts.map((feast) => {
+          const accent = getFeastRailAccent(feast.type);
+          const feastKey = `${feast.date.getFullYear()}-${feast.month}-${feast.day}-${feast.nameEn}`;
+          const labels = calendarRailLabels(feast.nameEn, feast.nameGeez, mode);
+
+          return (
+            <CalendarRailCard
+              key={feastKey}
+              title={labels.title}
+              subtitle={labels.subtitle}
+              meta={formatGregorianDateShort(feast.date, mode)}
+              statusLabel={
+                feast.daysRemaining === 0
+                  ? t('calendar.today')
+                  : t('calendar.daysRemaining', { count: feast.daysRemaining })
+              }
+              statusActive={feast.daysRemaining <= 7}
+              accentColor={accent.accentColor}
+              icon={accent.icon}
+              panelTint={accent.panelTint}
+              onPress={onPressFeast ? () => onPressFeast(feast) : undefined}
+            />
+          );
+        })}
+      </BookshelfSection>
+
+      {feasts.length > 2 ? (
+        <View style={styles.hint}>
+          <HorizontalScrollIndicator values={values} />
+        </View>
+      ) : null}
     </View>
   );
+});
+
+const styles = StyleSheet.create({
+  wrap: {
+    marginBottom: Space.s12,
+  },
+  hint: {
+    marginTop: Space.s8,
+  },
 });

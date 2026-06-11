@@ -8,6 +8,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 type TabBarPropsContextValue = {
   props: BottomTabBarProps | null;
@@ -20,16 +21,7 @@ export function TabBarPropsProvider({ children }: { children: ReactNode }) {
   const [props, setProps] = useState<BottomTabBarProps | null>(null);
 
   const syncProps = useCallback((next: BottomTabBarProps) => {
-    setProps((prev) => {
-      if (
-        prev &&
-        prev.state.index === next.state.index &&
-        prev.state.routes === next.state.routes
-      ) {
-        return prev;
-      }
-      return next;
-    });
+    setProps(next);
   }, []);
 
   const value = useMemo(() => ({ props, syncProps }), [props, syncProps]);
@@ -46,8 +38,17 @@ export function TabBarPropsSync(tabProps: BottomTabBarProps) {
     ctx.syncProps(tabProps);
   }, [ctx, tabProps]);
 
-  return null;
+  return <View style={styles.stub} pointerEvents="none" />;
 }
+
+const styles = StyleSheet.create({
+  stub: {
+    height: 0,
+    overflow: 'hidden',
+    opacity: 0,
+    backgroundColor: 'transparent',
+  },
+});
 
 export function useTabBarProps() {
   const ctx = useContext(TabBarPropsContext);

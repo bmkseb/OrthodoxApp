@@ -60,6 +60,7 @@ const gez = {
     yaredPlaylistComingSoonHint: 'ለዚህ ስብስብ መዝሙሮች እዚህ ይታያሉ።',
   },
   calendar: {
+    catalog: 'የቀን መቁጠሪያ ስብስብ',
     upcomingFeasts: 'በዓላት',
     saints: 'ቅዱሳን',
     lectionaries: 'ግጻዌ',

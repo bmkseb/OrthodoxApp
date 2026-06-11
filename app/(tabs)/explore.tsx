@@ -7,6 +7,7 @@ import { ExploreSectionFrame } from '@/components/explore/explore-section-frame'
 import { PrayerStreakCard } from '@/components/explore/prayer-streak-card';
 import { QuickAccessTile } from '@/components/explore/quick-access-tile';
 import { WeeklyExplore } from '@/components/explore/weekly-explore';
+import { DidYouKnow } from '@/components/learn/did-you-know';
 import { PageHeader } from '@/components/orthodox/PageHeader';
 import { VerseOfTheDayCard } from '@/components/sacred/verse-of-the-day-card';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
@@ -108,6 +109,11 @@ export default function ExploreScreen() {
               />
             ))}
           </View>
+        </ExploreSectionFrame>
+
+        {/* Did You Know — canon and tradition facts */}
+        <ExploreSectionFrame headerKey="learn.didYouKnow">
+          <DidYouKnow />
         </ExploreSectionFrame>
 
         <ExploreSectionFrame title="Weekly Explore">

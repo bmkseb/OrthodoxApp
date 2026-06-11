@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarLegendPreview } from '@/components/calendar/calendar-legend-preview';
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { useTranslation } from '@/hooks/use-translation';
+import { getEthiopianMonthName } from '@/lib/calendar-i18n';
 import { CALENDAR_VISUAL } from '@/lib/calendar-visual';
+import type { TranslationKey } from '@/lib/translations';
 import {
   DAYS_OF_WEEK,
   ETHIOPIAN_MONTHS,
   EVANGELIST_CYCLE,
   LITURGICAL_GUIDE_SECTIONS,
+  LITURGICAL_GUIDE_LINK,
   LITURGICAL_GUIDE_SOURCE,
   MONTHLY_FEAST_DAYS,
   NATIONAL_RELIGIOUS_FEASTS,
@@ -23,64 +27,12 @@ type CalendarInfoModalProps = {
   onClose: () => void;
 };
 
-const LEGEND_ITEMS = [
-  {
-    title: 'Major Lord\'s feast',
-    detail: 'Amber tint with a gold dot — Christmas, Easter, Epiphany, and other great feasts of Christ (☩).',
-    preview: (
-      <CalendarLegendPreview
-        feastBg={CALENDAR_VISUAL.majorLordBg}
-        dotColor={CALENDAR_VISUAL.dotGold}
-      />
-    ),
-  },
-  {
-    title: 'Marian feast',
-    detail: 'Blue tint with a blue dot — monthly and major feasts of the Virgin Mary (✦).',
-    preview: (
-      <CalendarLegendPreview
-        feastBg={CALENDAR_VISUAL.majorMaryBg}
-        dotColor={CALENDAR_VISUAL.dotBlue}
-      />
-    ),
-  },
-  {
-    title: 'Angel feast',
-    detail: 'Purple dot — St. Michael, St. Gabriel, and other angelic feasts (✧).',
-    preview: <CalendarLegendPreview dotColor={CALENDAR_VISUAL.dotPurple} />,
-  },
-  {
-    title: 'Monthly feast',
-    detail: 'Gold dot — recurring feasts on the 7th, 12th, 16th, 21st, 27th, or 29th of each month.',
-    preview: <CalendarLegendPreview dotColor={CALENDAR_VISUAL.dotGold} />,
-  },
-  {
-    title: 'Fasting day',
-    detail: 'Grey dot — Wednesdays, Fridays, and days during seasonal fasts.',
-    preview: <CalendarLegendPreview dotColor={CALENDAR_VISUAL.dotGrey} fastColumn />,
-  },
-  {
-    title: 'Feast on a fast day',
-    detail: 'Grey dot even when a feast falls on a fasting day — the fast takes visual priority.',
-    preview: (
-      <CalendarLegendPreview
-        feastBg={CALENDAR_VISUAL.majorLordBg}
-        dotColor={CALENDAR_VISUAL.dotGrey}
-        fastColumn
-      />
-    ),
-  },
-  {
-    title: 'Today',
-    detail: 'Gold ring and gold numbers around the current date.',
-    preview: <CalendarLegendPreview today />,
-  },
-  {
-    title: 'Wed / Fri columns',
-    detail: 'Subtle column tint on Wednesday and Friday each week.',
-    preview: <CalendarLegendPreview fastColumn />,
-  },
-] as const;
+type LegendItem = {
+  id: string;
+  titleKey: TranslationKey;
+  detailKey: TranslationKey;
+  preview: ReactNode;
+};
 
 function GuideAccordion({
   section,
@@ -122,18 +74,117 @@ function GuideAccordion({
 }
 
 export function CalendarInfoModal({ visible, onClose }: CalendarInfoModalProps) {
+  const { t, mode } = useTranslation();
   const insets = useSafeAreaInsets();
   const [expandedId, setExpandedId] = useState<string | null>('calendar');
+  const legendItems = useMemo<LegendItem[]>(
+    () => [
+      {
+        id: 'day-labels',
+        titleKey: 'calendar.legendDayLabels',
+        detailKey: 'calendar.legendDayLabelsDetail',
+        preview: <CalendarLegendPreview dayLabel="15" ethiopianLabel="Tahsas 8" />,
+      },
+      {
+        id: 'today',
+        titleKey: 'calendar.legendToday',
+        detailKey: 'calendar.legendTodayDetail',
+        preview: (
+          <CalendarLegendPreview
+            today
+            todayOnCell
+            dayLabel="31"
+            ethiopianLabel="25"
+          />
+        ),
+      },
+      {
+        id: 'major-lord',
+        titleKey: 'calendar.legendMajorLord',
+        detailKey: 'calendar.legendMajorLordDetail',
+        preview: (
+          <CalendarLegendPreview
+            feastBg={CALENDAR_VISUAL.majorLordBg}
+            dotColor={CALENDAR_VISUAL.dotGold}
+          />
+        ),
+      },
+      {
+        id: 'major-mary',
+        titleKey: 'calendar.legendMajorMary',
+        detailKey: 'calendar.legendMajorMaryDetail',
+        preview: (
+          <CalendarLegendPreview
+            feastBg={CALENDAR_VISUAL.majorMaryBg}
+            dotColor={CALENDAR_VISUAL.dotBlue}
+          />
+        ),
+      },
+      {
+        id: 'marian',
+        titleKey: 'calendar.legendMarian',
+        detailKey: 'calendar.legendMarianDetail',
+        preview: <CalendarLegendPreview dotColor={CALENDAR_VISUAL.dotBlue} ethiopianLabel="21" />,
+      },
+      {
+        id: 'angel',
+        titleKey: 'calendar.legendAngel',
+        detailKey: 'calendar.legendAngelDetail',
+        preview: <CalendarLegendPreview dotColor={CALENDAR_VISUAL.dotPurple} ethiopianLabel="12" />,
+      },
+      {
+        id: 'other-feast',
+        titleKey: 'calendar.legendOtherFeast',
+        detailKey: 'calendar.legendOtherFeastDetail',
+        preview: <CalendarLegendPreview dotColor={CALENDAR_VISUAL.dotGold} ethiopianLabel="7" />,
+      },
+      {
+        id: 'seasonal-fast',
+        titleKey: 'calendar.legendSeasonalFast',
+        detailKey: 'calendar.legendSeasonalFastDetail',
+        preview: <CalendarLegendPreview fastSeason />,
+      },
+      {
+        id: 'wed-fri',
+        titleKey: 'calendar.legendWedFri',
+        detailKey: 'calendar.legendWedFriDetail',
+        preview: <CalendarLegendPreview fastWeekday />,
+      },
+      {
+        id: 'feast-on-fast',
+        titleKey: 'calendar.legendFeastOnFast',
+        detailKey: 'calendar.legendFeastOnFastDetail',
+        preview: (
+          <CalendarLegendPreview
+            feastBg={CALENDAR_VISUAL.majorLordBg}
+            dotColor={CALENDAR_VISUAL.dotGold}
+            fastSeason
+          />
+        ),
+      },
+    ],
+    []
+  );
+
+  const ethiopianMonthRows = useMemo(
+    () =>
+      ETHIOPIAN_MONTHS.map((month, index) => ({
+        ...month,
+        index,
+        localizedName: getEthiopianMonthName(index + 1, mode),
+      })),
+    [mode]
+  );
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.screen, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Religious Holidays & Calendar</Text>
-            <Text style={styles.subtitle}>The Liturgical Year</Text>
+            <Text style={styles.title}>{t('calendar.infoTitle')}</Text>
+            <Text style={styles.subtitle}>{t('calendar.infoSubtitle')}</Text>
           </View>
-          <OrthodoxPressable onPress={onClose} style={styles.closeBtn} accessibilityLabel="Close">
+          <OrthodoxPressable onPress={onClose} style={styles.closeBtn} accessibilityLabel={t('calendar.close')}>
             <Icon name="close" size={20} color={Palette.text} />
           </OrthodoxPressable>
         </View>
@@ -141,36 +192,45 @@ export function CalendarInfoModal({ visible, onClose }: CalendarInfoModalProps) 
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Space.s32 }]}>
-          <Text style={styles.sectionHeading}>Calendar Key</Text>
+          <Text style={styles.sectionHeading}>{t('calendar.calendarKey')}</Text>
           <View style={styles.card}>
-            {LEGEND_ITEMS.map((item) => (
-              <View key={item.title} style={styles.legendRow}>
+            {legendItems.map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.legendRow, index < legendItems.length - 1 && styles.legendRowBorder]}>
                 {item.preview}
                 <View style={styles.legendCopy}>
-                  <Text style={styles.legendTitle}>{item.title}</Text>
-                  <Text style={styles.legendDetail}>{item.detail}</Text>
+                  <Text style={styles.legendTitle}>{t(item.titleKey)}</Text>
+                  <Text style={styles.legendDetail}>{t(item.detailKey)}</Text>
                 </View>
               </View>
             ))}
           </View>
 
-          <Text style={styles.sectionHeading}>Ethiopian Months</Text>
+          <Text style={styles.sectionHeading}>{t('calendar.ethiopianMonths')}</Text>
           <View style={styles.card}>
-            {ETHIOPIAN_MONTHS.map((month, index) => (
-              <View key={month.name} style={[styles.listRow, index < ETHIOPIAN_MONTHS.length - 1 && styles.listRowBorder]}>
-                <Text style={styles.listIndex}>{index + 1}.</Text>
+            {ethiopianMonthRows.map((month) => (
+              <View
+                key={month.name}
+                style={[
+                  styles.listRow,
+                  month.index < ETHIOPIAN_MONTHS.length - 1 && styles.listRowBorder,
+                ]}>
+                <Text style={styles.listIndex}>{month.index + 1}.</Text>
                 <View style={styles.listCopy}>
-                  <Text style={styles.listTitle}>{month.name}</Text>
+                  <Text style={styles.listTitle}>{month.localizedName}</Text>
                   <Text style={styles.listMeta}>{month.period}</Text>
                 </View>
               </View>
             ))}
             <Text style={styles.note}>
-              Pagumen: 5 days at year end (6 in leap year). Evangelist cycle: {EVANGELIST_CYCLE.join(', ')}.
+              Pagumen: 5 days at year end (6 in a leap year). Each year of the four-year cycle is
+              dedicated to an Evangelist in order: {EVANGELIST_CYCLE.join(', ')}. The year of Luke is
+              the Ethiopian leap year.
             </Text>
           </View>
 
-          <Text style={styles.sectionHeading}>Days of the Week</Text>
+          <Text style={styles.sectionHeading}>{t('calendar.daysOfWeek')}</Text>
           <View style={styles.card}>
             {DAYS_OF_WEEK.map((entry, index) => (
               <View key={entry.day} style={[styles.listRow, index < DAYS_OF_WEEK.length - 1 && styles.listRowBorder]}>
@@ -180,7 +240,7 @@ export function CalendarInfoModal({ visible, onClose }: CalendarInfoModalProps) 
             ))}
           </View>
 
-          <Text style={styles.sectionHeading}>Monthly Feast Days</Text>
+          <Text style={styles.sectionHeading}>{t('calendar.monthlyFeastDays')}</Text>
           <View style={styles.card}>
             {MONTHLY_FEAST_DAYS.map((entry, index) => (
               <View
@@ -192,7 +252,7 @@ export function CalendarInfoModal({ visible, onClose }: CalendarInfoModalProps) 
             ))}
           </View>
 
-          <Text style={styles.sectionHeading}>National & Religious Feasts</Text>
+          <Text style={styles.sectionHeading}>{t('calendar.nationalFeasts')}</Text>
           <View style={styles.card}>
             {NATIONAL_RELIGIOUS_FEASTS.map((feast, index) => (
               <View
@@ -206,7 +266,7 @@ export function CalendarInfoModal({ visible, onClose }: CalendarInfoModalProps) 
             ))}
           </View>
 
-          <Text style={styles.sectionHeading}>The Liturgical Year</Text>
+          <Text style={styles.sectionHeading}>{t('calendar.liturgicalYear')}</Text>
           {LITURGICAL_GUIDE_SECTIONS.map((section) => (
             <GuideAccordion
               key={section.id}
@@ -217,6 +277,7 @@ export function CalendarInfoModal({ visible, onClose }: CalendarInfoModalProps) 
           ))}
 
           <Text style={styles.source}>{LITURGICAL_GUIDE_SOURCE}</Text>
+          <Text style={styles.sourceLink}>{LITURGICAL_GUIDE_LINK}</Text>
         </ScrollView>
       </View>
     </Modal>
@@ -277,9 +338,13 @@ const styles = StyleSheet.create({
   },
   legendRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Space.s12,
-    marginBottom: Space.s16,
+    paddingVertical: Space.s8,
+  },
+  legendRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   legendCopy: {
     flex: 1,
@@ -400,6 +465,12 @@ const styles = StyleSheet.create({
     color: Palette.muted,
     fontStyle: 'italic',
     marginTop: Space.s16,
+    marginBottom: Space.s4,
+  },
+  sourceLink: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: Palette.mutedGold,
     marginBottom: Space.s8,
   },
 });
