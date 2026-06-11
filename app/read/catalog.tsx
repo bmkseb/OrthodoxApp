@@ -9,6 +9,7 @@ import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { Spacing } from '@/constants/theme';
+import { getReadCoverFocus, getReadCoverTone } from '@/constants/read-cover-art';
 import { CATALOG_SHELVES, shelfForGenre, type CatalogBook } from '@/data/catalogBooks';
 import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useTranslation } from '@/hooks/use-translation';
@@ -150,7 +151,11 @@ export default function CatalogScreen() {
                 subtitle={book.subtitle}
                 geez={book.geez}
                 showGeez={mode !== 'en'}
-                icon={book.icon}
+                icon={shelf.genre === 'prayer' ? undefined : book.icon}
+                bookId={shelf.genre === 'prayer' ? book.id : undefined}
+                coverSource={shelf.genre === 'prayer' ? book.image : undefined}
+                coverTone={shelf.genre === 'prayer' ? getReadCoverTone(book.id) : undefined}
+                coverFocus={shelf.genre === 'prayer' ? getReadCoverFocus(book.id) : undefined}
                 onPress={() => router.push(book.route)}
               />
               {bookIndex < books.length - 1 ? <CatalogListDivider /> : null}

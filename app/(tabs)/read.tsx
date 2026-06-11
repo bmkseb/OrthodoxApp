@@ -113,7 +113,7 @@ export default function ReadScreen() {
   )
     .filter((book): book is (typeof CATALOG_BOOKS)[number] => book != null)
     .map((book) => {
-      const coverMeta = getReadCoverMeta(book.id);
+      const coverMeta = getReadCoverMeta(book.id, { featured: true });
       return {
         id: book.id,
         title: book.title,

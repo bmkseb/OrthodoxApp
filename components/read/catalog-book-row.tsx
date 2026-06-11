@@ -3,7 +3,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { ReadCoverThumb } from '@/components/read/read-cover-thumb';
 import { ThemedText } from '@/components/themed-text';
+import type { ReadCoverFocus, ReadCoverSource, ReadCoverTone } from '@/constants/read-cover-art';
 import { BorderRadius, Spacing } from '@/constants/theme';
 import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
@@ -16,6 +18,11 @@ type CatalogBookRowProps = {
   showGeez?: boolean;
   /** Leading glyph giving the row a distinct identity. */
   icon?: IconName;
+  /** When set, shows a mini book jacket instead of the icon glyph. */
+  bookId?: string;
+  coverSource?: ReadCoverSource;
+  coverTone?: ReadCoverTone;
+  coverFocus?: ReadCoverFocus;
   onPress: () => void;
 };
 
@@ -29,9 +36,14 @@ export const CatalogBookRow = memo(function CatalogBookRow({
   geez,
   showGeez = false,
   icon,
+  bookId,
+  coverSource,
+  coverTone,
+  coverFocus,
   onPress,
 }: CatalogBookRowProps) {
   const { palette } = useThemeTokens();
+  const showCover = coverSource != null && bookId != null;
 
   const styles = useMemo(
     () =>
@@ -43,13 +55,15 @@ export const CatalogBookRow = memo(function CatalogBookRow({
           paddingHorizontal: 2,
           minHeight: 56,
         },
+        leading: {
+          marginRight: Spacing.md,
+        },
         iconWrap: {
           width: 42,
           height: 42,
           borderRadius: BorderRadius.md,
           alignItems: 'center',
           justifyContent: 'center',
-          marginRight: Spacing.md,
           backgroundColor: `${palette.gold}1A`,
         },
         rowText: {
@@ -83,8 +97,19 @@ export const CatalogBookRow = memo(function CatalogBookRow({
 
   return (
     <OrthodoxPressable style={styles.row} onPress={onPress} accessibilityRole="button">
-      {icon ? (
-        <View style={styles.iconWrap}>
+      {showCover ? (
+        <View style={styles.leading}>
+          <ReadCoverThumb
+            bookId={bookId}
+            source={coverSource}
+            tone={coverTone}
+            focus={coverFocus}
+            width={40}
+            height={56}
+          />
+        </View>
+      ) : icon ? (
+        <View style={[styles.leading, styles.iconWrap]}>
           <Icon name={icon} size={20} color={palette.gold} />
         </View>
       ) : null}

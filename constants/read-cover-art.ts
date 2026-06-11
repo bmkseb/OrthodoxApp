@@ -51,6 +51,35 @@ export const ReadCoverFocusById: Partial<Record<keyof typeof ReadCoverArt, ReadC
   },
 };
 
+/** Wide featured heroes — anchor on the title band at the top of each jacket. */
+export const ReadCoverFeaturedFocusById: Partial<Record<keyof typeof ReadCoverArt, ReadCoverFocus>> = {
+  bible: {
+    contentFit: 'cover',
+    contentPosition: { top: '6%', left: '50%' },
+    scale: 1.14,
+  },
+  'daily-prayer': {
+    contentFit: 'cover',
+    contentPosition: { top: '10%', left: '50%' },
+    scale: 1.2,
+  },
+  'wudase-mariam': {
+    contentFit: 'cover',
+    contentPosition: { top: '8%', left: '50%' },
+    scale: 1.16,
+  },
+  horologium: {
+    contentFit: 'cover',
+    contentPosition: { top: '12%', left: '50%' },
+    scale: 1.18,
+  },
+  liturgy: {
+    contentFit: 'cover',
+    contentPosition: { top: '8%', left: '50%' },
+    scale: 1.14,
+  },
+};
+
 /** Prefer a bundled cover; fall back to remote placeholder URLs. */
 export function resolveReadCoverSource(bookId: string, fallback: string): ReadCoverSource {
   return ReadCoverArt[bookId as keyof typeof ReadCoverArt] ?? fallback;
@@ -62,6 +91,13 @@ export function getReadCoverTone(bookId: string): ReadCoverTone {
 
 export function getReadCoverFocus(bookId: string): ReadCoverFocus | undefined {
   return ReadCoverFocusById[bookId as keyof typeof ReadCoverArt];
+}
+
+export function getReadCoverFeaturedFocus(bookId: string): ReadCoverFocus | undefined {
+  return (
+    ReadCoverFeaturedFocusById[bookId as keyof typeof ReadCoverArt] ??
+    ReadCoverFocusById[bookId as keyof typeof ReadCoverArt]
+  );
 }
 
 /** Shared EOTC Bible jacket for any individual canon book. */
@@ -84,10 +120,10 @@ export function resolveContinueReadingCover(
 }
 
 /** Catalog / progress id → tone + focus helpers. */
-export function getReadCoverMeta(bookId: string) {
+export function getReadCoverMeta(bookId: string, options?: { featured?: boolean }) {
   const catalogId = isPrayerBookId(bookId) ? prayerSlugFromBookId(bookId) : bookId;
   return {
     tone: getReadCoverTone(catalogId),
-    focus: getReadCoverFocus(catalogId),
+    focus: options?.featured ? getReadCoverFeaturedFocus(catalogId) : getReadCoverFocus(catalogId),
   };
 }

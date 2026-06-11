@@ -118,8 +118,8 @@ export const ReadFeaturedCard = memo(function ReadFeaturedCard({
       />
       <View style={styles.topRule} pointerEvents="none" />
       <LinearGradient
-        colors={['transparent', 'rgba(8, 6, 5, 0.38)', 'rgba(8, 6, 5, 0.82)']}
-        locations={[0.25, 0.62, 1]}
+        colors={['transparent', 'rgba(8, 6, 5, 0.22)', 'rgba(8, 6, 5, 0.78)']}
+        locations={[0.42, 0.72, 1]}
         style={styles.scrim}
         pointerEvents="none"
       />

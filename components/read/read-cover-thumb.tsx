@@ -2,27 +2,46 @@ import { memo, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { PremiumBookCoverLayers } from '@/components/read/premium-book-cover-layers';
-import { getCanonScriptureCover } from '@/constants/read-cover-art';
+import {
+  getCanonScriptureCover,
+  type ReadCoverFocus,
+  type ReadCoverSource,
+  type ReadCoverTone,
+} from '@/constants/read-cover-art';
 import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
-const THUMB_WIDTH = 34;
-const THUMB_HEIGHT = 48;
+const DEFAULT_WIDTH = 34;
+const DEFAULT_HEIGHT = 48;
 const SPINE = 3;
 
 type ReadCoverThumbProps = {
   bookId: string;
+  source?: ReadCoverSource;
+  tone?: ReadCoverTone;
+  focus?: ReadCoverFocus;
+  width?: number;
+  height?: number;
 };
 
-/** Small EOTC Bible jacket for rows in the 81-book catalog. */
-export const ReadCoverThumb = memo(function ReadCoverThumb({ bookId }: ReadCoverThumbProps) {
+/** Small book jacket for catalog list rows. */
+export const ReadCoverThumb = memo(function ReadCoverThumb({
+  bookId,
+  source,
+  tone,
+  focus,
+  width = DEFAULT_WIDTH,
+  height = DEFAULT_HEIGHT,
+}: ReadCoverThumbProps) {
   const { palette } = useThemeTokens();
+  const coverSource = source ?? getCanonScriptureCover();
+  const spine = Math.max(2, Math.round(width * 0.09));
 
   const styles = useMemo(
     () =>
       StyleSheet.create({
         wrap: {
-          width: THUMB_WIDTH,
-          height: THUMB_HEIGHT,
+          width,
+          height,
           borderRadius: 3,
           overflow: 'hidden',
           borderWidth: StyleSheet.hairlineWidth,
@@ -38,14 +57,16 @@ export const ReadCoverThumb = memo(function ReadCoverThumb({ bookId }: ReadCover
           zIndex: 2,
         },
       }),
-    [palette.gold]
+    [height, palette.gold, width]
   );
 
   return (
     <View style={styles.wrap} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <PremiumBookCoverLayers
-        source={getCanonScriptureCover()}
-        spineWidth={SPINE}
+        source={coverSource}
+        tone={tone}
+        focus={focus}
+        spineWidth={spine}
         recyclingKey={`catalog-thumb-${bookId}`}
       />
       <View style={styles.rule} pointerEvents="none" />

@@ -7,7 +7,7 @@ import { getSacredTokens } from '@/constants/theme';
 
 const WASH_HEIGHT = 120;
 
-/** Page atmosphere — neutral base with a very subtle top lift (no heavy brown wash). */
+/** Page atmosphere — warm vertical depth in light mode; layered wash in dark. */
 export function SacredAtmosphere() {
   const { colorScheme, palette } = useTheme();
   const sacred = getSacredTokens(colorScheme);
@@ -15,12 +15,11 @@ export function SacredAtmosphere() {
   if (colorScheme === 'light') {
     return (
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background }]} />
         <LinearGradient
-          colors={[sacred.pageWashTop, palette.background]}
+          colors={[palette.background, palette.backgroundDeep]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
-          style={styles.topWash}
+          style={StyleSheet.absoluteFill}
         />
       </View>
     );
