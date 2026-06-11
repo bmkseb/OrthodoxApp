@@ -10,9 +10,10 @@ import { ThemedText } from '@/components/themed-text';
 import { CatalogListDivider } from '@/components/ui/catalog-list-divider';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
-import { Palette, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { HYMNS_CATALOG_SECTIONS, shelfForHymnsSection } from '@/data/hymnsCatalog';
 import { userPlaylistArtistForKind } from '@/data/userPlaylists';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useUserPlaylists } from '@/hooks/use-user-playlists';
 import { userPlaylistCollageUris, userPlaylistCoverUri } from '@/lib/user-playlists';
 import { useTranslation } from '@/hooks/use-translation';
@@ -27,6 +28,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function HymnsCatalogScreen() {
   const { t, mode } = useTranslation();
+  const { palette } = useThemeTokens();
   const { section } = useLocalSearchParams<{ section?: string }>();
   const shelf = shelfForHymnsSection(section);
   const isPlaylists = shelf.section === 'playlists';
@@ -87,6 +89,71 @@ export default function HymnsCatalogScreen() {
     [channels]
   );
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        topBar: {
+          marginBottom: Spacing.sm,
+        },
+        eyebrow: {
+          fontSize: 11,
+          fontWeight: '500',
+          letterSpacing: 1.4,
+          textTransform: 'uppercase',
+          color: palette.mutedGold,
+          marginBottom: 4,
+        },
+        pageTitle: {
+          fontSize: 30,
+          fontWeight: 'bold',
+          lineHeight: 36,
+          marginBottom: 4,
+          color: palette.text,
+        },
+        pageGeez: {
+          fontSize: 17,
+          color: palette.gold,
+          marginBottom: 4,
+        },
+        description: {
+          marginBottom: Spacing.md,
+          lineHeight: 21,
+        },
+        switcher: {
+          flexDirection: 'row',
+          gap: Spacing.sm,
+          marginBottom: Spacing.lg,
+        },
+        switchTab: {
+          paddingVertical: 6,
+          paddingHorizontal: 14,
+          borderRadius: 999,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: `${palette.gold}4D`,
+        },
+        switchTabActive: {
+          backgroundColor: `${palette.gold}29`,
+          borderColor: palette.gold,
+        },
+        switchLabel: {
+          fontSize: 13,
+          fontWeight: '500',
+          color: palette.muted,
+        },
+        switchLabelActive: {
+          color: palette.text,
+        },
+        spinner: {
+          marginTop: Spacing.lg,
+        },
+        inlineEmpty: {
+          marginTop: Spacing.sm,
+          lineHeight: 21,
+        },
+      }),
+    [palette]
+  );
+
   return (
     <ScreenScrollView
       includeFloatingChrome={false}
@@ -124,7 +191,7 @@ export default function HymnsCatalogScreen() {
 
       {isPlaylists ? (
         !playlistsReady ? (
-          <ActivityIndicator color={Palette.gold} style={styles.spinner} />
+          <ActivityIndicator color={palette.gold} style={styles.spinner} />
         ) : (
           <>
             <CreatePlaylistListRow
@@ -170,7 +237,7 @@ export default function HymnsCatalogScreen() {
           </>
         )
       ) : channelsLoading ? (
-        <ActivityIndicator color={Palette.gold} style={styles.spinner} />
+        <ActivityIndicator color={palette.gold} style={styles.spinner} />
       ) : channelsError ? (
         <EmptyState title={channelsError} suggestion={t('scripture.tryAgain')} />
       ) : sortedChannels.length === 0 ? (
@@ -203,63 +270,3 @@ export default function HymnsCatalogScreen() {
     </ScreenScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  topBar: {
-    marginBottom: Spacing.sm,
-  },
-  eyebrow: {
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: Palette.mutedGold,
-    marginBottom: 4,
-  },
-  pageTitle: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    lineHeight: 36,
-    marginBottom: 4,
-  },
-  pageGeez: {
-    fontSize: 17,
-    color: Palette.gold,
-    marginBottom: 4,
-  },
-  description: {
-    marginBottom: Spacing.md,
-    lineHeight: 21,
-  },
-  switcher: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  switchTab: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.3)',
-  },
-  switchTabActive: {
-    backgroundColor: 'rgba(201, 147, 58, 0.16)',
-    borderColor: Palette.gold,
-  },
-  switchLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: Palette.muted,
-  },
-  switchLabelActive: {
-    color: Palette.text,
-  },
-  spinner: {
-    marginTop: Spacing.lg,
-  },
-  inlineEmpty: {
-    marginTop: Spacing.sm,
-    lineHeight: 21,
-  },
-});

@@ -1,28 +1,25 @@
 import { router, type Href } from 'expo-router';
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
+import { ExploreCardSurface, useExploreCardTypography } from '@/components/explore/explore-card-chrome';
+import { Layout, Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useTranslation } from '@/hooks/use-translation';
 
 type WeeklyItem = {
   id: string;
-  /** Short kicker, e.g. "SAINT OF THE WEEK". */
   eyebrow: string;
   icon: IconName;
   title: string;
   geez: string;
   description: string;
-  /** Optional destination; omit for an informational-only card. */
   route?: Href;
 };
 
-/**
- * Curated weekly highlights. Swap these out each week to feature a different
- * saint, book, hymn, or prayer with a short note on why it's worth exploring.
- */
 const WEEKLY_ITEMS: WeeklyItem[] = [
   {
     id: 'saint',
@@ -66,9 +63,35 @@ const WEEKLY_ITEMS: WeeklyItem[] = [
   },
 ];
 
-/** Horizontal rail of weekly featured highlights for the Explore tab. */
 export function WeeklyExplore() {
   const { mode } = useTranslation();
+  const { palette } = useThemeTokens();
+  const type = useExploreCardTypography();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        rail: {
+          gap: Layout.cardGap,
+          paddingRight: Layout.pagePadding,
+        },
+        card: {
+          width: 248,
+          padding: Space.s16,
+          gap: Space.s4,
+        },
+        eyebrowRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Space.s4,
+          marginBottom: Space.s4,
+        },
+        geez: {
+          marginBottom: Space.s4,
+        },
+      }),
+    []
+  );
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
@@ -76,18 +99,18 @@ export function WeeklyExplore() {
         const inner = (
           <>
             <View style={styles.eyebrowRow}>
-              <Icon name={item.icon} size={13} color={Palette.gold} />
-              <ThemedText style={styles.eyebrow}>{item.eyebrow}</ThemedText>
+              <Icon name={item.icon} size={12} color={palette.mutedGold} />
+              <ThemedText style={type.eyebrow}>{item.eyebrow}</ThemedText>
             </View>
-            <ThemedText style={styles.title} numberOfLines={1}>
+            <ThemedText style={type.title} numberOfLines={1}>
               {item.title}
             </ThemedText>
             {mode !== 'en' && item.geez ? (
-              <ThemedText style={styles.geez} numberOfLines={1}>
+              <ThemedText style={[type.accent, styles.geez]} numberOfLines={1}>
                 {item.geez}
               </ThemedText>
             ) : null}
-            <ThemedText style={styles.description} numberOfLines={4}>
+            <ThemedText style={type.subtitle} numberOfLines={4}>
               {item.description}
             </ThemedText>
           </>
@@ -95,9 +118,9 @@ export function WeeklyExplore() {
 
         if (!item.route) {
           return (
-            <View key={item.id} style={styles.card}>
+            <ExploreCardSurface key={item.id} style={styles.card}>
               {inner}
-            </View>
+            </ExploreCardSurface>
           );
         }
         return (
@@ -105,55 +128,11 @@ export function WeeklyExplore() {
             key={item.id}
             onPress={() => router.push(item.route!)}
             accessibilityRole="button"
-            accessibilityLabel={`${item.title}. ${item.description}`}
-            style={styles.card}>
-            {inner}
+            accessibilityLabel={`${item.title}. ${item.description}`}>
+            <ExploreCardSurface style={styles.card}>{inner}</ExploreCardSurface>
           </OrthodoxPressable>
         );
       })}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  rail: {
-    gap: Layout.cardGap,
-    paddingRight: Layout.pagePadding,
-  },
-  card: {
-    width: 248,
-    borderRadius: BorderRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.28)',
-    backgroundColor: Palette.card,
-    padding: Space.s16,
-    gap: Space.s4,
-  },
-  eyebrowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.s4,
-    marginBottom: Space.s4,
-  },
-  eyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.3,
-    color: Palette.gold,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Palette.text,
-  },
-  geez: {
-    fontSize: 13,
-    color: Palette.gold,
-    marginBottom: Space.s4,
-  },
-  description: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: Palette.muted,
-  },
-});

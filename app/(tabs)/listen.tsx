@@ -24,7 +24,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
 import { SearchBar } from '@/components/ui/search-bar';
-import { SectionHeader } from '@/components/ui/section-header';
+import { HorizontalContentRail } from '@/components/ui/horizontal-content-rail';
+import { SectionBlock } from '@/components/ui/section-block';
 import { PlaylistRailCard } from '@/components/listen/playlist-rail-card';
 import {
   isSquareAlbumArt,
@@ -70,13 +71,13 @@ import {
   LISTEN_PLAYLIST_SHELF_SLOTS,
   LISTEN_RAIL_SCROLL_CONTENT,
   LISTEN_SHELF_PREVIEW_LIMIT,
-  ListenSectionSpacing,
 } from '@/constants/listen-layout';
 import {
   sortChannelsByRecentAccess,
   sortPlaylistKeysByRecentAccess,
 } from '@/lib/listen-shelf-order';
-import { Layout, Palette, Space } from '@/constants/theme';
+import { Layout, Space, getTabChromeTokens } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { LISTEN_FEATURED_SEEDS } from '@/data/listenFeatured';
 import { userPlaylistArtistForKind } from '@/data/userPlaylists';
 import { useGlobalMezmurPlayStats } from '@/hooks/use-global-mezmur-play-stats';
@@ -91,7 +92,6 @@ import type { IconName } from '@/components/Icon';
 
 type ListenTab = 'hymns' | 'sermons' | 'melodies';
 const TAB_KEYS: ListenTab[] = ['hymns', 'sermons', 'melodies'];
-const MUTED_GOLD = '#8A8070';
 const PILL_SPRING = { damping: 18, stiffness: 240, mass: 0.6 } as const;
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
@@ -171,6 +171,11 @@ function SegmentedTabs({
   onChange: (t: ListenTab) => void;
 }) {
   const { t, mode } = useTranslation();
+  const { palette, sacred, colorScheme } = useThemeTokens();
+  const chrome = useMemo(
+    () => getTabChromeTokens(palette, colorScheme),
+    [colorScheme, palette]
+  );
   const [layouts, setLayouts] = useState<TabLayouts>({});
 
   const pillX = useSharedValue(0);
@@ -205,9 +210,52 @@ function SegmentedTabs({
     opacity: pillOpacity.value,
   }));
 
+  const segmentStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        segmentContainer: {
+          flexDirection: 'row',
+          alignItems: 'stretch',
+          backgroundColor: chrome.segmentBackground,
+          borderRadius: 999,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: chrome.segmentBorder,
+          padding: 4,
+          marginBottom: Space.s12,
+          position: 'relative',
+        },
+        segmentTab: {
+          flex: 1,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2,
+        },
+        segmentPill: {
+          position: 'absolute',
+          top: 4,
+          bottom: 4,
+          left: 0,
+          borderRadius: 999,
+          backgroundColor: sacred.medallionFill,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: sacred.medallionRing,
+          zIndex: 1,
+        },
+        segmentLabel: {
+          fontSize: 13,
+          letterSpacing: 0.08,
+        },
+        segmentLabelActive: { color: palette.text, fontWeight: '700' },
+        segmentLabelInactive: { color: palette.muted, fontWeight: '500' },
+      }),
+    [chrome, palette, sacred]
+  );
+
   return (
-    <View style={styles.segmentContainer}>
-      <Animated.View style={[styles.segmentPill, pillStyle]} pointerEvents="none" />
+    <View style={segmentStyles.segmentContainer}>
+      <Animated.View style={[segmentStyles.segmentPill, pillStyle]} pointerEvents="none" />
       {TAB_KEYS.map((key) => {
         const isActive = activeTab === key;
         return (
@@ -217,9 +265,12 @@ function SegmentedTabs({
             onPress={() => onChange(key)}
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
-            style={styles.segmentTab}>
+            style={segmentStyles.segmentTab}>
             <Text
-              style={[styles.segmentLabel, isActive ? styles.segmentLabelActive : styles.segmentLabelInactive]}
+              style={[
+                segmentStyles.segmentLabel,
+                isActive ? segmentStyles.segmentLabelActive : segmentStyles.segmentLabelInactive,
+              ]}
               numberOfLines={1}
               allowFontScaling={false}>
               {getListenTabLabel(t, mode, key)}
@@ -707,10 +758,13 @@ export default function ListenScreen() {
           ]}>
           <PageHeader title="Listen" geez="መዝሙር" />
 
+          {!showRecentLayout && !trimmedSearchQuery ? (
+            <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
+          ) : null}
+
           <View style={styles.searchWrap}>
             <SearchBar
               placeholder={t('listen.searchPlaceholder')}
-              placeholderTextColor={MUTED_GOLD}
               value={searchQuery}
               onChangeText={setSearchQuery}
               onSearchSubmit={handleSearchSubmit}
@@ -806,10 +860,7 @@ export default function ListenScreen() {
                 </>
               ) : (
                 <>
-                  <SegmentedTabs activeTab={activeTab} onChange={setActiveTab} />
-
-                  <View style={styles.sectionHero}>
-                    <SectionHeader title={t(tabSections.featuredTitleKey)} />
+                  <SectionBlock title={t(tabSections.featuredTitleKey)} showDivider={false}>
                     <FeaturedCarousel
                       items={featuredItemsForTab}
                       width={featuredWidth}
@@ -817,41 +868,35 @@ export default function ListenScreen() {
                       cardHeight={LISTEN_FEATURED_HEIGHT}
                       listenHero
                     />
-                  </View>
+                  </SectionBlock>
 
                   {continueForTab.length > 0 ? (
-                    <View style={styles.sectionPrimary}>
-                      <SectionHeader
-                        title={t(tabSections.continueTitleKey)}
-                        icon={LISTEN_CONTINUE_ICON}
-                      />
-                      <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.rail}>
-                        {continueForTab.map((entry) => (
-                          <PlaylistRailCard
-                            key={entry.videoId}
-                            title={entry.title}
-                            secondaryText={entry.artist}
-                            imageUri={entry.thumbnailUrl || tabSections.fallbackImage}
-                            fallbackImageUri={tabSections.fallbackImage}
-                            progress={continueListeningProgress(entry)}
-                            progressBelow
-                            onPress={() => void playContinueEntry(entry)}
-                            onRemove={() => void removeListeningProgress(entry.videoId)}
-                            removeLabel={`Remove ${entry.title}`}
-                          />
-                        ))}
-                      </ScrollView>
-                    </View>
+                    <SectionBlock title={t(tabSections.continueTitleKey)}>
+                      <HorizontalContentRail>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.rail}>
+                          {continueForTab.map((entry) => (
+                            <PlaylistRailCard
+                              key={entry.videoId}
+                              title={entry.title}
+                              secondaryText={entry.artist}
+                              imageUri={entry.thumbnailUrl || tabSections.fallbackImage}
+                              fallbackImageUri={tabSections.fallbackImage}
+                              progress={continueListeningProgress(entry)}
+                              progressBelow
+                              onPress={() => void playContinueEntry(entry)}
+                              onRemove={() => void removeListeningProgress(entry.videoId)}
+                              removeLabel={`Remove ${entry.title}`}
+                            />
+                          ))}
+                        </ScrollView>
+                      </HorizontalContentRail>
+                    </SectionBlock>
                   ) : null}
 
-                  <View style={[styles.sectionSecondary, !showSavedSection && styles.lastSection]}>
-                    <SectionHeader
-                      title={t(tabSections.catalogTitleKey)}
-                      icon={LISTEN_CATALOG_ICON}
-                    />
+                  <SectionBlock title={t(tabSections.catalogTitleKey)}>
                     {activeTab === 'hymns' ? (
                       <>
                         <MezmurCatalogShelf
@@ -936,23 +981,20 @@ export default function ListenScreen() {
                         />
                       ))
                     ) : null}
-                  </View>
+                  </SectionBlock>
 
                   {showSavedSection ? (
-                    <View style={[styles.sectionTertiary, styles.lastSection]}>
-                      <SectionHeader
-                        title={t(tabSections.savedTitleKey)}
-                        icon={tabSections.savedIcon}
-                        onSeeAllPress={
-                          showSavedSeeAll
-                            ? () =>
-                                router.push({
-                                  pathname: '/listen/saved',
-                                  params: { kind: savedKind },
-                                } as never)
-                            : undefined
-                        }
-                      />
+                    <SectionBlock
+                      title={t(tabSections.savedTitleKey)}
+                      onSeeAllPress={
+                        showSavedSeeAll
+                          ? () =>
+                              router.push({
+                                pathname: '/listen/saved',
+                                params: { kind: savedKind },
+                              } as never)
+                          : undefined
+                      }>
                       <View style={styles.savedHymnsList}>
                         {savedPreview.map((entry, index) => (
                           <View key={entry.videoId}>
@@ -973,7 +1015,7 @@ export default function ListenScreen() {
                           </View>
                         ))}
                       </View>
-                    </View>
+                    </SectionBlock>
                   ) : null}
                 </>
               )}
@@ -996,7 +1038,7 @@ export default function ListenScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Palette.background },
+  root: { flex: 1 },
   keyboardAvoid: { flex: 1 },
   screenBody: {
     flex: 1,
@@ -1009,44 +1051,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
     overflow: 'visible',
   },
-  searchWrap: { marginBottom: Space.s16 },
-  segmentContainer: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    backgroundColor: '#1A1815',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: Space.s16,
-    position: 'relative',
-  },
-  segmentTab: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  segmentPill: {
-    position: 'absolute',
-    top: 4,
-    bottom: 4,
-    left: 0,
-    borderRadius: 8,
-    backgroundColor: '#C9933A',
-    zIndex: 1,
-  },
-  segmentLabel: {
-    fontSize: 13,
-    letterSpacing: 0.1,
-  },
-  segmentLabelActive: { color: '#000000', fontWeight: '600' },
-  segmentLabelInactive: { color: MUTED_GOLD, fontWeight: '500' },
-  sectionHero: { marginBottom: ListenSectionSpacing.hero },
-  sectionPrimary: { marginBottom: ListenSectionSpacing.primary },
-  sectionSecondary: { marginBottom: ListenSectionSpacing.secondary },
-  sectionTertiary: { marginBottom: ListenSectionSpacing.tertiary },
-  lastSection: { marginBottom: 0 },
+  searchWrap: { marginBottom: Layout.searchToSection },
   savedHymnsList: { marginTop: Space.s4 },
   savedHymnDivider: {
     height: StyleSheet.hairlineWidth,

@@ -16,9 +16,12 @@ import {
   useHorizontalScrollIndicator,
 } from '@/components/ui/scroll-indicator';
 import { SearchBar } from '@/components/ui/search-bar';
-import { SectionHeader } from '@/components/ui/section-header';
-import { SacredImagery } from '@/constants/sacred-imagery';
+import { SectionBlock } from '@/components/ui/section-block';
 import { Layout, Space } from '@/constants/theme';
+import {
+  getReadCoverMeta,
+  resolveContinueReadingCover,
+} from '@/constants/read-cover-art';
 import { getBibleBook, getBookTitle } from '@/data/bibleCanon';
 import { CATALOG_SHELVES } from '@/data/catalogBooks';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -109,14 +112,19 @@ export default function ReadScreen() {
     CATALOG_BOOKS.find((book) => book.id === id)
   )
     .filter((book): book is (typeof CATALOG_BOOKS)[number] => book != null)
-    .map((book) => ({
-      id: book.id,
-      title: book.title,
-      subtitle: book.subtitle,
-      badgeLabel: book.genre,
-      imageUri: book.image,
-      onPress: () => router.push(book.route),
-    }));
+    .map((book) => {
+      const coverMeta = getReadCoverMeta(book.id);
+      return {
+        id: book.id,
+        title: book.title,
+        subtitle: book.subtitle,
+        badgeLabel: book.genre,
+        imageUri: book.image,
+        coverTone: coverMeta.tone,
+        coverFocus: coverMeta.focus,
+        onPress: () => router.push(book.route),
+      };
+    });
 
   return (
     <ScreenScrollView>
@@ -183,15 +191,19 @@ export default function ReadScreen() {
       ) : null}
 
       {/* Featured — daily discovery */}
-      <View style={styles.section}>
-        <SectionHeader headerKey="featured" icon="sparkle" />
-        <FeaturedCarousel items={featuredItems} width={featuredWidth} autoRotateMs={3200} cardHeight={Layout.featuredCardHeight} />
-      </View>
+      <SectionBlock headerKey="featured" showDivider={false}>
+        <FeaturedCarousel
+          items={featuredItems}
+          width={featuredWidth}
+          autoRotateMs={3200}
+          cardHeight={Layout.featuredCardHeight}
+          readHero
+        />
+      </SectionBlock>
 
       {/* Continue reading — pick up where you left off */}
       {entries.length > 0 ? (
-        <View style={styles.section}>
-          <SectionHeader headerKey="continueReading" icon="book" />
+        <SectionBlock headerKey="continueReading">
           <BookshelfSection
             horizontal
             scrollProps={{
@@ -201,6 +213,7 @@ export default function ReadScreen() {
             }}>
             {entries.map((entry) => {
               const progress = entry.totalChapters > 0 ? entry.chapter / entry.totalChapters : 0;
+              const coverMeta = getReadCoverMeta(entry.bookId);
 
               if (isPrayerBookId(entry.bookId)) {
                 const slug = prayerSlugFromBookId(entry.bookId);
@@ -210,7 +223,9 @@ export default function ReadScreen() {
                     key={entry.bookId}
                     title={title}
                     subtitle={entry.subtitle || `${entry.chapter} / ${entry.totalChapters}`}
-                    imageUri={SacredImagery.prayerDaily}
+                    imageUri={resolveContinueReadingCover(entry.bookId, '')}
+                    coverTone={coverMeta.tone}
+                    coverFocus={coverMeta.focus}
                     progress={progress}
                     onPress={() =>
                       router.push(`/prayer/${slug}/${entry.chapter}?lang=${entry.lang}` as never)
@@ -228,7 +243,7 @@ export default function ReadScreen() {
                   key={entry.bookId}
                   title={title}
                   subtitle={`${t('scripture.chapter')} ${entry.chapter}`}
-                  imageUri={SacredImagery.continueBible}
+                  imageUri={resolveContinueReadingCover(entry.bookId, '')}
                   progress={progress}
                   onPress={() =>
                     router.push(scriptureChapterRoute(entry.bookId, entry.chapter, entry.lang))
@@ -244,23 +259,20 @@ export default function ReadScreen() {
               <HorizontalScrollIndicator values={continueScroll} />
             </View>
           ) : null}
-        </View>
+        </SectionBlock>
       ) : (
-        <View style={styles.section}>
-          <SectionHeader headerKey="continueReading" icon="book" />
+        <SectionBlock headerKey="continueReading">
           <HolyBibleHeroCard
             title={t('content.holyBible')}
             subtitle={t('content.startReadingPrompt')}
-            imageUri={SacredImagery.continueBible}
             width={featuredWidth}
             onPress={() => router.push('/catalog')}
           />
-        </View>
+        </SectionBlock>
       )}
 
       {/* Orthodox catalog — organized into genre shelves */}
-      <View style={styles.section}>
-        <SectionHeader headerKey="orthodoxCatalog" icon="scroll" />
+      <SectionBlock headerKey="orthodoxCatalog">
         {CATALOG_SHELVES.map((shelf) => (
           <CatalogShelf
             key={shelf.genre}
@@ -271,13 +283,12 @@ export default function ReadScreen() {
             }
           />
         ))}
-      </View>
+      </SectionBlock>
 
       {!debouncedQuery ? (
-        <View style={[styles.section, styles.lastSection]}>
-          <SectionHeader headerKey="saved" icon="bookmark-filled" />
+        <SectionBlock headerKey="saved">
           <SavedReadContent previewLimitPerSection={SAVED_PREVIEW_LIMIT} />
-        </View>
+        </SectionBlock>
       ) : null}
     </ScreenScrollView>
   );
@@ -285,13 +296,7 @@ export default function ReadScreen() {
 
 const styles = StyleSheet.create({
   searchWrap: {
-    marginBottom: Space.s16,
-  },
-  section: {
-    marginBottom: Layout.sectionContentBottom,
-  },
-  lastSection: {
-    marginBottom: 0,
+    marginBottom: Layout.searchToSection,
   },
   railHint: {
     marginTop: Space.s8,

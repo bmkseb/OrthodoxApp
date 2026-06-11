@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { MezmurSongOptionsSheet } from '@/components/listen/mezmur-song-options-sheet';
@@ -13,8 +13,9 @@ import { Icon, type IconName } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { LISTEN_SAVED_THUMB } from '@/constants/listen-layout';
-import { BorderRadius, Layout, Palette, Space, Spacing } from '@/constants/theme';
+import { BorderRadius, Space, Spacing, getGlossyCardBackground } from '@/constants/theme';
 import { useAudioPlayer, type AudioTrack } from '@/contexts/audio-player-context';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 type MezmurSongRowProps = {
   title: string;
@@ -48,6 +49,7 @@ export const MezmurSongRow = memo(function MezmurSongRow({
   audioTrack,
   showOptions,
 }: MezmurSongRowProps) {
+  const { palette, colorScheme } = useThemeTokens();
   const { addToQueue } = useAudioPlayer();
   const [menuVisible, setMenuVisible] = useState(false);
   const isCatalog = variant === 'catalog';
@@ -57,6 +59,103 @@ export const MezmurSongRow = memo(function MezmurSongRow({
   const isUnsave = removeIcon === 'bookmark-filled' && !useOptionsMenu;
   const resolvedVideoId = (videoIdProp ?? audioTrack?.videoId ?? '').trim();
   const thumbVideoId = resolvedVideoId || audioTrack?.videoId;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        row: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 11,
+          paddingHorizontal: 2,
+        },
+        rowCatalog: {
+          paddingVertical: Spacing.md,
+          paddingHorizontal: Spacing.md,
+          marginBottom: Spacing.sm,
+          borderRadius: BorderRadius.lg,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: palette.border,
+          backgroundColor: getGlossyCardBackground(palette, colorScheme),
+        },
+        rowSaved: {
+          paddingVertical: Space.s12,
+          paddingHorizontal: Space.s4,
+          minHeight: 72,
+        },
+        thumb: {
+          width: VIDEO_THUMB_ROW_WIDTH,
+          height: VIDEO_THUMB_ROW_HEIGHT,
+          marginRight: VIDEO_THUMB_ROW_GAP,
+          borderRadius: VIDEO_THUMB_BORDER_RADIUS,
+          overflow: 'hidden',
+          backgroundColor: getGlossyCardBackground(palette, colorScheme, 'deep'),
+        },
+        thumbSaved: {
+          width: LISTEN_SAVED_THUMB.width,
+          height: LISTEN_SAVED_THUMB.height,
+          marginRight: LISTEN_SAVED_THUMB.gap,
+          borderRadius: LISTEN_SAVED_THUMB.borderRadius,
+        },
+        thumbSavedWrap: {
+          marginRight: LISTEN_SAVED_THUMB.gap,
+        },
+        thumbPlaceholder: {
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        thumbGlyph: {
+          color: palette.gold,
+          fontSize: 16,
+          fontWeight: '700',
+        },
+        copy: {
+          flex: 1,
+          minWidth: 0,
+          gap: 2,
+        },
+        title: {
+          fontSize: 15,
+          color: palette.text,
+          lineHeight: 21,
+        },
+        titleCatalog: {
+          fontSize: 16,
+          fontWeight: '600',
+        },
+        titleSaved: {
+          fontSize: 15,
+          fontWeight: '700',
+          lineHeight: 20,
+        },
+        subtitle: {
+          fontSize: 12.5,
+          lineHeight: 17,
+        },
+        chevron: {
+          color: palette.mutedGold,
+          fontSize: 22,
+          marginLeft: 2,
+        },
+        removeBtn: {
+          width: 24,
+          height: 24,
+          borderRadius: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(12, 10, 8, 0.82)',
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: `${palette.gold}73`,
+        },
+        menuBtn: {
+          width: 32,
+          height: 32,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      }),
+    [colorScheme, palette]
+  );
 
   const openMenu = useCallback(() => {
     setMenuVisible(true);
@@ -125,7 +224,7 @@ export const MezmurSongRow = memo(function MezmurSongRow({
             <Icon
               name={isMenu ? 'more-horizontal' : removeIcon}
               size={isMenu ? 20 : isUnsave ? 18 : 12}
-              color={isMenu || isUnsave ? Palette.gold : Palette.text}
+              color={isMenu || isUnsave ? palette.gold : palette.text}
             />
           </OrthodoxPressable>
         ) : (
@@ -151,97 +250,4 @@ export const MezmurSongRow = memo(function MezmurSongRow({
       ) : null}
     </>
   );
-});
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 2,
-  },
-  rowCatalog: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Layout.cardBorder,
-    backgroundColor: Palette.card,
-  },
-  rowSaved: {
-    paddingVertical: Space.s12,
-    paddingHorizontal: Space.s4,
-    minHeight: 72,
-  },
-  thumb: {
-    width: VIDEO_THUMB_ROW_WIDTH,
-    height: VIDEO_THUMB_ROW_HEIGHT,
-    marginRight: VIDEO_THUMB_ROW_GAP,
-    borderRadius: VIDEO_THUMB_BORDER_RADIUS,
-    overflow: 'hidden',
-    backgroundColor: Palette.card,
-  },
-  thumbSaved: {
-    width: LISTEN_SAVED_THUMB.width,
-    height: LISTEN_SAVED_THUMB.height,
-    marginRight: LISTEN_SAVED_THUMB.gap,
-    borderRadius: LISTEN_SAVED_THUMB.borderRadius,
-  },
-  thumbSavedWrap: {
-    marginRight: LISTEN_SAVED_THUMB.gap,
-  },
-  thumbPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  thumbGlyph: {
-    color: Palette.gold,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  copy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  title: {
-    fontSize: 15,
-    color: Palette.text,
-    lineHeight: 21,
-  },
-  titleCatalog: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  titleSaved: {
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  subtitle: {
-    fontSize: 12.5,
-    lineHeight: 17,
-  },
-  chevron: {
-    color: Palette.mutedGold,
-    fontSize: 22,
-    marginLeft: 2,
-  },
-  removeBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(12, 10, 8, 0.82)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.45)',
-  },
-  menuBtn: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });

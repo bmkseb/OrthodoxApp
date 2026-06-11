@@ -28,18 +28,18 @@ import {
   type DoctrineSubtopic,
 } from '@/lib/doctrine';
 import { learnText } from '@/lib/learn-i18n';
+import { HorizontalContentRail } from '@/components/ui/horizontal-content-rail';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
-import { SectionHeader } from '@/components/ui/section-header';
+import { SectionBlock } from '@/components/ui/section-block';
 import {
   removeLearningProgress,
   useLearningProgress,
 } from '@/hooks/use-learning-progress';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
-import { Layout, Space } from '@/constants/theme';
-
-const MUTED_GOLD = '#8A8070';
+import { Layout, Space, getTabChromeTokens } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 const { width } = Dimensions.get('window');
 
@@ -98,6 +98,11 @@ function firstLessonAnywhere(
 
 export default function LearnScreen() {
   const { t, mode } = useTranslation();
+  const { palette, colorScheme } = useThemeTokens();
+  const chrome = useMemo(
+    () => getTabChromeTokens(palette, colorScheme),
+    [colorScheme, palette]
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const { recentSearches, addRecentSearch } = useRecentSearches('learn');
   const [doctrineCollections, setDoctrineCollections] = useState<LearnCollection[]>([]);
@@ -225,6 +230,27 @@ export default function LearnScreen() {
 
   const showLibrary = !effectiveQuery;
 
+  const chipStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        chip: {
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: chrome.chipBorder,
+          backgroundColor: 'transparent',
+        },
+        chipLabel: {
+          fontSize: 13,
+          letterSpacing: 0.1,
+          color: chrome.chipLabel,
+          fontWeight: '500',
+        },
+      }),
+    [chrome]
+  );
+
   return (
     <ScreenScrollView>
       <PageHeader title="Learn" geez="ትምህርት" />
@@ -232,7 +258,6 @@ export default function LearnScreen() {
       <View style={styles.searchWrap}>
         <SearchBar
           placeholder={t('learn.searchLearn')}
-          placeholderTextColor={MUTED_GOLD}
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSearchSubmit={handleSearchSubmit}
@@ -251,8 +276,8 @@ export default function LearnScreen() {
                 key={term}
                 accessibilityRole="button"
                 onPress={() => setSearchQuery(term)}
-                style={styles.chip}>
-                <Text style={styles.chipLabel} numberOfLines={1} allowFontScaling={false}>
+                style={chipStyles.chip}>
+                <Text style={chipStyles.chipLabel} numberOfLines={1} allowFontScaling={false}>
                   {term}
                 </Text>
               </OrthodoxPressable>
@@ -263,93 +288,89 @@ export default function LearnScreen() {
 
       {showLibrary ? (
         <>
-          <View style={styles.section}>
-            <SectionHeader headerKey="featured" icon="sparkle" />
+          <SectionBlock headerKey="featured" showDivider={false}>
             <FeaturedCarousel
               items={featuredItems}
               width={width - Layout.pagePadding * 2}
               autoRotateMs={3200}
               cardHeight={Layout.featuredCardHeight}
             />
-          </View>
+          </SectionBlock>
 
           {continueEntries.length > 0 ? (
-            <View style={styles.section}>
-              <SectionHeader title={t('learn.continueLearning')} icon="book" />
+            <SectionBlock title={t('learn.continueLearning')}>
+              <HorizontalContentRail>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.rail}>
+                  {continueEntries.map((entry) => (
+                    <SoftRailCard
+                      key={entry.slug}
+                      title={entry.title}
+                      subtitle={entry.subtitle}
+                      progress={entry.progress}
+                      onPress={() =>
+                        openLesson(
+                          { id: entry.slug, slug: entry.slug, titleEn: entry.title, titleAm: '' },
+                          undefined,
+                          entry.subtitle
+                        )
+                      }
+                      onRemove={() => void removeLearningProgress(entry.slug)}
+                      removeLabel={`Remove ${entry.title}`}
+                    />
+                  ))}
+                </ScrollView>
+              </HorizontalContentRail>
+            </SectionBlock>
+          ) : null}
+
+          <SectionBlock
+            title="Catechism Catalog"
+            onSeeAllPress={() => router.push('/learn/catalog' as never)}>
+            <HorizontalContentRail>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.rail}>
-                {continueEntries.map((entry) => (
+                {collectionsToRender.map((collection) => (
                   <SoftRailCard
-                    key={entry.slug}
-                    title={entry.title}
-                    subtitle={entry.subtitle}
-                    progress={entry.progress}
-                    onPress={() =>
-                      openLesson(
-                        { id: entry.slug, slug: entry.slug, titleEn: entry.title, titleAm: '' },
-                        undefined,
-                        entry.subtitle
-                      )
-                    }
-                    onRemove={() => void removeLearningProgress(entry.slug)}
-                    removeLabel={`Remove ${entry.title}`}
+                    key={collection.id}
+                    title={learnText(collection.titleEn, collection.titleAm, mode)}
+                    subtitle={learnText(collection.descriptionEn, collection.descriptionAm, mode)}
+                    onPress={() => {
+                      const first = findFirstLesson(collection);
+                      if (first) {
+                        openLesson(
+                          first,
+                          undefined,
+                          learnText(collection.titleEn, collection.titleAm, mode)
+                        );
+                      }
+                    }}
                   />
                 ))}
               </ScrollView>
-            </View>
-          ) : null}
+            </HorizontalContentRail>
+          </SectionBlock>
 
-          <View style={styles.section}>
-            <SectionHeader
-              title="Catechism Catalog"
-              icon="scroll"
-              onSeeAllPress={() => router.push('/learn/catalog' as never)}
-            />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.rail}>
-              {collectionsToRender.map((collection) => (
-                <SoftRailCard
-                  key={collection.id}
-                  title={learnText(collection.titleEn, collection.titleAm, mode)}
-                  subtitle={learnText(collection.descriptionEn, collection.descriptionAm, mode)}
-                  onPress={() => {
-                    const first = findFirstLesson(collection);
-                    if (first) {
-                      openLesson(
-                        first,
-                        undefined,
-                        learnText(collection.titleEn, collection.titleAm, mode)
-                      );
-                    }
-                  }}
-                />
-              ))}
-            </ScrollView>
-          </View>
-
-          <View style={styles.section}>
-            <SectionHeader title="Did You Know?" icon="sparkle" />
+          <SectionBlock title="Did You Know?">
             <DidYouKnow />
-          </View>
+          </SectionBlock>
 
           {dailyTopic ? (
-            <View style={styles.section}>
-              <SectionHeader title={t('learn.dailyTeaching')} icon="sun" />
+            <SectionBlock title={t('learn.dailyTeaching')}>
               <LearnTeachingCard
                 label={t('learn.dailyTeaching')}
                 title={learnText(dailyTopic.topic.titleEn, dailyTopic.topic.titleAm, mode)}
                 readMin={dailyTopic.topic.readMin}
               />
-            </View>
+            </SectionBlock>
           ) : null}
 
           {savedItems.length > 0 ? (
-            <View style={[styles.section, styles.lastSection]}>
-              <SectionHeader title={t('learn.savedTeachings')} icon="bookmark" />
+            <SectionBlock title={t('learn.savedTeachings')}>
               <View style={styles.savedList}>
                 {savedItems.map(({ topic, collection }) => (
                   <LearnTeachingCard
@@ -360,7 +381,7 @@ export default function LearnScreen() {
                   />
                 ))}
               </View>
-            </View>
+            </SectionBlock>
           ) : null}
         </>
       ) : (
@@ -418,10 +439,8 @@ export default function LearnScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchWrap: { marginBottom: Space.s16 },
-  filterWrap: { marginBottom: Layout.sectionHeaderBottom },
-  section: { marginBottom: Layout.sectionContentBottom },
-  lastSection: { marginBottom: 0 },
+  searchWrap: { marginBottom: Layout.searchToSection },
+  filterWrap: { marginBottom: Layout.sectionInner },
   rail: {
     gap: Layout.cardGap,
     paddingRight: Layout.pagePadding,
@@ -432,20 +451,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Space.s8,
     paddingRight: Layout.pagePadding,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(201, 147, 58, 0.3)',
-    backgroundColor: 'transparent',
-  },
-  chipLabel: {
-    fontSize: 13,
-    letterSpacing: 0.1,
-    color: MUTED_GOLD,
-    fontWeight: '500',
   },
   savedList: { gap: 0 },
 });

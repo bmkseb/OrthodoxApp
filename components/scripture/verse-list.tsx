@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
@@ -8,7 +8,8 @@ import {
   VerseActionSheet,
   type VerseActionTarget,
 } from '@/components/scripture/verse-action-sheet';
-import { Layout, Palette, Space } from '@/constants/theme';
+import { Layout, Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import {
   makeVerseId,
   removeSavedVerse,
@@ -38,20 +39,30 @@ type VerseListProps = {
 };
 
 /** Renders verse text, turning inline † markers into styled superscript daggers. */
-function VerseText({ text, scale }: { text: string; scale: number }) {
+function VerseText({
+  text,
+  scale,
+  verseTextStyle,
+  inlineMarkerStyle,
+}: {
+  text: string;
+  scale: number;
+  verseTextStyle: object;
+  inlineMarkerStyle: object;
+}) {
   const dynamic = { fontSize: VERSE_BASE_FONT * scale, lineHeight: VERSE_BASE_LINE * scale };
   if (!text.includes(FOOTNOTE_MARKER)) {
-    return <ThemedText style={[styles.verseText, dynamic]}>{text}</ThemedText>;
+    return <ThemedText style={[verseTextStyle, dynamic]}>{text}</ThemedText>;
   }
 
   const segments = text.split(FOOTNOTE_MARKER);
   return (
-    <ThemedText style={[styles.verseText, dynamic]}>
+    <ThemedText style={[verseTextStyle, dynamic]}>
       {segments.map((segment, i) => (
         <Fragment key={i}>
           {segment}
           {i < segments.length - 1 ? (
-            <ThemedText style={[styles.inlineMarker, { lineHeight: dynamic.lineHeight }]}>
+            <ThemedText style={[inlineMarkerStyle, { lineHeight: dynamic.lineHeight }]}>
               {FOOTNOTE_MARKER}
             </ThemedText>
           ) : null}
@@ -72,7 +83,103 @@ export function VerseList({
 }: VerseListProps) {
   const savedMap = useSavedVerseMap();
   const { scale } = useFontScale();
+  const { palette } = useThemeTokens();
   const [selected, setSelected] = useState<VerseRecord | null>(null);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        list: { gap: Layout.titleSubtitleGap },
+        row: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: 12,
+          paddingVertical: 4,
+        },
+        verseNum: {
+          width: 28,
+          fontSize: 14,
+          fontWeight: '700',
+          color: palette.gold,
+          textAlign: 'right',
+          lineHeight: 24,
+        },
+        verseBody: {
+          flex: 1,
+        },
+        highlightWrap: {
+          borderRadius: 4,
+          paddingHorizontal: 4,
+          marginHorizontal: -4,
+        },
+        verseSelected: {
+          borderBottomWidth: 1.5,
+          borderStyle: 'dotted',
+          borderColor: palette.gold,
+          paddingBottom: 2,
+        },
+        verseFocused: {
+          backgroundColor: 'rgba(201, 147, 58, 0.14)',
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: 'rgba(201, 147, 58, 0.45)',
+        },
+        verseText: {
+          fontSize: 17,
+          lineHeight: 28,
+        },
+        inlineMarker: {
+          fontSize: 12,
+          lineHeight: 28,
+          color: palette.gold,
+          fontWeight: '700',
+        },
+        noteRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: Space.s4,
+          marginTop: Space.s4,
+          paddingLeft: 4,
+        },
+        noteText: {
+          flex: 1,
+          fontSize: 13,
+          lineHeight: 18,
+          fontStyle: 'italic',
+        },
+        footnotes: {
+          marginTop: Space.s24,
+          gap: Space.s8,
+        },
+        divider: {
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: palette.mutedGold,
+          marginBottom: Space.s8,
+        },
+        footnoteRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: Space.s8,
+        },
+        footnoteMarker: {
+          fontSize: 13,
+          lineHeight: 20,
+          color: palette.gold,
+          fontWeight: '700',
+        },
+        footnoteText: {
+          flex: 1,
+          fontSize: 13,
+          lineHeight: 20,
+        },
+        footnoteRef: {
+          fontSize: 13,
+          lineHeight: 20,
+          color: palette.gold,
+          fontWeight: '600',
+        },
+      }),
+    [palette]
+  );
 
   const footnotes: Footnote[] = verses.flatMap((verse) => parseFootnotes(verse, lang));
 
@@ -130,12 +237,17 @@ export function VerseList({
                     isSelected && styles.verseSelected,
                     isFocused && styles.verseFocused,
                   ]}>
-                  <VerseText text={pickVerseText(verse, lang)} scale={scale} />
+                  <VerseText
+                    text={pickVerseText(verse, lang)}
+                    scale={scale}
+                    verseTextStyle={styles.verseText}
+                    inlineMarkerStyle={styles.inlineMarker}
+                  />
                 </View>
                 {saved?.note ? (
                   <View style={styles.noteRow}>
-                    <Icon name="bookmark" size={12} color={Palette.gold} />
-                    <ThemedText style={styles.noteText} numberOfLines={2}>
+                    <Icon name="bookmark" size={12} color={palette.gold} />
+                    <ThemedText type="muted" style={styles.noteText} numberOfLines={2}>
                       {saved.note}
                     </ThemedText>
                   </View>
@@ -152,7 +264,7 @@ export function VerseList({
           {footnotes.map((fn, i) => (
             <View key={`${fn.ref}-${i}`} style={styles.footnoteRow}>
               <ThemedText style={styles.footnoteMarker}>{FOOTNOTE_MARKER}</ThemedText>
-              <ThemedText style={styles.footnoteText}>
+              <ThemedText type="muted" style={styles.footnoteText}>
                 {fn.ref ? <ThemedText style={styles.footnoteRef}>{fn.ref} </ThemedText> : null}
                 {fn.text}
               </ThemedText>
@@ -180,97 +292,3 @@ export function VerseList({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  list: { gap: Layout.titleSubtitleGap },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingVertical: 4,
-  },
-  verseNum: {
-    width: 28,
-    fontSize: 14,
-    fontWeight: '700',
-    color: Palette.gold,
-    textAlign: 'right',
-    lineHeight: 24,
-  },
-  verseBody: {
-    flex: 1,
-  },
-  highlightWrap: {
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    marginHorizontal: -4,
-  },
-  verseSelected: {
-    borderBottomWidth: 1.5,
-    borderStyle: 'dotted',
-    borderColor: Palette.gold,
-    paddingBottom: 2,
-  },
-  verseFocused: {
-    backgroundColor: 'rgba(201, 147, 58, 0.14)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.45)',
-  },
-  verseText: {
-    fontSize: 17,
-    lineHeight: 28,
-    color: Palette.text,
-  },
-  inlineMarker: {
-    fontSize: 12,
-    lineHeight: 28,
-    color: Palette.gold,
-    fontWeight: '700',
-  },
-  noteRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Space.s4,
-    marginTop: Space.s4,
-    paddingLeft: 4,
-  },
-  noteText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    fontStyle: 'italic',
-    color: Palette.muted,
-  },
-  footnotes: {
-    marginTop: Space.s24,
-    gap: Space.s8,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Palette.mutedGold,
-    marginBottom: Space.s8,
-  },
-  footnoteRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Space.s8,
-  },
-  footnoteMarker: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: Palette.gold,
-    fontWeight: '700',
-  },
-  footnoteText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 20,
-    color: Palette.muted,
-  },
-  footnoteRef: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: Palette.gold,
-    fontWeight: '600',
-  },
-});

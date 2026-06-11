@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
-import { Palette } from '@/constants/theme';
+import { SerifFamily } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 
 type BilingualHeaderProps = {
@@ -37,6 +38,7 @@ export function BilingualHeader({
   style,
 }: BilingualHeaderProps) {
   const { mode } = useLanguage();
+  const { palette } = useTheme();
 
   const lineHeight = Math.round(size * 1.25);
   const baseTextStyle: TextStyle = {
@@ -44,13 +46,14 @@ export function BilingualHeader({
     fontWeight: weight,
     lineHeight,
     letterSpacing,
+    fontFamily: SerifFamily,
   };
 
   if (mode === 'en') {
     return (
       <View style={[styles.row, style]}>
         <Text
-          style={[baseTextStyle, styles.english]}
+          style={[baseTextStyle, { color: palette.text }]}
           numberOfLines={1}
           allowFontScaling={false}>
           {english}
@@ -63,7 +66,7 @@ export function BilingualHeader({
     return (
       <View style={[styles.row, style]}>
         <Text
-          style={[baseTextStyle, styles.amharic]}
+          style={[baseTextStyle, { color: palette.gold }]}
           numberOfLines={1}
           allowFontScaling={false}>
           {amharic}
@@ -79,18 +82,19 @@ export function BilingualHeader({
     fontWeight: weight,
     lineHeight: Math.round(accentSize * 1.25),
     letterSpacing: 0,
+    fontFamily: SerifFamily,
   };
 
   return (
     <View style={[styles.row, style]}>
       <Text
-        style={[baseTextStyle, styles.english, styles.primaryText]}
+        style={[baseTextStyle, { color: palette.text }, styles.primaryText]}
         numberOfLines={1}
         allowFontScaling={false}>
         {english}
       </Text>
       <Text
-        style={[accentStyle, styles.amharic, styles.accentText]}
+        style={[accentStyle, { color: palette.gold }, styles.accentText]}
         numberOfLines={1}
         allowFontScaling={false}>
         {amharic}
@@ -107,9 +111,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
   },
-  amharic: { color: Palette.gold },
-  english: { color: Palette.text },
-  // English keeps its full size; Amharic accent truncates first if space runs out.
   primaryText: { flexShrink: 0 },
   accentText: { flexShrink: 1, minWidth: 0 },
 });

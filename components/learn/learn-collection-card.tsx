@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { LayoutAnimation, Platform, StyleSheet, Text, UIManager, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
@@ -8,9 +8,10 @@ import { learnText } from '@/lib/learn-i18n';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { useTranslation } from '@/hooks/use-translation';
-import { BorderRadius, Palette, Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
+import { GlossyCardGradientFill } from '@/components/ui/glossy-card-gradient-fill';
+import { BorderRadius, Space, getGlossyCardBackground } from '@/constants/theme';
 
-const MUTED_GOLD = '#8A8070';
 const COLLAPSED_HEIGHT = 80;
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -37,6 +38,7 @@ export function LearnCollectionCard({
   onTopicPress,
 }: LearnCollectionCardProps) {
   const { mode, t } = useTranslation();
+  const { palette, sacred, colorScheme } = useThemeTokens();
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const title = learnText(collection.titleEn, collection.titleAm, mode);
@@ -48,12 +50,97 @@ export function LearnCollectionCard({
     setExpanded((v) => !v);
   }, []);
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          borderRadius: BorderRadius.lg,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: palette.border,
+          backgroundColor: 'transparent',
+          overflow: 'hidden',
+        },
+        card: {
+          height: COLLAPSED_HEIGHT,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: Space.s12,
+          gap: 14,
+          zIndex: 1,
+        },
+        iconWrap: {
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          backgroundColor: sacred.medallionFill,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: sacred.medallionRing,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        headerCopy: {
+          flex: 1,
+          minWidth: 0,
+          justifyContent: 'center',
+          gap: 2,
+        },
+        title: {
+          fontSize: 16,
+          fontWeight: '600',
+          color: palette.text,
+          letterSpacing: -0.15,
+          lineHeight: 20,
+        },
+        description: {
+          fontSize: 13,
+          color: palette.muted,
+          lineHeight: 17,
+        },
+        trailing: {
+          alignItems: 'flex-end',
+          justifyContent: 'center',
+          gap: 4,
+          minWidth: 56,
+        },
+        chevronWrap: {
+          transform: [{ rotate: '0deg' }],
+        },
+        chevronOpen: {
+          transform: [{ rotate: '90deg' }],
+        },
+        count: {
+          fontSize: 11,
+          fontWeight: '500',
+          color: palette.muted,
+          letterSpacing: 0.2,
+        },
+        topicsPanel: {
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: palette.border,
+          backgroundColor: getGlossyCardBackground(palette, colorScheme, 'deep'),
+          overflow: 'hidden',
+          zIndex: 1,
+        },
+        panelDivider: {
+          alignItems: 'center',
+          paddingVertical: Space.s8,
+        },
+        panelCross: {
+          fontSize: 9,
+          color: palette.gold,
+          opacity: 0.35,
+        },
+      }),
+    [colorScheme, palette, sacred]
+  );
+
   return (
     <View style={styles.wrap}>
+      <GlossyCardGradientFill />
       <OrthodoxPressable onPress={toggle} accessibilityRole="button" accessibilityState={{ expanded }}>
         <View style={styles.card}>
           <View style={styles.iconWrap}>
-            <Icon name={collection.icon} size={20} color={Palette.gold} />
+            <Icon name={collection.icon} size={20} color={palette.gold} />
           </View>
           <View style={styles.headerCopy}>
             <ThemedText style={styles.title} numberOfLines={1}>
@@ -65,7 +152,7 @@ export function LearnCollectionCard({
           </View>
           <View style={styles.trailing}>
             <View style={[styles.chevronWrap, expanded && styles.chevronOpen]}>
-              <Icon name="chevron-right" size={18} color={Palette.gold} />
+              <Icon name="chevron-right" size={18} color={palette.gold} />
             </View>
             <Text style={styles.count} numberOfLines={1} allowFontScaling={false}>
               {t('learn.topicsCount', { count: topicCount })}
@@ -93,75 +180,3 @@ export function LearnCollectionCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { marginBottom: 0 },
-  card: {
-    height: COLLAPSED_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 2,
-    gap: 14,
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(201, 147, 58, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: 'center',
-    gap: 2,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Palette.text,
-    letterSpacing: -0.15,
-    lineHeight: 20,
-  },
-  description: {
-    fontSize: 13,
-    color: MUTED_GOLD,
-    lineHeight: 17,
-  },
-  trailing: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 4,
-    minWidth: 56,
-  },
-  chevronWrap: {
-    transform: [{ rotate: '0deg' }],
-  },
-  chevronOpen: {
-    transform: [{ rotate: '90deg' }],
-  },
-  count: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: MUTED_GOLD,
-    letterSpacing: 0.2,
-  },
-  topicsPanel: {
-    marginTop: Space.s8,
-    marginLeft: Space.s8,
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderLeftColor: 'rgba(201, 147, 58, 0.12)',
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(18, 16, 14, 0.65)',
-    overflow: 'hidden',
-  },
-  panelDivider: {
-    alignItems: 'center',
-    paddingVertical: Space.s8,
-  },
-  panelCross: {
-    fontSize: 9,
-    color: 'rgba(201, 147, 58, 0.28)',
-  },
-});

@@ -1,9 +1,10 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+import { BorderRadius, Layout, Spacing, getGlossyCardBackground } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 type RecentItem = {
   id: string;
@@ -17,6 +18,38 @@ type LearnRecentStripProps = {
 };
 
 export function LearnRecentStrip({ items, onPress }: LearnRecentStripProps) {
+  const { palette, colorScheme } = useThemeTokens();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        scroll: {
+          gap: Spacing.sm,
+          paddingRight: Layout.pagePadding,
+        },
+        chip: {
+          width: 140,
+          paddingVertical: Spacing.sm + 2,
+          paddingHorizontal: Spacing.sm + 4,
+          borderRadius: BorderRadius.md,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: `${palette.gold}33`,
+          backgroundColor: getGlossyCardBackground(palette, colorScheme),
+          gap: 3,
+        },
+        chipTitle: {
+          fontSize: 13,
+          fontWeight: '500',
+          color: palette.text,
+        },
+        chipSub: {
+          fontSize: 10,
+          color: palette.muted,
+        },
+      }),
+    [colorScheme, palette]
+  );
+
   return (
     <ScrollView
       horizontal
@@ -39,29 +72,3 @@ export function LearnRecentStrip({ items, onPress }: LearnRecentStripProps) {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  scroll: {
-    gap: Spacing.sm,
-    paddingRight: Layout.pagePadding,
-  },
-  chip: {
-    width: 140,
-    paddingVertical: Spacing.sm + 2,
-    paddingHorizontal: Spacing.sm + 4,
-    borderRadius: BorderRadius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Layout.cardBorderThin,
-    backgroundColor: 'rgba(37, 32, 24, 0.65)',
-    gap: 3,
-  },
-  chipTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: Palette.text,
-  },
-  chipSub: {
-    fontSize: 10,
-    color: Palette.muted,
-  },
-});

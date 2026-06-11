@@ -1,7 +1,11 @@
-import { StyleSheet, View } from 'react-native';
+import { useMemo } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
+import { Icon } from '@/components/Icon';
 import { ThemedText } from '@/components/themed-text';
-import { Palette, Spacing } from '@/constants/theme';
+import { ManuscriptEdgeFrame } from '@/components/sacred/manuscript-edge-frame';
+import { Palette, SerifFamily, Spacing, getManuscriptEdgeTokens } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 export type ParsedPassageQuote = {
   text: string;
@@ -289,12 +293,59 @@ export function isScriptureQuoteLine(line: string): boolean {
   return parseScriptureQuote(line) != null;
 }
 
-/** Gold-bordered pull quote for verified scripture citations only. */
+/** Manuscript Edge pull quote for verified scripture citations. */
 export function PassageQuoteBlock({ text, reference }: ParsedPassageQuote) {
+  const { colorScheme } = useThemeTokens();
+  const edge = getManuscriptEdgeTokens(colorScheme);
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: {
+          paddingHorizontal: 20,
+          paddingVertical: 18,
+          gap: 12,
+        },
+        quote: {
+          fontSize: 21.5,
+          lineHeight: Math.round(21.5 * 1.4),
+          fontStyle: 'italic',
+          textAlign: 'left',
+          color: edge.quoteText,
+          fontFamily: SerifFamily,
+        },
+        footer: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        },
+        reference: {
+          flex: 1,
+          fontSize: 11,
+          fontWeight: '600',
+          letterSpacing: 0.6,
+          color: edge.reference,
+          fontFamily: SerifFamily,
+          ...Platform.select({
+            ios: { fontVariant: ['small-caps' as const] },
+            default: { textTransform: 'uppercase' as const },
+          }),
+        },
+      }),
+    [edge]
+  );
+
   return (
-    <View style={styles.scriptureBlock}>
-      <ThemedText style={styles.scriptureText}>{`\u201C${text}\u201D`}</ThemedText>
-      <ThemedText style={styles.scriptureRef}>{reference}</ThemedText>
+    <View style={quoteBlockWrap}>
+      <ManuscriptEdgeFrame>
+        <View style={styles.content}>
+          <Text style={styles.quote}>{`\u201C${text}\u201D`}</Text>
+          <View style={styles.footer}>
+            <Text style={styles.reference}>{reference}</Text>
+            <Icon name="arrow-right" size={16} color={edge.reference} />
+          </View>
+        </View>
+      </ManuscriptEdgeFrame>
     </View>
   );
 }
@@ -309,28 +360,12 @@ export function PassagePatristicQuoteBlock({ text, reference }: ParsedPassageQuo
   );
 }
 
+const quoteBlockWrap = {
+  marginVertical: Spacing.sm,
+  marginBottom: Spacing.md,
+} as const;
+
 const styles = StyleSheet.create({
-  scriptureBlock: {
-    marginVertical: Spacing.sm,
-    marginBottom: Spacing.md,
-    paddingLeft: Spacing.md,
-    borderLeftWidth: 2,
-    borderLeftColor: Palette.gold,
-  },
-  scriptureText: {
-    fontSize: 16.5,
-    lineHeight: 26,
-    fontStyle: 'italic',
-    color: 'rgba(245, 236, 215, 0.9)',
-  },
-  scriptureRef: {
-    marginTop: Spacing.xs,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    color: Palette.gold,
-  },
   patristicBlock: {
     marginVertical: Spacing.sm,
     marginBottom: Spacing.md,

@@ -1,7 +1,8 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Palette, Space } from '@/constants/theme';
+import { getMiniSectionHeaderStyle, Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useTranslation } from '@/hooks/use-translation';
 
 type ShelfSubsectionHeaderProps = {
@@ -9,17 +10,18 @@ type ShelfSubsectionHeaderProps = {
   onSeeAllPress?: () => void;
 };
 
-/** Compact shelf label with gold accent — matches Orthodox Catalog (Prayer, Scripture, …). */
+/** Compact shelf label — ceremonial serif mini-header (Prayer, Scripture, …). */
 export function ShelfSubsectionHeader({ title, onSeeAllPress }: ShelfSubsectionHeaderProps) {
   const { t } = useTranslation();
+  const { palette } = useThemeTokens();
 
   return (
     <View style={styles.header}>
       <View style={styles.titleRow}>
-        <View style={styles.accent} />
-        <ThemedText style={styles.title} numberOfLines={1}>
+        <View style={[styles.accent, { backgroundColor: palette.gold }]} />
+        <Text style={getMiniSectionHeaderStyle(palette.text)} numberOfLines={1}>
           {title}
-        </ThemedText>
+        </Text>
       </View>
 
       {onSeeAllPress ? (
@@ -53,15 +55,7 @@ const styles = StyleSheet.create({
     width: 3,
     height: 14,
     borderRadius: 2,
-    backgroundColor: Palette.gold,
     marginRight: Space.s8,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-    color: Palette.text,
-    flexShrink: 1,
   },
   seeAll: {
     fontSize: 12,

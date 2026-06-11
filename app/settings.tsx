@@ -1,107 +1,191 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { router, Stack } from 'expo-router';
+import React, { useCallback } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppearanceOptionList } from '@/components/settings/appearance-option-list';
 import { AppBackButton } from '@/components/ui/app-back-button';
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
-import { RadialCardSurface } from '@/components/sacred/radial-card-surface';
-import { ThemedText } from '@/components/themed-text';
-import { ManuscriptTokens } from '@/components/sacred/manuscript-tokens';
-import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
+import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
+import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
+import { BorderRadius, Layout, Space, Typography } from '@/constants/theme';
+import { useLanguage } from '@/contexts/language-context';
+import { useTheme } from '@/contexts/theme-context';
+import { LANGUAGE_MODES } from '@/lib/translations';
+import type { LanguageMode } from '@/lib/translations';
 import { useTranslation } from '@/hooks/use-translation';
-import type { LanguageMode, TranslationKey } from '@/lib/translations';
-import { BorderRadius, Layout, Palette } from '@/constants/theme';
+import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import * as Haptics from 'expo-haptics';
 
-const MODES: LanguageMode[] = ['en', 'bilingual', 'am'];
-
-const MODE_LABEL_KEYS: Record<LanguageMode, TranslationKey> = {
-  en: 'settings.modeEn',
-  bilingual: 'settings.modeBilingual',
-  am: 'settings.modeAm',
-};
-
-const MODE_DESC_KEYS: Record<LanguageMode, TranslationKey> = {
-  en: 'settings.modeEnDesc',
-  bilingual: 'settings.modeBilingualDesc',
-  am: 'settings.modeAmDesc',
-};
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 export default function SettingsScreen() {
-  const { t, mode, setMode, typography, ethiopicStyle } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { palette } = useTheme();
+  const { mode, setMode } = useLanguage();
+  const { values: scrollIndicator, scrollHandler } = useScrollIndicator();
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/explore');
+  }, []);
+
+  const handleLanguage = (next: LanguageMode) => {
+    if (next === mode) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    void setMode(next);
+  };
 
   return (
-    <ScreenScrollView>
-      <AppBackButton style={styles.backRow} />
+    <View style={[styles.root, { backgroundColor: palette.background }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SacredAtmosphere />
 
-      <ThemedText type="title" style={styles.pageTitle}>
-        {t('settings.title')}
-      </ThemedText>
-
-      <ThemedText type="muted" style={[styles.description, typography.subtitle, mode === 'am' ? ethiopicStyle : undefined]}>
-        {t('settings.languageDescription')}
-      </ThemedText>
-
-      <ThemedText style={[styles.sectionLabel, typography.subtitle]}>{t('settings.language')}</ThemedText>
-
-      <View style={styles.options}>
-        {MODES.map((m) => {
-          const selected = mode === m;
-          return (
-            <OrthodoxPressable key={m} onPress={() => setMode(m)}>
-              <RadialCardSurface tint="warm" style={[styles.optionCard, selected && styles.optionCardSelected]}>
-                <View style={styles.optionRow}>
-                  <View style={[styles.radio, selected && styles.radioSelected]}>
-                    {selected ? <View style={styles.radioDot} /> : null}
-                  </View>
-                  <View style={styles.optionText}>
-                    <Text style={[styles.optionTitle, typography.body, (m === 'am' || m === 'bilingual') && ethiopicStyle]}>
-                      {t(MODE_LABEL_KEYS[m])}
-                    </Text>
-                    <ThemedText type="muted" style={[styles.optionDesc, typography.subtitle, m === 'am' ? ethiopicStyle : undefined]}>
-                      {t(MODE_DESC_KEYS[m])}
-                    </ThemedText>
-                  </View>
-                </View>
-              </RadialCardSurface>
-            </OrthodoxPressable>
-          );
-        })}
+      <View style={[styles.topBar, { paddingTop: insets.top + Space.s8 }]}>
+        <AppBackButton onPress={handleBack} style={styles.backBtn} />
+        <Text style={[styles.topTitle, { color: palette.text }]}>{t('settings.title')}</Text>
+        <View style={styles.topBarSpacer} />
       </View>
-    </ScreenScrollView>
+
+      <View style={styles.scrollArea}>
+        <AnimatedScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Space.s40 }]}
+          showsVerticalScrollIndicator={false}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>{t('settings.appearance')}</Text>
+            <Text style={[styles.sectionDescription, { color: palette.muted }]}>
+              {t('settings.appearanceDescription')}
+            </Text>
+            <AppearanceOptionList />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>{t('settings.language')}</Text>
+            <Text style={[styles.sectionDescription, { color: palette.muted }]}>
+              {t('settings.languageDescription')}
+            </Text>
+            <View style={styles.list}>
+              {LANGUAGE_MODES.map((option) => {
+                const selected = mode === option.mode;
+                const descriptionKey =
+                  option.mode === 'en'
+                    ? 'settings.modeEnDesc'
+                    : option.mode === 'bilingual'
+                      ? 'settings.modeBilingualDesc'
+                      : 'settings.modeAmDesc';
+                return (
+                  <OrthodoxPressable
+                    key={option.mode}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    onPress={() => handleLanguage(option.mode)}
+                    style={[
+                      styles.row,
+                      {
+                        backgroundColor: selected ? 'rgba(201, 147, 58, 0.08)' : palette.surface,
+                        borderColor: selected ? palette.gold : palette.border,
+                      },
+                    ]}>
+                    <View style={styles.copy}>
+                      <Text style={[styles.label, { color: palette.text }]}>{t(option.labelKey)}</Text>
+                      <Text style={[styles.description, { color: palette.muted }]}>
+                        {t(descriptionKey)}
+                      </Text>
+                    </View>
+                    {selected ? (
+                      <Text style={[styles.check, { color: palette.gold }]} accessibilityLabel="Selected">
+                        ✓
+                      </Text>
+                    ) : null}
+                  </OrthodoxPressable>
+                );
+              })}
+            </View>
+          </View>
+        </AnimatedScrollView>
+
+        <ScrollIndicator
+          values={scrollIndicator}
+          trackInsetTop={insets.top + Space.s8 + 44}
+          trackInsetBottom={insets.bottom + Space.s40}
+        />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backRow: { marginBottom: Layout.headerContentGap },
-  pageTitle: { marginBottom: Layout.headerContentGap },
-  description: { marginBottom: Layout.sectionGap, lineHeight: 22 },
-  sectionLabel: {
-    color: Palette.mutedGold,
-    marginBottom: Layout.headerContentGap,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontSize: 12,
+  root: {
+    flex: 1,
   },
-  options: { gap: Layout.cardGap, paddingBottom: Layout.sectionGap },
-  optionCard: {
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: ManuscriptTokens.goldBorder,
-    padding: 16,
-  },
-  optionCardSelected: { borderColor: ManuscriptTokens.goldFaded },
-  optionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, zIndex: 1 },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: 'rgba(201, 147, 58, 0.4)',
+  topBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
+    paddingHorizontal: Layout.pagePadding,
+    paddingBottom: Space.s12,
   },
-  radioSelected: { borderColor: Palette.gold },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Palette.gold },
-  optionText: { flex: 1, gap: 4 },
-  optionTitle: { color: Palette.text, fontWeight: '600' },
-  optionDesc: { lineHeight: 20 },
+  backBtn: {
+    marginRight: Space.s8,
+  },
+  topTitle: {
+    flex: 1,
+    ...Typography.sectionTitle,
+    fontSize: 22,
+    textAlign: 'center',
+  },
+  topBarSpacer: {
+    width: 40,
+  },
+  scrollArea: {
+    flex: 1,
+  },
+  scroll: {
+    paddingHorizontal: Layout.pagePadding,
+    gap: Space.s32,
+    paddingTop: Space.s8,
+  },
+  section: {
+    gap: Space.s12,
+  },
+  sectionTitle: {
+    ...Typography.sectionTitle,
+    fontSize: 20,
+  },
+  sectionDescription: {
+    ...Typography.body,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  list: {
+    gap: Space.s12,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.s12,
+    paddingHorizontal: Space.s16,
+    paddingVertical: Space.s12,
+    borderRadius: BorderRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  copy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  description: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  check: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
 });

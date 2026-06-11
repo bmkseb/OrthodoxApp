@@ -1,14 +1,19 @@
 import { router } from 'expo-router';
-import { memo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
-import { ManuscriptCornerFrame } from '@/components/sacred/manuscript-corner-frame';
-import { ParchmentGrainOverlay } from '@/components/sacred/parchment-grain-overlay';
-import { RadialCardSurface } from '@/components/sacred/radial-card-surface';
-import { ThemedText } from '@/components/themed-text';
-import { Layout, Palette, Space } from '@/constants/theme';
+import { ManuscriptEdgeEyebrow } from '@/components/sacred/manuscript-edge-eyebrow';
+import { ManuscriptEdgeFrame } from '@/components/sacred/manuscript-edge-frame';
+import { Animation, SerifFamily, getManuscriptEdgeTokens } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { scriptureLangQuery, useScriptureLang } from '@/hooks/use-scripture-lang';
 
 type DailyVerse = {
@@ -18,7 +23,6 @@ type DailyVerse = {
   chapter: number;
 };
 
-/** Small curated rotation so the card shows fresh spiritual content each day. */
 const DAILY_VERSES: DailyVerse[] = [
   {
     reference: 'John 3:16',
@@ -82,6 +86,9 @@ const DAILY_VERSES: DailyVerse[] = [
   },
 ];
 
+const QUOTE_SIZE = 21.5;
+const QUOTE_LINE = Math.round(QUOTE_SIZE * 1.4);
+
 function dayOfYear(date: Date): number {
   const start = new Date(date.getFullYear(), 0, 0);
   const diff = date.getTime() - start.getTime();
@@ -95,15 +102,98 @@ function getVerseOfTheDay(): DailyVerse {
 
 type VerseOfTheDayCardProps = {
   width?: number;
+  hero?: boolean;
+  /** Gold small-caps label above the card (Explore tab). */
+  showEyebrow?: boolean;
+  eyebrowLabel?: string;
+  /** @deprecated Parent supplies ManuscriptEdgeFrame — use default chrome instead. */
+  bare?: boolean;
 };
 
 export const VerseOfTheDayCard = memo(function VerseOfTheDayCard({
   width,
+  hero = false,
+  showEyebrow = false,
+  eyebrowLabel = "Today's Verse",
+  bare = false,
 }: VerseOfTheDayCardProps) {
   const lang = useScriptureLang();
   const verse = getVerseOfTheDay();
+  const { colorScheme } = useThemeTokens();
+  const edge = getManuscriptEdgeTokens(colorScheme);
+  const reduceMotion = useReducedMotion();
+  const enterOpacity = useSharedValue(reduceMotion ? 1 : 0);
+  const enterLift = useSharedValue(reduceMotion ? 0 : Animation.verseEnterLift);
 
-  return (
+  useEffect(() => {
+    if (reduceMotion) return;
+    enterOpacity.value = withTiming(1, { duration: Animation.verseEnterMs });
+    enterLift.value = withTiming(0, { duration: Animation.verseEnterMs });
+  }, [enterLift, enterOpacity, reduceMotion]);
+
+  const enterStyle = useAnimatedStyle(() => ({
+    opacity: enterOpacity.value,
+    transform: [{ translateY: enterLift.value }],
+  }));
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: {
+          paddingHorizontal: 20,
+          paddingVertical: 18,
+          gap: 12,
+        },
+        verse: {
+          fontSize: hero ? QUOTE_SIZE : QUOTE_SIZE - 1,
+          lineHeight: hero ? QUOTE_LINE : QUOTE_LINE - 1,
+          color: edge.quoteText,
+          fontFamily: SerifFamily,
+          fontStyle: 'italic',
+          textAlign: 'left',
+        },
+        footer: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        },
+        reference: {
+          flex: 1,
+          fontSize: 11,
+          fontWeight: '600',
+          color: edge.reference,
+          letterSpacing: 0.6,
+          fontFamily: SerifFamily,
+          ...Platform.select({
+            ios: { fontVariant: ['small-caps' as const] },
+            default: { textTransform: 'uppercase' as const },
+          }),
+        },
+      }),
+    [edge, hero]
+  );
+
+  const verseContent = (
+    <View style={styles.content}>
+      <Text style={styles.verse}>{`\u201C${verse.text}\u201D`}</Text>
+      <View style={styles.footer}>
+        <Text style={styles.reference}>{verse.reference}</Text>
+        <Icon name="arrow-right" size={16} color={edge.reference} />
+      </View>
+    </View>
+  );
+
+  const framedBody = bare ? verseContent : <ManuscriptEdgeFrame>{verseContent}</ManuscriptEdgeFrame>;
+
+  const cardBody = (
+    <>
+      {showEyebrow ? <ManuscriptEdgeEyebrow label={eyebrowLabel} /> : null}
+      {framedBody}
+    </>
+  );
+
+  const pressable = (
     <OrthodoxPressable
       accessibilityRole="button"
       accessibilityLabel={`${verse.reference}. ${verse.text}`}
@@ -111,58 +201,13 @@ export const VerseOfTheDayCard = memo(function VerseOfTheDayCard({
         router.push(`/book/${verse.bookId}/${verse.chapter}${scriptureLangQuery(lang)}`)
       }
       style={width != null ? { width } : undefined}>
-      <RadialCardSurface tint="warm" style={styles.card}>
-        <ParchmentGrainOverlay />
-        <Text style={styles.watermark}>{'\u201C'}</Text>
-        <ManuscriptCornerFrame inset={8} opacity={0.24} />
-
-        <ThemedText style={styles.verse}>{`\u201C${verse.text}\u201D`}</ThemedText>
-
-        <View style={styles.footer}>
-          <ThemedText style={styles.reference}>{verse.reference}</ThemedText>
-          <Icon name="chevron-right" size={16} color={Palette.gold} />
-        </View>
-      </RadialCardSurface>
+      {cardBody}
     </OrthodoxPressable>
   );
-});
 
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: Layout.cardRadius,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.28)',
-    paddingHorizontal: Space.s24,
-    paddingVertical: Space.s24,
-    gap: Space.s12,
-  },
-  watermark: {
-    position: 'absolute',
-    top: -18,
-    right: 14,
-    fontSize: 120,
-    lineHeight: 120,
-    color: Palette.gold,
-    opacity: 0.08,
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-  },
-  verse: {
-    fontSize: 19,
-    lineHeight: 28,
-    color: Palette.text,
-    fontStyle: 'italic',
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Space.s4,
-  },
-  reference: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Palette.gold,
-    letterSpacing: 0.3,
-  },
+  if (!hero) {
+    return pressable;
+  }
+
+  return <Animated.View style={enterStyle}>{pressable}</Animated.View>;
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -14,7 +14,8 @@ import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { HIGHLIGHT_COLORS } from '@/constants/highlight-colors';
-import { BorderRadius, Palette, Space } from '@/constants/theme';
+import { BorderRadius, Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 export type VerseActionTarget = {
   reference: string;
@@ -32,8 +33,6 @@ type VerseActionSheetProps = {
   onRemove: () => void;
 };
 
-const SHEET_BG = '#1A1815';
-
 export function VerseActionSheet({
   visible,
   target,
@@ -43,7 +42,125 @@ export function VerseActionSheet({
   onRemove,
 }: VerseActionSheetProps) {
   const insets = useSafeAreaInsets();
+  const { palette, sacred } = useThemeTokens();
   const [noteDraft, setNoteDraft] = useState('');
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: { flex: 1, justifyContent: 'flex-end' },
+        backdrop: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        },
+        sheet: {
+          backgroundColor: palette.sheet,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          paddingHorizontal: 24,
+          paddingTop: 12,
+        },
+        handle: {
+          alignSelf: 'center',
+          width: 40,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: 'rgba(201, 147, 58, 0.3)',
+          marginBottom: 18,
+        },
+        reference: {
+          fontSize: 17,
+          fontWeight: '700',
+          color: palette.gold,
+        },
+        verseText: {
+          marginTop: Space.s4,
+          fontSize: 14,
+          lineHeight: 20,
+          color: sacred.creamMuted,
+        },
+        sectionLabel: {
+          marginTop: Space.s24,
+          marginBottom: Space.s12,
+          fontSize: 12,
+          fontWeight: '700',
+          letterSpacing: 1.4,
+          textTransform: 'uppercase',
+          color: palette.muted,
+        },
+        swatchRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Space.s12,
+        },
+        swatch: {
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: palette.border,
+        },
+        swatchActive: {
+          borderWidth: 2,
+          borderColor: palette.text,
+        },
+        swatchClear: {
+          backgroundColor: 'transparent',
+          borderColor: palette.border,
+        },
+        noteInput: {
+          minHeight: 80,
+          maxHeight: 160,
+          borderRadius: BorderRadius.md,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: 'rgba(201, 147, 58, 0.25)',
+          backgroundColor: 'rgba(0, 0, 0, 0.25)',
+          paddingHorizontal: Space.s12,
+          paddingTop: Space.s12,
+          paddingBottom: Space.s12,
+          color: palette.text,
+          fontSize: 15,
+          lineHeight: 22,
+          textAlignVertical: 'top',
+        },
+        actions: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: Space.s12,
+          marginTop: Space.s24,
+        },
+        actionBtn: {
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: Space.s8,
+          height: 48,
+          borderRadius: BorderRadius.md,
+        },
+        removeBtn: {
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: 'rgba(139, 26, 26, 0.5)',
+        },
+        saveBtn: {
+          backgroundColor: palette.gold,
+        },
+        actionLabel: {
+          fontSize: 15,
+          fontWeight: '700',
+        },
+        removeLabel: {
+          color: palette.crimson,
+        },
+        saveLabel: {
+          color: palette.backgroundDeep,
+        },
+      }),
+    [palette, sacred.creamMuted]
+  );
 
   useEffect(() => {
     if (visible) setNoteDraft(target?.note ?? '');
@@ -88,7 +205,7 @@ export function VerseActionSheet({
                         { backgroundColor: c.swatch },
                         active && styles.swatchActive,
                       ]}>
-                      {active ? <Icon name="cross" size={14} color={Palette.text} /> : null}
+                      {active ? <Icon name="cross" size={14} color={palette.text} /> : null}
                     </Pressable>
                   );
                 })}
@@ -97,7 +214,7 @@ export function VerseActionSheet({
                   accessibilityLabel="Clear highlight"
                   onPress={() => onHighlight(null)}
                   style={[styles.swatch, styles.swatchClear]}>
-                  <Icon name="close" size={16} color={Palette.muted} />
+                  <Icon name="close" size={16} color={palette.muted} />
                 </Pressable>
               </View>
 
@@ -106,7 +223,7 @@ export function VerseActionSheet({
                 value={noteDraft}
                 onChangeText={setNoteDraft}
                 placeholder="Add a comment on this verse…"
-                placeholderTextColor={Palette.muted}
+                placeholderTextColor={palette.muted}
                 multiline
                 style={styles.noteInput}
               />
@@ -117,7 +234,7 @@ export function VerseActionSheet({
                     style={[styles.actionBtn, styles.removeBtn]}
                     onPress={onRemove}
                     accessibilityLabel="Remove Highlight">
-                    <Icon name="close" size={16} color={Palette.crimson} />
+                    <Icon name="close" size={16} color={palette.crimson} />
                     <ThemedText style={[styles.actionLabel, styles.removeLabel]}>Remove Highlight</ThemedText>
                   </OrthodoxPressable>
                 ) : (
@@ -128,7 +245,7 @@ export function VerseActionSheet({
                   style={[styles.actionBtn, styles.saveBtn]}
                   onPress={() => onSaveNote(noteDraft)}
                   accessibilityLabel="Save note">
-                  <Icon name="bookmark" size={16} color={Palette.background} />
+                  <Icon name="bookmark" size={16} color={palette.backgroundDeep} />
                   <ThemedText style={[styles.actionLabel, styles.saveLabel]}>Save</ThemedText>
                 </OrthodoxPressable>
               </View>
@@ -139,116 +256,3 @@ export function VerseActionSheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  },
-  sheet: {
-    backgroundColor: SHEET_BG,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(201, 147, 58, 0.3)',
-    marginBottom: 18,
-  },
-  reference: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Palette.gold,
-  },
-  verseText: {
-    marginTop: Space.s4,
-    fontSize: 14,
-    lineHeight: 20,
-    color: 'rgba(245, 236, 215, 0.78)',
-  },
-  sectionLabel: {
-    marginTop: Space.s24,
-    marginBottom: Space.s12,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: Palette.muted,
-  },
-  swatchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.s12,
-  },
-  swatch: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  swatchActive: {
-    borderWidth: 2,
-    borderColor: Palette.text,
-  },
-  swatchClear: {
-    backgroundColor: 'transparent',
-    borderColor: 'rgba(255, 255, 255, 0.18)',
-  },
-  noteInput: {
-    minHeight: 80,
-    maxHeight: 160,
-    borderRadius: BorderRadius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.25)',
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-    paddingHorizontal: Space.s12,
-    paddingTop: Space.s12,
-    paddingBottom: Space.s12,
-    color: Palette.text,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlignVertical: 'top',
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Space.s12,
-    marginTop: Space.s24,
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Space.s8,
-    height: 48,
-    borderRadius: BorderRadius.md,
-  },
-  removeBtn: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(139, 26, 26, 0.5)',
-  },
-  saveBtn: {
-    backgroundColor: Palette.gold,
-  },
-  actionLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  removeLabel: {
-    color: Palette.crimson,
-  },
-  saveLabel: {
-    color: Palette.background,
-  },
-});

@@ -1,10 +1,11 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Palette, Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 type CatalogBookRowProps = {
   title: string;
@@ -30,11 +31,61 @@ export const CatalogBookRow = memo(function CatalogBookRow({
   icon,
   onPress,
 }: CatalogBookRowProps) {
+  const { palette } = useThemeTokens();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        row: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: Spacing.md - 2,
+          paddingHorizontal: 2,
+          minHeight: 56,
+        },
+        iconWrap: {
+          width: 42,
+          height: 42,
+          borderRadius: BorderRadius.md,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: Spacing.md,
+          backgroundColor: `${palette.gold}1A`,
+        },
+        rowText: {
+          flex: 1,
+          minWidth: 0,
+        },
+        rowGeez: {
+          fontSize: 13,
+          color: palette.gold,
+          marginBottom: 3,
+        },
+        rowTitle: {
+          fontSize: 16,
+          fontWeight: '600',
+          lineHeight: 21,
+          color: palette.text,
+        },
+        rowSubtitle: {
+          fontSize: 12.5,
+          lineHeight: 17,
+          marginTop: 2,
+        },
+        arrow: {
+          fontSize: 22,
+          color: palette.mutedGold,
+          marginLeft: Spacing.sm,
+        },
+      }),
+    [palette]
+  );
+
   return (
     <OrthodoxPressable style={styles.row} onPress={onPress} accessibilityRole="button">
       {icon ? (
         <View style={styles.iconWrap}>
-          <Icon name={icon} size={20} color={Palette.gold} />
+          <Icon name={icon} size={20} color={palette.gold} />
         </View>
       ) : null}
       <View style={styles.rowText}>
@@ -49,48 +100,4 @@ export const CatalogBookRow = memo(function CatalogBookRow({
       <ThemedText style={styles.arrow}>›</ThemedText>
     </OrthodoxPressable>
   );
-});
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.md - 2,
-    paddingHorizontal: 2,
-    minHeight: 56,
-  },
-  iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.md,
-    backgroundColor: 'rgba(201, 147, 58, 0.1)',
-  },
-  rowText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  rowGeez: {
-    fontSize: 13,
-    color: Palette.gold,
-    marginBottom: 3,
-  },
-  rowTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 21,
-    color: Palette.text,
-  },
-  rowSubtitle: {
-    fontSize: 12.5,
-    lineHeight: 17,
-    marginTop: 2,
-  },
-  arrow: {
-    fontSize: 22,
-    color: Palette.mutedGold,
-    marginLeft: Spacing.sm,
-  },
 });

@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { Layout } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 type CatalogListDividerProps = {
   /** Indent past leading avatar/icon (default matches 42px leading + gap). */
@@ -9,12 +9,13 @@ type CatalogListDividerProps = {
 
 /** Hairline separator between flat catalog list rows on See All screens. */
 export function CatalogListDivider({ marginLeft = 54 }: CatalogListDividerProps) {
-  return <View style={[styles.divider, { marginLeft }]} />;
+  const { palette } = useThemeTokens();
+
+  return <View style={[styles.divider, { marginLeft, backgroundColor: palette.border }]} />;
 }
 
 const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: Layout.cardBorder,
   },
 });

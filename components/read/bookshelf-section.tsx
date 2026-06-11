@@ -3,11 +3,10 @@ import { ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native
 import Animated from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Layout, Palette } from '@/constants/theme';
+import { Layout } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
-
-const LEDGE_GOLD = 'rgba(201, 147, 58, 0.28)';
 
 type BookshelfSectionProps = {
   children: ReactNode;
@@ -19,9 +18,8 @@ type BookshelfSectionProps = {
 };
 
 /**
- * Subtle recessed shelf for portrait book cards on the Read screen. Reads as a
- * gentle niche that matches the dark, warm theme — a thin gold ledge plus a soft
- * shadow keep the "shelf" feel without a literal wood texture.
+ * Subtle recessed shelf for portrait book cards on the Read screen.
+ * Adapts gradient, ledge, and depth to light/dark theme.
  */
 export function BookshelfSection({
   children,
@@ -29,7 +27,17 @@ export function BookshelfSection({
   list = false,
   scrollProps,
 }: BookshelfSectionProps) {
+  const { palette, sacred, colorScheme } = useThemeTokens();
   const { contentContainerStyle: scrollContentStyle, ...restScrollProps } = scrollProps ?? {};
+
+  const shelfColors: [string, string] =
+    colorScheme === 'light'
+      ? [sacred.functionalWarm, palette.background]
+      : [palette.background, palette.backgroundDeep];
+  const depthColors =
+    colorScheme === 'light'
+      ? (['rgba(0, 0, 0, 0.05)', 'transparent'] as const)
+      : (['rgba(0, 0, 0, 0.22)', 'transparent'] as const);
 
   const content = horizontal ? (
     <AnimatedScrollView
@@ -45,17 +53,18 @@ export function BookshelfSection({
   );
 
   return (
-    <View style={styles.outer}>
-      <LinearGradient
-        colors={[Palette.background, Palette.backgroundDeep]}
-        style={[styles.shelf, list && styles.shelfList]}>
+    <View
+      style={[
+        styles.outer,
+        {
+          borderColor: palette.border,
+          backgroundColor: colorScheme === 'light' ? sacred.functionalWarm : palette.backgroundDeep,
+        },
+      ]}>
+      <LinearGradient colors={shelfColors} style={[styles.shelf, list && styles.shelfList]}>
         <View style={[styles.cardArea, list && styles.listArea]}>{content}</View>
-        <View style={styles.ledge} />
-        <LinearGradient
-          colors={['rgba(0, 0, 0, 0.22)', 'transparent']}
-          style={[styles.depth, list && styles.depthList]}
-          pointerEvents="none"
-        />
+        <View style={[styles.ledge, { backgroundColor: sacred.tabBarHairline }]} />
+        <LinearGradient colors={[...depthColors]} style={[styles.depth, list && styles.depthList]} pointerEvents="none" />
       </LinearGradient>
     </View>
   );
@@ -64,6 +73,9 @@ export function BookshelfSection({
 const styles = StyleSheet.create({
   outer: {
     marginHorizontal: -Layout.pagePadding,
+    borderRadius: Layout.cardRadius,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
   shelf: {
     paddingHorizontal: Layout.pagePadding,
@@ -88,7 +100,6 @@ const styles = StyleSheet.create({
   ledge: {
     height: StyleSheet.hairlineWidth,
     marginTop: 4,
-    backgroundColor: LEDGE_GOLD,
   },
   depth: {
     height: 10,

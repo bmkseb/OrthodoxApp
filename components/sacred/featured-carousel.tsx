@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -8,15 +8,20 @@ import {
 } from 'react-native';
 
 import { ListenFeaturedCard } from '@/components/listen/listen-featured-card';
-import { EditorialFeaturedCard } from '@/components/sacred/editorial-featured-card';
-import { Palette, Space } from '@/constants/theme';
+import { ReadFeaturedCard } from '@/components/read/read-featured-card';
+import { HolyBibleHeroCard } from '@/components/sacred/holy-bible-hero-card';
+import type { ReadCoverFocus, ReadCoverSource, ReadCoverTone } from '@/constants/read-cover-art';
+import { Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 export type FeaturedItem = {
   id: string;
   title: string;
   subtitle: string;
   badgeLabel?: string;
-  imageUri?: string;
+  imageUri?: ReadCoverSource;
+  coverTone?: ReadCoverTone;
+  coverFocus?: ReadCoverFocus;
   onPress?: () => void;
 };
 
@@ -30,6 +35,8 @@ type FeaturedCarouselProps = {
   cardHeight?: number;
   /** Listen tab — streaming hero with play control. */
   listenHero?: boolean;
+  /** Read tab — premium book cover with title overlay. */
+  readHero?: boolean;
 };
 
 // How long after a user interaction before auto-rotation resumes.
@@ -41,12 +48,31 @@ export function FeaturedCarousel({
   autoRotateMs = 5000,
   cardHeight,
   listenHero = false,
+  readHero = false,
 }: FeaturedCarouselProps) {
+  const { palette } = useThemeTokens();
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const indexRef = useRef(0);
   const pausedRef = useRef(false);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dotStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        dot: {
+          width: 6,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: `${palette.gold}4D`,
+        },
+        dotActive: {
+          width: 18,
+          backgroundColor: palette.gold,
+        },
+      }),
+    [palette.gold]
+  );
 
   const setActive = (i: number) => {
     indexRef.current = i;
@@ -114,20 +140,31 @@ export function FeaturedCarousel({
               <ListenFeaturedCard
                 title={item.title}
                 subtitle={item.subtitle}
-                imageUri={item.imageUri}
+                imageUri={typeof item.imageUri === 'string' ? item.imageUri : undefined}
+                height={cardHeight}
+                onPress={item.onPress}
+                style={{ width }}
+              />
+            ) : readHero && item.imageUri != null ? (
+              <ReadFeaturedCard
+                title={item.title}
+                subtitle={item.subtitle}
+                eyebrow={item.badgeLabel ?? 'Featured'}
+                coverSource={item.imageUri}
+                coverTone={item.coverTone}
+                coverFocus={item.coverFocus}
                 height={cardHeight}
                 onPress={item.onPress}
                 style={{ width }}
               />
             ) : (
-              <EditorialFeaturedCard
+              <HolyBibleHeroCard
+                eyebrow={item.badgeLabel ?? 'Featured'}
                 title={item.title}
                 subtitle={item.subtitle}
-                badgeLabel={item.badgeLabel}
-                imageUri={item.imageUri}
-                height={cardHeight}
                 onPress={item.onPress}
-                style={{ width }}
+                width={width}
+                height={cardHeight}
               />
             )}
           </View>
@@ -137,7 +174,7 @@ export function FeaturedCarousel({
       {items.length > 1 ? (
         <View style={styles.dots}>
           {items.map((item, i) => (
-            <View key={item.id} style={[styles.dot, i === index && styles.dotActive]} />
+            <View key={item.id} style={[dotStyles.dot, i === index && dotStyles.dotActive]} />
           ))}
         </View>
       ) : null}
@@ -153,15 +190,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Space.s8,
     marginTop: Space.s12,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(201, 147, 58, 0.3)',
-  },
-  dotActive: {
-    width: 18,
-    backgroundColor: Palette.gold,
   },
 });

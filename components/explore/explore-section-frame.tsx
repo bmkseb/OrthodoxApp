@@ -1,51 +1,26 @@
 import React from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 import { type IconName } from '@/components/Icon';
-import { SectionHeader } from '@/components/ui/section-header';
+import { SectionBlock } from '@/components/ui/section-block';
 import type { HeaderKey } from '@/lib/translations';
-import { Layout } from '@/constants/theme';
 
 type ExploreSectionFrameProps = {
   children: React.ReactNode;
   headerKey?: HeaderKey;
   title?: string;
+  /** @deprecated Icons removed from ceremonial section headers. */
   icon?: IconName;
   onSeeAllPress?: () => void;
   style?: StyleProp<ViewStyle>;
-  /** Tighter vertical rhythm for dense Explore layouts. */
   compact?: boolean;
+  /** @deprecated Use SectionBlock — hero styling lives on content cards. */
+  hero?: boolean;
+  showDivider?: boolean;
 };
 
-export function ExploreSectionFrame({
-  children,
-  headerKey,
-  title,
-  icon,
-  onSeeAllPress,
-  style,
-  compact = false,
-}: ExploreSectionFrameProps) {
-  return (
-    <View style={[styles.container, compact && styles.containerCompact, style]}>
-      {(headerKey || title) && (
-        <SectionHeader
-          headerKey={headerKey}
-          title={title}
-          icon={icon}
-          onSeeAllPress={onSeeAllPress}
-        />
-      )}
-      {children}
-    </View>
-  );
+/** @deprecated Prefer `SectionBlock` directly. Thin alias for Explore. */
+export function ExploreSectionFrame(props: ExploreSectionFrameProps) {
+  const { icon: _icon, compact: _compact, hero: _hero, ...rest } = props;
+  return <SectionBlock {...rest} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: Layout.sectionContentBottom,
-  },
-  containerCompact: {
-    marginBottom: Layout.sectionContentBottom / 2,
-  },
-});

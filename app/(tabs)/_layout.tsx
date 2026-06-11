@@ -3,9 +3,9 @@ import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { TabBarOverlay } from '@/components/navigation/tab-bar-overlay';
-import { Palette } from '@/constants/theme';
 import { TabBarPropsProvider, TabBarPropsSync } from '@/contexts/tab-bar-props-context';
 import { useAudioPlayer } from '@/contexts/audio-player-context';
+import { useTheme } from '@/contexts/theme-context';
 import { getTabLabel, type TabKey } from '@/lib/translations';
 import { useTranslation } from '@/hooks/use-translation';
 
@@ -14,6 +14,7 @@ const TAB_KEYS: TabKey[] = ['explore', 'read', 'learn', 'listen', 'calendar'];
 export default function TabLayout() {
   const { isFullPlayerOpen } = useAudioPlayer();
   const { mode } = useTranslation();
+  const { palette } = useTheme();
 
   const labels = useMemo(
     () =>
@@ -32,17 +33,15 @@ export default function TabLayout() {
       headerShown: false,
       lazy: false,
       detachInactiveScreens: false,
-      sceneStyle: { backgroundColor: Palette.background },
-      // Hide the in-navigator tab bar slot — it still captures touches on device.
-      // Chrome renders in TabBarOverlay; scroll padding uses useFloatingBottomInset().
+      sceneStyle: { backgroundColor: palette.background },
       tabBarStyle: { display: 'none' as const },
     }),
-    []
+    [palette.background]
   );
 
   return (
     <TabBarPropsProvider>
-      <View style={styles.root}>
+      <View style={[styles.root, { backgroundColor: palette.background }]}>
         <Tabs
           screenOptions={screenOptions}
           tabBar={(props) => <TabBarPropsSync {...props} />}>
@@ -61,6 +60,5 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.background,
   },
 });

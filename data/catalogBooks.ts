@@ -1,6 +1,7 @@
 import { type Href } from 'expo-router';
 
 import { type IconName } from '@/components/Icon';
+import { resolveReadCoverSource, type ReadCoverSource } from '@/constants/read-cover-art';
 import { SacredImagery } from '@/constants/sacred-imagery';
 
 export type CatalogGenre = 'scripture' | 'prayer';
@@ -15,7 +16,7 @@ export type CatalogBook = {
   icon: IconName;
   /** Optional subsection label used to group rows within a shelf. */
   group?: string;
-  image: string;
+  image: ReadCoverSource;
   route: Href;
 };
 
@@ -36,7 +37,7 @@ const SCRIPTURE_BOOKS: CatalogBook[] = [
     subtitle: '81 Books · EOTC Canon',
     geez: 'መጽሐፍ ቅዱስ',
     icon: 'book',
-    image: SacredImagery.continueBible,
+    image: resolveReadCoverSource('bible', SacredImagery.continueBible),
     route: '/catalog',
   },
   {
@@ -45,7 +46,7 @@ const SCRIPTURE_BOOKS: CatalogBook[] = [
     subtitle: 'Metshafe Henok · In the Holy Bible',
     geez: 'መጽሐፈ ሄኖክ',
     icon: 'scroll',
-    image: SacredImagery.readManuscript,
+    image: resolveReadCoverSource('bible', SacredImagery.continueBible),
     route: '/book/enoch/1' as Href,
   },
 ];
@@ -58,17 +59,17 @@ const PRAYER_BOOKS: CatalogBook[] = [
     geez: 'የዘወትር ጸሎት',
     icon: 'sun',
     group: 'Daily Use',
-    image: SacredImagery.prayerDaily,
+    image: resolveReadCoverSource('daily-prayer', SacredImagery.prayerDaily),
     route: '/prayer/daily-prayer' as Href,
   },
   {
     id: 'wudase-mariam',
     title: 'Praise of Our Lady Mary',
-    subtitle: 'Wudase Mariam · Prayers to the Theotokos',
+    subtitle: 'Prayers to the Theotokos',
     geez: 'ውዳሴ ማርያም',
     icon: 'cross',
     group: 'Marian Praises',
-    image: SacredImagery.prayerMary,
+    image: resolveReadCoverSource('wudase-mariam', SacredImagery.prayerMary),
     route: '/prayer/wudase-mariam' as Href,
   },
   {
@@ -78,7 +79,7 @@ const PRAYER_BOOKS: CatalogBook[] = [
     geez: 'መጽሐፈ ሰዓታት',
     icon: 'church',
     group: 'Divine Services',
-    image: SacredImagery.readManuscript,
+    image: resolveReadCoverSource('horologium', SacredImagery.readManuscript),
     route: '/horologium' as Href,
   },
   {
@@ -88,7 +89,7 @@ const PRAYER_BOOKS: CatalogBook[] = [
     geez: 'ቅዳሴ',
     icon: 'cross',
     group: 'Divine Services',
-    image: SacredImagery.continueLiturgy,
+    image: resolveReadCoverSource('liturgy', SacredImagery.continueLiturgy),
     route: '/catalog' as Href,
   },
 ];

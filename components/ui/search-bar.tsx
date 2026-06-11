@@ -1,24 +1,21 @@
-import React, { useState } from 'react';
-import { Platform, StyleSheet, TextInput, View, Keyboard } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, TextInput, View, Keyboard } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+import { BorderRadius, Layout, Spacing, getTabChromeTokens } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 type SearchBarProps = {
   placeholder?: string;
   value?: string;
   onChangeText?: (text: string) => void;
-  /** Called when user submits search or taps a recent chip. Use to persist recents. */
   onSearchSubmit?: (term: string) => void;
   recentSearches?: string[];
   onRecentPress?: (term: string) => void;
-  /** When provided, each recent chip shows a small × to delete that term. */
   onRemoveRecent?: (term: string) => void;
-  /** Override the placeholder text colour. Defaults to `Palette.muted`. */
   placeholderTextColor?: string;
-  /** When true, recent chips under the bar are hidden (screen renders its own recents UI). */
   hideRecentChips?: boolean;
   onFocusChange?: (focused: boolean) => void;
 };
@@ -31,14 +28,68 @@ export function SearchBar({
   recentSearches,
   onRecentPress,
   onRemoveRecent,
-  placeholderTextColor = Palette.muted,
+  placeholderTextColor,
   hideRecentChips = false,
   onFocusChange,
 }: SearchBarProps) {
+  const { palette, colorScheme } = useThemeTokens();
+  const chrome = useMemo(
+    () => getTabChromeTokens(palette, colorScheme),
+    [colorScheme, palette]
+  );
   const [internalValue, setInternalValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const query = value ?? internalValue;
   const showRecent = !hideRecentChips && isFocused && Boolean(recentSearches?.length) && !query.trim();
+  const placeholderColor = placeholderTextColor ?? chrome.placeholder;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Spacing.sm,
+          height: Layout.searchBarHeight,
+          paddingHorizontal: Spacing.md - 2,
+          borderRadius: BorderRadius.lg,
+          borderWidth: 1,
+          borderColor: isFocused ? chrome.searchBorderFocused : chrome.searchBorder,
+          backgroundColor: chrome.searchBackground,
+          overflow: 'hidden',
+        },
+        input: {
+          flex: 1,
+          fontSize: 13,
+          color: palette.text,
+          paddingVertical: 0,
+        },
+        recentRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: Spacing.sm,
+          marginTop: Spacing.sm - 2,
+        },
+        recentChip: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Spacing.xs + 1,
+          paddingHorizontal: Spacing.sm + 2,
+          paddingVertical: Spacing.xs + 1,
+          borderRadius: BorderRadius.full,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: chrome.chipBorder,
+          backgroundColor: chrome.chipBackground,
+        },
+        recentChipLabel: {
+          flexShrink: 1,
+        },
+        recentText: {
+          fontSize: 11,
+        },
+      }),
+    [chrome, isFocused, palette]
+  );
 
   const applyTerm = (text: string) => {
     Keyboard.dismiss();
@@ -64,12 +115,11 @@ export function SearchBar({
   return (
     <View>
       <View style={styles.container}>
-        <View style={styles.innerShadow} pointerEvents="none" />
-        <Icon name="search" size={16} color={Palette.muted} />
+        <Icon name="search" size={16} color={isFocused ? palette.gold : palette.muted} />
         <TextInput
           style={styles.input}
           placeholder={placeholder}
-          placeholderTextColor={placeholderTextColor}
+          placeholderTextColor={placeholderColor}
           value={query}
           onChangeText={handleChange}
           onFocus={() => {
@@ -86,7 +136,7 @@ export function SearchBar({
         />
         {query.length > 0 ? (
           <OrthodoxPressable onPress={() => handleChange('')} accessibilityLabel="Clear search">
-            <Icon name="close" size={15} color={Palette.muted} />
+            <Icon name="close" size={15} color={palette.muted} />
           </OrthodoxPressable>
         ) : null}
       </View>
@@ -110,7 +160,7 @@ export function SearchBar({
                   onPress={() => onRemoveRecent(term)}
                   accessibilityRole="button"
                   accessibilityLabel={`Remove ${term} from recent searches`}>
-                  <Icon name="close" size={12} color={Palette.muted} />
+                  <Icon name="close" size={12} color={palette.muted} />
                 </OrthodoxPressable>
               ) : null}
             </View>
@@ -120,60 +170,3 @@ export function SearchBar({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    height: Layout.searchBarHeight,
-    paddingHorizontal: Spacing.md - 2,
-    borderRadius: BorderRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: Palette.card,
-    overflow: 'hidden',
-    ...Platform.select({
-      web: { boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.35)' },
-    }),
-  },
-  innerShadow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
-    borderTopLeftRadius: BorderRadius.lg,
-    borderTopRightRadius: BorderRadius.lg,
-  },
-  input: {
-    flex: 1,
-    fontSize: 13,
-    color: Palette.text,
-    paddingVertical: 0,
-  },
-  recentRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginTop: Spacing.sm - 2,
-  },
-  recentChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs + 1,
-    paddingHorizontal: Spacing.sm + 2,
-    paddingVertical: Spacing.xs + 1,
-    borderRadius: BorderRadius.full,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Layout.cardBorder,
-    backgroundColor: 'rgba(30, 26, 20, 0.6)',
-  },
-  recentChipLabel: {
-    flexShrink: 1,
-  },
-  recentText: {
-    fontSize: 11,
-  },
-});

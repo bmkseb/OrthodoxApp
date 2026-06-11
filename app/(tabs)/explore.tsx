@@ -1,25 +1,22 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 
-import { Icon, type IconName } from '@/components/Icon';
+import { type IconName } from '@/components/Icon';
 import { ExploreSectionFrame } from '@/components/explore/explore-section-frame';
 import { PrayerStreakCard } from '@/components/explore/prayer-streak-card';
+import { QuickAccessTile } from '@/components/explore/quick-access-tile';
 import { WeeklyExplore } from '@/components/explore/weekly-explore';
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { PageHeader } from '@/components/orthodox/PageHeader';
 import { VerseOfTheDayCard } from '@/components/sacred/verse-of-the-day-card';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
-import { ThemedText } from '@/components/themed-text';
-import { Layout, Palette, Space } from '@/constants/theme';
+import { Layout, Space } from '@/constants/theme';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { useTranslation } from '@/hooks/use-translation';
 
-const MUTED_GOLD = '#8A8070';
 const STREAK_DAYS = 14;
 
-// Two-column Quick Access grid sizing.
 const QUICK_GAP = 10;
 const QUICK_CARD_WIDTH =
   (Dimensions.get('window').width - Layout.pagePadding * 2 - QUICK_GAP) / 2;
@@ -36,6 +33,21 @@ export default function ExploreScreen() {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const { recentSearches, addRecentSearch } = useRecentSearches('explore');
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        block: { marginBottom: Layout.searchToSection },
+        streakBlock: { marginBottom: Space.s12 },
+        verseBlock: { marginTop: Space.s8 },
+        quickGrid: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: QUICK_GAP,
+        },
+      }),
+    []
+  );
 
   const quickAccess: QuickAccessItem[] = [
     { id: 'prayers', title: t('explore.catPrayers'), subtitle: 'Daily offices', icon: 'sun', onPress: () => router.push({ pathname: '/read/catalog', params: { genre: 'prayer' } }) },
@@ -59,15 +71,12 @@ export default function ExploreScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <ScreenScrollView style={styles.scrollView}>
-        <PageHeader title="Explore" geez="መርምር" />
+    <ScreenScrollView>
+      <PageHeader title="Explore" geez="መርምር" />
 
-        {/* Search — top of the page */}
         <View style={styles.block}>
           <SearchBar
             placeholder={t('explore.searchHub')}
-            placeholderTextColor={MUTED_GOLD}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSearchSubmit={handleSearchSubmit}
@@ -75,7 +84,6 @@ export default function ExploreScreen() {
           />
         </View>
 
-        {/* Prayer streak — personal hero */}
         <View style={styles.streakBlock}>
           <PrayerStreakCard
             title={t('explore.streakTitle', { count: STREAK_DAYS })}
@@ -83,100 +91,28 @@ export default function ExploreScreen() {
           />
         </View>
 
-        {/* Verse of the day — daily scripture ritual */}
-        <ExploreSectionFrame title="Verse of the Day" icon="book">
-          <VerseOfTheDayCard />
+        <ExploreSectionFrame showDivider={false} style={styles.verseBlock}>
+          <VerseOfTheDayCard hero showEyebrow eyebrowLabel="TODAY'S VERSE" />
         </ExploreSectionFrame>
 
-        {/* Quick access shortcut menu */}
-        <ExploreSectionFrame title={t('explore.quickAccess')} icon="sparkle">
+        <ExploreSectionFrame title={t('explore.quickAccess')}>
           <View style={styles.quickGrid}>
             {quickAccess.map((item) => (
-              <OrthodoxPressable
+              <QuickAccessTile
                 key={item.id}
+                title={item.title}
+                subtitle={item.subtitle}
+                icon={item.icon}
+                width={QUICK_CARD_WIDTH}
                 onPress={item.onPress}
-                accessibilityRole="button"
-                accessibilityLabel={item.title}
-                style={styles.quickCard}>
-                <View style={styles.quickIcon}>
-                  <Icon name={item.icon} size={20} color={Palette.gold} />
-                </View>
-                <View style={styles.quickTextBlock}>
-                  <ThemedText style={styles.quickTitle} numberOfLines={2}>
-                    {item.title}
-                  </ThemedText>
-                  <ThemedText style={styles.quickSubtitle} numberOfLines={1}>
-                    {item.subtitle}
-                  </ThemedText>
-                </View>
-              </OrthodoxPressable>
+              />
             ))}
           </View>
         </ExploreSectionFrame>
 
-        {/* Weekly Explore — curated, rotating highlights */}
-        <ExploreSectionFrame title="Weekly Explore" icon="sparkle" style={styles.lastSection}>
+        <ExploreSectionFrame title="Weekly Explore">
           <WeeklyExplore />
         </ExploreSectionFrame>
-      </ScreenScrollView>
-    </View>
+    </ScreenScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Palette.background,
-  },
-  scrollView: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  block: { marginBottom: Space.s16 },
-  streakBlock: { marginBottom: Space.s12 },
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: QUICK_GAP,
-  },
-  quickCard: {
-    width: QUICK_CARD_WIDTH,
-    minHeight: 80,
-    borderRadius: 18,
-    backgroundColor: Palette.surfaceWarm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.18)',
-    paddingHorizontal: Space.s12,
-    paddingVertical: Space.s8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.s8,
-  },
-  quickIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(201, 147, 58, 0.1)',
-    flexShrink: 0,
-  },
-  quickTextBlock: {
-    flex: 1,
-    minWidth: 0,
-    gap: 1,
-  },
-  quickTitle: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: Palette.text,
-    letterSpacing: -0.2,
-  },
-  quickSubtitle: {
-    fontSize: 11,
-    color: MUTED_GOLD,
-  },
-  lastSection: {
-    marginBottom: 0,
-  },
-});

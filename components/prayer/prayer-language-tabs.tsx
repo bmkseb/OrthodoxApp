@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
-import { Layout, Palette, Spacing } from '@/constants/theme';
+import { Layout, Spacing } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { PRAYER_LANGUAGE_LABELS, type PrayerLanguage } from '@/lib/prayer';
 
 type PrayerLanguageTabsProps = {
@@ -16,6 +18,45 @@ type PrayerLanguageTabsProps = {
  * book supports a single language there's nothing to switch, so it renders nothing.
  */
 export function PrayerLanguageTabs({ available, value, onChange }: PrayerLanguageTabsProps) {
+  const { palette } = useThemeTokens();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        segmentedRow: {
+          flexDirection: 'row',
+          marginBottom: Spacing.md,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: palette.cardBorder,
+        },
+        segmentTab: {
+          flex: 1,
+          alignItems: 'center',
+          paddingTop: 6,
+          paddingBottom: 10,
+        },
+        segmentLabel: {
+          fontSize: 13,
+          fontWeight: '500',
+          color: palette.muted,
+        },
+        segmentLabelActive: {
+          color: palette.text,
+          fontWeight: '600',
+        },
+        segmentIndicator: {
+          position: 'absolute',
+          bottom: 0,
+          left: '18%',
+          right: '18%',
+          height: 2,
+          borderRadius: 1,
+          backgroundColor: palette.gold,
+        },
+      }),
+    [palette]
+  );
+
   if (available.length <= 1) return null;
 
   return (
@@ -42,36 +83,3 @@ export function PrayerLanguageTabs({ available, value, onChange }: PrayerLanguag
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  segmentedRow: {
-    flexDirection: 'row',
-    marginBottom: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Layout.cardBorder,
-  },
-  segmentTab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: 6,
-    paddingBottom: 10,
-  },
-  segmentLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: Palette.muted,
-  },
-  segmentLabelActive: {
-    color: Palette.text,
-    fontWeight: '600',
-  },
-  segmentIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: '18%',
-    right: '18%',
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: Palette.gold,
-  },
-});

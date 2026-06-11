@@ -1,11 +1,12 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useTranslation } from '@/hooks/use-translation';
 import { showsTranslatedAccent } from '@/lib/translations';
 import type { HeaderKey } from '@/lib/translations';
-import { Layout, Palette, Space, Typography } from '@/constants/theme';
+import { getCeremonialSectionHeaderStyle, Layout, Space, Typography } from '@/constants/theme';
 
 type BilingualHeaderVariant = 'page' | 'section' | 'compact';
 
@@ -16,26 +17,6 @@ type BilingualHeaderProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-const GOLD_ACCENT = 'rgba(201, 147, 58, 0.72)';
-
-const VARIANT_STYLES = {
-  page: {
-    primary: Typography.pageTitle,
-    accent: { fontSize: 20, fontWeight: '500' as const, lineHeight: 28 },
-    pipe: { fontSize: 20, lineHeight: 28, fontWeight: '300' as const },
-  },
-  section: {
-    primary: Typography.sectionTitle,
-    accent: { fontSize: 16, fontWeight: '500' as const, lineHeight: 22 },
-    pipe: { fontSize: 16, lineHeight: 22, fontWeight: '300' as const },
-  },
-  compact: {
-    primary: Typography.cardTitle,
-    accent: { fontSize: 14, fontWeight: '500' as const, lineHeight: 18 },
-    pipe: { fontSize: 14, lineHeight: 18, fontWeight: '300' as const },
-  },
-};
-
 export const BilingualHeader = memo(function BilingualHeader({
   headerKey,
   variant = 'page',
@@ -43,10 +24,43 @@ export const BilingualHeader = memo(function BilingualHeader({
   style,
 }: BilingualHeaderProps) {
   const { header, ethiopicStyle, mode } = useTranslation();
+  const { palette } = useThemeTokens();
   const display = header(headerKey);
-  const variantStyles = VARIANT_STYLES[variant];
-  // Bilingual accent appears only beside large page/section headers in hybrid mode.
-  // Compact variant (used in pills, cards, micro contexts) never shows bilingual text.
+  const ceremonial = useMemo(
+    () => getCeremonialSectionHeaderStyle(palette.text),
+    [palette.text]
+  );
+
+  const variantStyles = useMemo(() => {
+    if (variant === 'section') {
+      const accentSize = 15;
+      return {
+        primary: ceremonial,
+        accent: {
+          ...ceremonial,
+          fontSize: accentSize,
+          lineHeight: 20,
+          letterSpacing: accentSize * 0.025,
+          opacity: 0.88,
+        },
+        pipe: ceremonial,
+      };
+    }
+
+    return {
+      page: {
+        primary: Typography.pageTitle,
+        accent: { fontSize: 20, fontWeight: '500' as const, lineHeight: 28 },
+        pipe: { fontSize: 20, lineHeight: 28, fontWeight: '300' as const },
+      },
+      compact: {
+        primary: Typography.cardTitle,
+        accent: { fontSize: 14, fontWeight: '500' as const, lineHeight: 18 },
+        pipe: { fontSize: 14, lineHeight: 18, fontWeight: '300' as const },
+      },
+    }[variant === 'compact' ? 'compact' : 'page'];
+  }, [variant, ceremonial]);
+
   const showInlineTranslation =
     variant !== 'compact' && showsTranslatedAccent(mode) && !!display.accent;
 
@@ -54,11 +68,21 @@ export const BilingualHeader = memo(function BilingualHeader({
     <View style={[headerStyles.container, style]}>
       {showInlineTranslation ? (
         <View style={headerStyles.inlineRow}>
-          <ThemedText style={[variantStyles.primary, headerStyles.primary]} numberOfLines={1}>
+          <ThemedText
+            style={[
+              variantStyles.primary,
+              headerStyles.primary,
+              variant === 'section' ? headerStyles.sectionPrimary : undefined,
+            ]}
+            numberOfLines={1}>
             {display.primary}
           </ThemedText>
           <ThemedText
-            style={[variantStyles.accent, headerStyles.accent, ethiopicStyle]}
+            style={[
+              variantStyles.accent,
+              variant === 'section' ? headerStyles.sectionAccent : { color: palette.gold },
+              ethiopicStyle,
+            ]}
             numberOfLines={1}>
             {display.accent}
           </ThemedText>
@@ -68,6 +92,7 @@ export const BilingualHeader = memo(function BilingualHeader({
           style={[
             variantStyles.primary,
             headerStyles.primary,
+            variant === 'section' ? headerStyles.sectionPrimary : undefined,
             mode === 'am' ? ethiopicStyle : undefined,
           ]}
           numberOfLines={variant === 'page' ? 2 : 1}>
@@ -97,24 +122,19 @@ const headerStyles = StyleSheet.create({
     minWidth: 0,
     flexShrink: 1,
   },
-  accent: {
-    color: GOLD_ACCENT,
+  sectionAccent: {
     flexShrink: 1,
     minWidth: 0,
-    opacity: 0.95,
   },
-  pipe: {
-    color: GOLD_ACCENT,
+  sectionPrimary: {
     flexShrink: 0,
   },
   primary: {
-    color: Palette.text,
     flexShrink: 0,
   },
   subtitle: {
     marginTop: Space.s4,
     ...Typography.body,
-    color: Palette.muted,
   },
 });
 

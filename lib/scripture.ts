@@ -17,6 +17,20 @@ const SAMPLE_MODULES: Record<string, ScriptureSampleFile> = {
   genesis: require('@/data/scriptureSamples/genesis.json') as ScriptureSampleFile,
 };
 
+/** Remove residual USFM markers (e.g. \\q1 poetry indent) from stored verse text. */
+export function stripUsfmResidue(text: string): string {
+  return text
+    .replace(/\\w\*/g, '')
+    .replace(/\\w\s/g, '')
+    .replace(/\|strong="[^"]*"\|?/g, '')
+    .replace(/strong="[^"]*"/g, '')
+    .replace(/\\[a-z0-9+\-*]+\*/g, '')
+    .replace(/\\[a-z0-9+\-]+(\s|$)/g, ' ')
+    .replace(/[|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function pickVerseText(verse: VerseRecord, lang: ScriptureLang): string {
   const primary =
     lang === 'english'
@@ -25,13 +39,14 @@ export function pickVerseText(verse: VerseRecord, lang: ScriptureLang): string {
         ? verse.text_geez
         : verse.text_amharic;
 
-  return (
+  const raw =
     primary?.trim() ||
     verse.text_amharic?.trim() ||
     verse.text_geez?.trim() ||
     verse.text_english?.trim() ||
-    ''
-  );
+    '';
+
+  return raw ? stripUsfmResidue(raw) : '';
 }
 
 /** The footnote column for a language. Footnotes are edition-specific, so each
@@ -264,9 +279,9 @@ function mapVerseSearchRow(
     bookId: row.book_id,
     chapter: row.chapter,
     verse: row.verse,
-    text: row.text,
+    text: stripUsfmResidue(row.text),
     reference,
-    snippet: buildSearchSnippet(row.text, query),
+    snippet: buildSearchSnippet(stripUsfmResidue(row.text), query),
   };
 }
 

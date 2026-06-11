@@ -1,10 +1,13 @@
 import { router } from 'expo-router';
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
+import { ExploreCardSurface } from '@/components/explore/explore-card-chrome';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
+import { Layout, Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useTranslation } from '@/hooks/use-translation';
 
 type CanonFact = {
@@ -42,6 +45,50 @@ const FACTS: CanonFact[] = [
 
 export function DidYouKnow() {
   const { mode } = useTranslation();
+  const { palette } = useThemeTokens();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        rail: {
+          gap: Layout.cardGap,
+          paddingRight: Layout.pagePadding,
+        },
+        card: {
+          width: 240,
+          padding: Space.s16,
+          gap: Space.s4,
+        },
+        eyebrowRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Space.s4,
+          marginBottom: Space.s4,
+        },
+        eyebrow: {
+          fontSize: 10,
+          fontWeight: '700',
+          letterSpacing: 1.4,
+          color: palette.gold,
+        },
+        title: {
+          fontSize: 16,
+          fontWeight: '700',
+          color: palette.text,
+        },
+        geez: {
+          fontSize: 13,
+          color: palette.gold,
+          marginBottom: Space.s4,
+        },
+        fact: {
+          fontSize: 13,
+          lineHeight: 19,
+          color: palette.muted,
+        },
+      }),
+    [palette]
+  );
 
   return (
     <ScrollView
@@ -52,7 +99,7 @@ export function DidYouKnow() {
         const inner = (
           <>
             <View style={styles.eyebrowRow}>
-              <Icon name="sparkle" size={13} color={Palette.gold} />
+              <Icon name="sparkle" size={13} color={palette.gold} />
               <ThemedText style={styles.eyebrow}>DID YOU KNOW?</ThemedText>
             </View>
             <ThemedText style={styles.title} numberOfLines={1}>
@@ -71,9 +118,9 @@ export function DidYouKnow() {
 
         if (!item.link) {
           return (
-            <View key={item.id} style={styles.card}>
+            <ExploreCardSurface key={item.id} style={styles.card}>
               {inner}
-            </View>
+            </ExploreCardSurface>
           );
         }
         return (
@@ -81,55 +128,11 @@ export function DidYouKnow() {
             key={item.id}
             onPress={() => router.push('/catalog')}
             accessibilityRole="button"
-            accessibilityLabel={`${item.title}. ${item.fact}`}
-            style={styles.card}>
-            {inner}
+            accessibilityLabel={`${item.title}. ${item.fact}`}>
+            <ExploreCardSurface style={styles.card}>{inner}</ExploreCardSurface>
           </OrthodoxPressable>
         );
       })}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  rail: {
-    gap: Layout.cardGap,
-    paddingRight: Layout.pagePadding,
-  },
-  card: {
-    width: 240,
-    borderRadius: BorderRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.28)',
-    backgroundColor: Palette.card,
-    padding: Space.s16,
-    gap: Space.s4,
-  },
-  eyebrowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.s4,
-    marginBottom: Space.s4,
-  },
-  eyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    color: Palette.gold,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Palette.text,
-  },
-  geez: {
-    fontSize: 13,
-    color: Palette.gold,
-    marginBottom: Space.s4,
-  },
-  fact: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: Palette.muted,
-  },
-});

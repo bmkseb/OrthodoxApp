@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Palette } from '@/constants/theme';
+import { Layout } from '@/constants/theme';
 
 type ScriptureBookHeaderProps = {
   title: string;
@@ -30,7 +30,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: Palette.text,
     lineHeight: 34,
     flexShrink: 1,
   },

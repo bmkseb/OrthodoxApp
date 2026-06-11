@@ -5,9 +5,8 @@ import { memo } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
-import { ManuscriptCornerFrame } from '@/components/sacred/manuscript-corner-frame';
 import { SacredImagery } from '@/constants/sacred-imagery';
-import { Layout, Opacity, Palette, Space, Typography } from '@/constants/theme';
+import { Layout, Palette, Space, Typography } from '@/constants/theme';
 
 type EditorialFeaturedCardProps = {
   title: string;
@@ -53,7 +52,6 @@ export const EditorialFeaturedCard = memo(function EditorialFeaturedCard({
           locations={[0.15, 0.55, 1]}
           style={StyleSheet.absoluteFill}
         />
-        <ManuscriptCornerFrame inset={8} />
       </View>
 
       <View style={styles.textLayer}>
@@ -75,7 +73,7 @@ const styles = StyleSheet.create({
     borderRadius: Layout.cardRadius,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: `rgba(201, 147, 58, ${Opacity.goldBorder})`,
+    borderColor: Palette.border,
   },
   bgLayer: {
     ...StyleSheet.absoluteFillObject,

@@ -1,9 +1,11 @@
-import { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { memo, useMemo } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Palette, Space } from '@/constants/theme';
+import { ExploreCardSurface, useExploreCardTypography } from '@/components/explore/explore-card-chrome';
+import { Space, getGlossyCardBackground } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 type PrayerStreakCardProps = {
   title: string;
@@ -12,12 +14,10 @@ type PrayerStreakCardProps = {
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
-/** Monday-based index for today (0 = Mon … 6 = Sun). */
 function todayMondayIndex(): number {
   return (new Date().getDay() + 6) % 7;
 }
 
-/** Day-of-month number for each day in the current Mon–Sun week. */
 function weekDayNumbers(): number[] {
   const now = new Date();
   const monday = new Date(now);
@@ -29,154 +29,137 @@ function weekDayNumbers(): number[] {
   });
 }
 
-/** Compact, personal hero for the Explore tab — a reason to come back daily. */
 export const PrayerStreakCard = memo(function PrayerStreakCard({
   title,
   subtitle,
 }: PrayerStreakCardProps) {
+  const { palette, colorScheme, sacred } = useThemeTokens();
+  const type = useExploreCardTypography();
   const todayIndex = todayMondayIndex();
   const dayNumbers = weekDayNumbers();
 
-  return (
-    <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <View style={styles.crossBadge}>
-          <Icon name="cross" size={20} color={Palette.gold} />
-        </View>
-        <View style={styles.text}>
-          <ThemedText style={styles.title}>{title}</ThemedText>
-          <ThemedText type="muted" style={styles.subtitle} numberOfLines={2}>
-            {subtitle}
-          </ThemedText>
-        </View>
-      </View>
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: {
+          paddingHorizontal: Space.s16,
+          paddingVertical: Space.s16,
+        },
+        headerRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Space.s12,
+        },
+        crossBadge: {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: sacred.medallionFill,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: sacred.medallionRing,
+        },
+        text: {
+          flex: 1,
+          minWidth: 0,
+          gap: 1,
+        },
+        weekRow: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: Space.s12,
+          paddingTop: Space.s12,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: palette.border,
+        },
+        dayCol: {
+          alignItems: 'center',
+          gap: Space.s4 + 1,
+        },
+        dot: {
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: palette.border,
+          backgroundColor: getGlossyCardBackground(palette, colorScheme, 'deep'),
+        },
+        dotDone: {
+          borderWidth: 1.5,
+          borderColor: palette.border,
+        },
+        dotToday: {
+          borderWidth: 1.5,
+          borderColor: sacred.medallionRing,
+          backgroundColor: sacred.medallionFill,
+          ...Platform.select({
+            ios: {
+              shadowColor: palette.shadowColor,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.2,
+              shadowRadius: 2,
+            },
+            android: { elevation: 2 },
+          }),
+        },
+        dotNumberActive: {
+          color: palette.text,
+        },
+        dayLabelActive: {
+          color: palette.text,
+          fontWeight: '700',
+        },
+      }),
+    [colorScheme, palette, sacred]
+  );
 
-      <View style={styles.weekRow}>
-        {DAY_LABELS.map((label, i) => {
-          const completed = i < todayIndex;
-          const isToday = i === todayIndex;
-          return (
-            <View key={label} style={styles.dayCol}>
-              <View
-                style={[
-                  styles.dot,
-                  completed && styles.dotDone,
-                  isToday && styles.dotToday,
-                ]}>
-                <ThemedText
+  return (
+    <ExploreCardSurface>
+      <View style={styles.card}>
+        <View style={styles.headerRow}>
+          <View style={styles.crossBadge}>
+            <Icon name="cross" size={18} color={palette.mutedGold} />
+          </View>
+          <View style={styles.text}>
+            <ThemedText style={type.headline}>{title}</ThemedText>
+            <ThemedText style={type.subtitle} numberOfLines={2}>
+              {subtitle}
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.weekRow}>
+          {DAY_LABELS.map((label, i) => {
+            const completed = i < todayIndex;
+            const isToday = i === todayIndex;
+            return (
+              <View key={label} style={styles.dayCol}>
+                <View
                   style={[
-                    styles.dotNumber,
-                    (completed || isToday) && styles.dotNumberActive,
+                    styles.dot,
+                    completed && styles.dotDone,
+                    isToday && styles.dotToday,
                   ]}>
-                  {dayNumbers[i]}
+                  <ThemedText
+                    style={[
+                      type.meta,
+                      (completed || isToday) && styles.dotNumberActive,
+                    ]}>
+                    {dayNumbers[i]}
+                  </ThemedText>
+                </View>
+                <ThemedText
+                  style={[type.label, (completed || isToday) && styles.dayLabelActive]}>
+                  {label}
                 </ThemedText>
               </View>
-              <ThemedText
-                style={[styles.dayLabel, (completed || isToday) && styles.dayLabelActive]}>
-                {label}
-              </ThemedText>
-            </View>
-          );
-        })}
+            );
+          })}
+        </View>
       </View>
-    </View>
+    </ExploreCardSurface>
   );
-});
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: Layout.cardRadius,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.35)',
-    backgroundColor: Palette.surface,
-    paddingHorizontal: Space.s16,
-    paddingVertical: Space.s12,
-    // Subtle gold glow
-    shadowColor: Palette.gold,
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 3,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.s12,
-  },
-  crossBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(201, 147, 58, 0.12)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.35)',
-  },
-  text: {
-    flex: 1,
-    minWidth: 0,
-    gap: 1,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Palette.text,
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize: 12,
-    lineHeight: 16,
-    color: Palette.muted,
-  },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: Space.s12,
-    paddingTop: Space.s12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(201, 147, 58, 0.16)',
-  },
-  dayCol: {
-    alignItems: 'center',
-    gap: Space.s4 + 1,
-  },
-  dot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Missed / future day — faint empty border.
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(168, 160, 146, 0.35)',
-    backgroundColor: 'transparent',
-  },
-  dotDone: {
-    // Completed day — solid gold outline, no fill.
-    borderWidth: 1.5,
-    borderColor: Palette.gold,
-  },
-  dotToday: {
-    borderWidth: 2,
-    borderColor: Palette.gold,
-    backgroundColor: 'rgba(201, 147, 58, 0.15)',
-  },
-  dotNumber: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Palette.muted,
-  },
-  dotNumberActive: {
-    color: Palette.gold,
-  },
-  dayLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    color: Palette.muted,
-  },
-  dayLabelActive: {
-    color: Palette.gold,
-  },
 });

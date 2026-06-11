@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
@@ -8,7 +8,8 @@ import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { SacredImage } from '@/components/ui/sacred-image';
 import { LISTEN_RANKED_RAIL, LISTEN_RAIL_FRAME } from '@/constants/listen-layout';
-import { Layout, Palette, Space, Typography } from '@/constants/theme';
+import { Layout, Space, Typography, getGlossyCardBackground } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 type RailFrame = {
   width: number;
@@ -51,6 +52,7 @@ export const PlaylistRailCard = memo(function PlaylistRailCard({
   onRemove,
   removeLabel,
 }: PlaylistRailCardProps) {
+  const { palette, colorScheme } = useThemeTokens();
   const frame: RailFrame = LISTEN_RAIL_FRAME;
   const gap = frame.gap ?? Layout.cardGap;
   const uri = imageUri ?? fallbackImageUri;
@@ -58,6 +60,129 @@ export const PlaylistRailCard = memo(function PlaylistRailCard({
   const showCollage = collage.length > 0 && !imageUri;
   const showProgress = progress > 0;
   const metaSecondary = secondaryText ?? subtitle;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        rankedRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          overflow: 'visible',
+        },
+        rankColumn: {
+          position: 'relative',
+          flexShrink: 0,
+          overflow: 'visible',
+        },
+        rankNumberAnchor: {
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+        },
+        rankedCardColumn: {
+          flexShrink: 0,
+        },
+        rankDigitsRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          justifyContent: 'center',
+          transform: [{ translateY: LISTEN_RANKED_RAIL.rankTenOffsetY }],
+        },
+        rankDigit: {
+          fontSize: LISTEN_RANKED_RAIL.rankFontSizeDouble,
+          fontWeight: '900',
+          lineHeight: LISTEN_RANKED_RAIL.rankFontSizeDouble,
+          letterSpacing: 0,
+          color: palette.text,
+          includeFontPadding: false,
+          textShadowColor: palette.gold,
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 6,
+        },
+        rankDigitLeading: {
+          marginRight: -2,
+        },
+        rankNumber: {
+          fontSize: LISTEN_RANKED_RAIL.rankFontSize,
+          fontWeight: '900',
+          lineHeight: LISTEN_RANKED_RAIL.rankFontSize,
+          letterSpacing: -3,
+          color: palette.text,
+          textAlign: 'center',
+          includeFontPadding: false,
+          textShadowColor: palette.gold,
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 6,
+        },
+        wrap: {},
+        card: {
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: `${palette.gold}33`,
+          overflow: 'hidden',
+          backgroundColor: getGlossyCardBackground(palette, colorScheme),
+          marginBottom: Space.s8,
+        },
+        thumb: {
+          width: '100%',
+          height: '100%',
+        },
+        thumbPlaceholder: {
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: getGlossyCardBackground(palette, colorScheme, 'deep'),
+        },
+        progressTrack: {
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 3,
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        },
+        progressBelowTrack: {
+          height: 3,
+          marginTop: Space.s4,
+          borderRadius: 2,
+          backgroundColor: 'rgba(255, 255, 255, 0.12)',
+          overflow: 'hidden',
+        },
+        progressFill: {
+          height: '100%',
+          backgroundColor: palette.gold,
+        },
+        removeBtn: {
+          position: 'absolute',
+          top: Space.s8,
+          right: Space.s8,
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(12, 10, 8, 0.82)',
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: `${palette.gold}73`,
+          zIndex: 2,
+        },
+        title: {
+          ...Typography.cardTitle,
+          fontSize: 13,
+          fontWeight: '700',
+          lineHeight: 17,
+          color: palette.text,
+        },
+        subtitle: {
+          marginTop: 2,
+          fontSize: 11,
+          lineHeight: 15,
+          letterSpacing: 0.15,
+        },
+      }),
+    [colorScheme, palette]
+  );
 
   const accessibilityLabel =
     rank != null
@@ -95,7 +220,7 @@ export const PlaylistRailCard = memo(function PlaylistRailCard({
           <SacredImage uri={uri} style={styles.thumb} contentFit="cover" />
         ) : (
           <View style={[styles.thumb, styles.thumbPlaceholder]}>
-            <Icon name="music" size={18} color={Palette.gold} />
+            <Icon name="music" size={18} color={palette.gold} />
           </View>
         )}
 
@@ -114,7 +239,7 @@ export const PlaylistRailCard = memo(function PlaylistRailCard({
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={removeLabel ?? 'Remove'}>
-            <Icon name="close" size={10} color={Palette.text} />
+            <Icon name="close" size={10} color={palette.text} />
           </OrthodoxPressable>
         ) : null}
       </View>
@@ -189,123 +314,4 @@ export const PlaylistRailCard = memo(function PlaylistRailCard({
       <View style={styles.rankedCardColumn}>{card}</View>
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  rankedRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    overflow: 'visible',
-  },
-  rankColumn: {
-    position: 'relative',
-    flexShrink: 0,
-    overflow: 'visible',
-  },
-  rankNumberAnchor: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  rankedCardColumn: {
-    flexShrink: 0,
-  },
-  rankDigitsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    transform: [{ translateY: LISTEN_RANKED_RAIL.rankTenOffsetY }],
-  },
-  rankDigit: {
-    fontSize: LISTEN_RANKED_RAIL.rankFontSizeDouble,
-    fontWeight: '900',
-    lineHeight: LISTEN_RANKED_RAIL.rankFontSizeDouble,
-    letterSpacing: 0,
-    color: Palette.text,
-    includeFontPadding: false,
-    textShadowColor: Palette.gold,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
-  },
-  rankDigitLeading: {
-    marginRight: -2,
-  },
-  rankNumber: {
-    fontSize: LISTEN_RANKED_RAIL.rankFontSize,
-    fontWeight: '900',
-    lineHeight: LISTEN_RANKED_RAIL.rankFontSize,
-    letterSpacing: -3,
-    color: Palette.text,
-    textAlign: 'center',
-    includeFontPadding: false,
-    textShadowColor: Palette.gold,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
-  },
-  wrap: {},
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Layout.cardBorderThin,
-    overflow: 'hidden',
-    backgroundColor: Palette.surfaceWarm,
-    marginBottom: Space.s8,
-  },
-  thumb: {
-    width: '100%',
-    height: '100%',
-  },
-  thumbPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Palette.card,
-  },
-  progressTrack: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  progressBelowTrack: {
-    height: 3,
-    marginTop: Space.s4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Palette.gold,
-  },
-  removeBtn: {
-    position: 'absolute',
-    top: Space.s8,
-    right: Space.s8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(12, 10, 8, 0.82)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.45)',
-    zIndex: 2,
-  },
-  title: {
-    ...Typography.cardTitle,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
-    color: Palette.text,
-  },
-  subtitle: {
-    marginTop: 2,
-    fontSize: 11,
-    lineHeight: 15,
-    letterSpacing: 0.15,
-  },
 });

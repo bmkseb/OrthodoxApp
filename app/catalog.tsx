@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ContentSearchResults } from '@/components/search/content-search-results';
+import { ReadCoverThumb } from '@/components/read/read-cover-thumb';
 import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
@@ -54,10 +55,12 @@ function LanguageTabs({ activeTab, onChange }: { activeTab: LanguageTab; onChang
 type BookRow = { bookId: string; label: string; onPress: () => void };
 
 function ScriptureRow({
+  bookId,
   label,
   isLast,
   onPress,
 }: {
+  bookId: string;
   label: string;
   isLast: boolean;
   onPress: () => void;
@@ -65,6 +68,7 @@ function ScriptureRow({
   return (
     <>
       <OrthodoxPressable style={styles.scriptureRow} onPress={onPress}>
+        <ReadCoverThumb bookId={bookId} />
         <ThemedText style={styles.scriptureText}>{label}</ThemedText>
         <Text style={styles.rowChevron}>›</Text>
       </OrthodoxPressable>
@@ -96,6 +100,7 @@ function CollapsibleGroup({
           {rows.map((row, index) => (
             <ScriptureRow
               key={row.bookId}
+              bookId={row.bookId}
               label={row.label}
               isLast={index === rows.length - 1}
               onPress={row.onPress}
@@ -295,7 +300,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 11,
     paddingHorizontal: 2,
-    gap: 8,
+    gap: 12,
   },
   scriptureText: {
     fontSize: 15,

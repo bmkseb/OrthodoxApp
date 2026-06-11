@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,7 +10,8 @@ import { scriptureLangQuery } from '@/hooks/use-scripture-lang';
 import { formatScriptureNumber } from '@/lib/scripture';
 import type { ScriptureLang } from '@/types/scripture';
 import { useTranslation } from '@/hooks/use-translation';
-import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
+import { BorderRadius, Layout, Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 type ChapterNavBarProps = {
   bookId: string;
@@ -21,11 +23,54 @@ type ChapterNavBarProps = {
 export function ChapterNavBar({ bookId, chapter, chapters, lang }: ChapterNavBarProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { palette } = useThemeTokens();
   const langQ = scriptureLangQuery(lang);
 
   const index = chapters.indexOf(chapter);
   const prevChapter = index > 0 ? chapters[index - 1] : null;
   const nextChapter = index >= 0 && index < chapters.length - 1 ? chapters[index + 1] : null;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        bar: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: Space.s8,
+          paddingTop: Space.s12,
+          paddingHorizontal: Layout.pagePadding,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: palette.cardBorder,
+          backgroundColor: palette.background,
+        },
+        navBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingVertical: Space.s8,
+          paddingHorizontal: Space.s8,
+          borderRadius: BorderRadius.md,
+          maxWidth: '38%',
+        },
+        navBtnNext: {
+          justifyContent: 'flex-end',
+        },
+        navBtnDisabled: {
+          opacity: 0.45,
+        },
+        navLabel: {
+          fontSize: 13,
+          fontWeight: '600',
+        },
+        center: {
+          fontSize: 12,
+          textAlign: 'center',
+          flexShrink: 0,
+        },
+      }),
+    [palette]
+  );
 
   const goToChapter = (ch: number) => {
     router.replace(`/book/${bookId}/${ch}${langQ}`);
@@ -40,8 +85,8 @@ export function ChapterNavBar({ bookId, chapter, chapters, lang }: ChapterNavBar
         onPress={() => prevChapter != null && goToChapter(prevChapter)}
         disabled={prevChapter == null}
         accessibilityLabel={t('scripture.previousChapter')}>
-        <Icon name="chevron-left" size={18} color={prevChapter ? Palette.gold : Palette.muted} />
-        <ThemedText style={[styles.navLabel, !prevChapter && styles.navLabelDisabled]}>
+        <Icon name="chevron-left" size={18} color={prevChapter ? palette.gold : palette.muted} />
+        <ThemedText type={prevChapter ? 'default' : 'muted'} style={styles.navLabel}>
           {t('scripture.previousChapter')}
         </ThemedText>
       </OrthodoxPressable>
@@ -56,53 +101,11 @@ export function ChapterNavBar({ bookId, chapter, chapters, lang }: ChapterNavBar
         onPress={() => nextChapter != null && goToChapter(nextChapter)}
         disabled={nextChapter == null}
         accessibilityLabel={t('scripture.nextChapter')}>
-        <ThemedText style={[styles.navLabel, !nextChapter && styles.navLabelDisabled]}>
+        <ThemedText type={nextChapter ? 'default' : 'muted'} style={styles.navLabel}>
           {t('scripture.nextChapter')}
         </ThemedText>
-        <Icon name="chevron-right" size={18} color={nextChapter ? Palette.gold : Palette.muted} />
+        <Icon name="chevron-right" size={18} color={nextChapter ? palette.gold : palette.muted} />
       </OrthodoxPressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Space.s8,
-    paddingTop: Space.s12,
-    paddingHorizontal: Layout.pagePadding,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Layout.cardBorder,
-    backgroundColor: Palette.background,
-  },
-  navBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: Space.s8,
-    paddingHorizontal: Space.s8,
-    borderRadius: BorderRadius.md,
-    maxWidth: '38%',
-  },
-  navBtnNext: {
-    justifyContent: 'flex-end',
-  },
-  navBtnDisabled: {
-    opacity: 0.45,
-  },
-  navLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Palette.text,
-  },
-  navLabelDisabled: {
-    color: Palette.muted,
-  },
-  center: {
-    fontSize: 12,
-    textAlign: 'center',
-    flexShrink: 0,
-  },
-});

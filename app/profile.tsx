@@ -9,7 +9,9 @@ import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { EthiopicCrossWatermark } from '@/components/sacred/ethiopic-cross-watermark';
 import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 import { BorderRadius, Layout, Palette, Space, Typography } from '@/constants/theme';
+import { useTranslation } from '@/hooks/use-translation';
 
 const GOLD_BORDER = 'rgba(201, 147, 58, 0.18)';
 
@@ -18,8 +20,14 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, isGuest, signOut } = useAuth();
+  const { palette } = useTheme();
+  const { t } = useTranslation();
   const { values: scrollIndicator, scrollHandler } = useScrollIndicator();
   const scrollBottomPadding = insets.bottom + Space.s40;
+
+  const handleSettings = useCallback(() => {
+    router.push('/settings');
+  }, []);
 
   const handleSignOut = useCallback(() => {
     Alert.alert('Sign out', 'Sign out of your account?', [
@@ -49,7 +57,7 @@ export default function ProfileScreen() {
   const detail = user?.email ?? (isGuest ? 'Sign in to sync your devotion' : '');
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: palette.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <EthiopicCrossWatermark />
 
@@ -90,6 +98,14 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
+        <OrthodoxPressable
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.title')}
+          onPress={handleSettings}
+          style={styles.outlineBtn}>
+          <Text style={styles.outlineBtnText}>{t('settings.title')}</Text>
+        </OrthodoxPressable>
+
         {isGuest ? (
           <OrthodoxPressable
             accessibilityRole="button"
@@ -118,7 +134,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.background,
   },
   topBar: {
     paddingHorizontal: Layout.pagePadding,

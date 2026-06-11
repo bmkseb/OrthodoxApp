@@ -1,13 +1,15 @@
 import { Stack } from 'expo-router';
 
-import { Palette } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 export default function BookLayout() {
+  const { palette } = useTheme();
+
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: Palette.background },
+        contentStyle: { backgroundColor: palette.background },
         animation: 'none',
       }}
     />

@@ -190,3 +190,46 @@ export function pickPrayerText(
   return row.en;
 }
 
+const WUDASE_MARIAM_SLUG = 'wudase-mariam';
+const WUDASE_MARIAM_EN_TITLE = 'Praise of Our Lady Mary';
+
+/** Header copy for prayer book screens — avoids repeating English "Wudase Mariam" under Amharic. */
+export function getPrayerBookDisplay(
+  book: PrayerBook,
+  lang: PrayerLanguage,
+  slug: string = book.slug
+): { displayTitle: string; displaySubtitle?: string; progressTitle: string } {
+  const am = book.titleAm?.trim() || null;
+  const geez = book.titleGeez?.trim() || null;
+  const en = book.titleEn?.trim() || 'Prayer';
+
+  if (slug === WUDASE_MARIAM_SLUG) {
+    if (lang === 'english') {
+      return {
+        displayTitle: WUDASE_MARIAM_EN_TITLE,
+        displaySubtitle: am || geez || undefined,
+        progressTitle: WUDASE_MARIAM_EN_TITLE,
+      };
+    }
+    if (lang === 'amharic') {
+      return {
+        displayTitle: am || WUDASE_MARIAM_EN_TITLE,
+        displaySubtitle: geez || undefined,
+        progressTitle: WUDASE_MARIAM_EN_TITLE,
+      };
+    }
+    return {
+      displayTitle: geez || WUDASE_MARIAM_EN_TITLE,
+      displaySubtitle: am || undefined,
+      progressTitle: WUDASE_MARIAM_EN_TITLE,
+    };
+  }
+
+  const displayTitle = pickPrayerText({ en, am, geez }, lang);
+  return {
+    displayTitle,
+    displaySubtitle: geez || am || undefined,
+    progressTitle: displayTitle,
+  };
+}
+

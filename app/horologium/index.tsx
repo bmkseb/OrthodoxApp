@@ -1,5 +1,5 @@
 // app/horologium/index.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -8,17 +8,90 @@ import { ScriptureBookHeader } from '@/components/scripture/scripture-book-heade
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Layout, Palette, Spacing } from '@/constants/theme';
+import { BorderRadius, Layout, Spacing } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { HOROLOGIUM_HOURS, getCurrentHour } from '@/data/horologium';
 import { useTranslation } from '@/hooks/use-translation';
 
 export default function HorologiumScreen() {
   const { mode } = useTranslation();
+  const { palette } = useThemeTokens();
   const [currentHourId, setCurrentHourId] = useState<string>('');
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        intro: {
+          lineHeight: 22,
+          marginBottom: Spacing.lg,
+        },
+        grid: {
+          gap: 10,
+          paddingHorizontal: Layout.pagePadding,
+          paddingBottom: Spacing.xl,
+        },
+        hourCell: {
+          padding: Spacing.md,
+          borderRadius: BorderRadius.lg,
+          borderWidth: 1,
+          borderColor: palette.cardBorder,
+          backgroundColor: palette.card,
+        },
+        hourCellActive: {
+          borderColor: palette.gold,
+        },
+        nowBadge: {
+          position: 'absolute',
+          top: Spacing.sm,
+          right: Spacing.sm,
+          backgroundColor: palette.gold,
+          borderRadius: 6,
+          paddingHorizontal: 8,
+          paddingVertical: 2,
+        },
+        nowText: {
+          fontSize: 10,
+          fontWeight: '700',
+          color: palette.backgroundDeep,
+          letterSpacing: 0.5,
+        },
+        geez: {
+          fontSize: 20,
+          color: palette.gold,
+          marginBottom: 2,
+          opacity: 0.6,
+        },
+        geezActive: {
+          opacity: 1,
+        },
+        name: {
+          fontSize: 18,
+          fontWeight: '600',
+          marginBottom: 2,
+        },
+        nameActive: {
+          color: palette.gold,
+        },
+        time: {
+          fontSize: 13,
+          marginBottom: Spacing.xs,
+        },
+        timeActive: {
+          opacity: 0.72,
+        },
+        intention: {
+          fontSize: 12,
+          lineHeight: 18,
+        },
+        intentionActive: {
+          opacity: 0.7,
+        },
+      }),
+    [palette]
+  );
 
   useEffect(() => {
     setCurrentHourId(getCurrentHour().id);
-    // Refresh every minute so current hour stays accurate
     const interval = setInterval(() => {
       setCurrentHourId(getCurrentHour().id);
     }, 60_000);
@@ -64,11 +137,11 @@ export default function HorologiumScreen() {
                 {hour.nameEnglish}
               </ThemedText>
 
-              <ThemedText style={[styles.time, isCurrent && styles.timeActive]}>
+              <ThemedText type="muted" style={[styles.time, isCurrent && styles.timeActive]}>
                 {hour.timeLabel}
               </ThemedText>
 
-              <ThemedText style={[styles.intention, isCurrent && styles.intentionActive]} numberOfLines={2}>
+              <ThemedText type="muted" style={[styles.intention, isCurrent && styles.intentionActive]} numberOfLines={2}>
                 {hour.intention}
               </ThemedText>
             </OrthodoxPressable>
@@ -78,77 +151,3 @@ export default function HorologiumScreen() {
     </ScreenScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  intro: {
-    lineHeight: 22,
-    marginBottom: Spacing.lg,
-  },
-  grid: {
-    gap: 10,
-    paddingHorizontal: Layout.pagePadding,
-    paddingBottom: Spacing.xl,
-  },
-  hourCell: {
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Layout.cardBorder,
-    backgroundColor: Palette.card,
-  },
-  hourCellActive: {
-    borderColor: Palette.gold,
-    backgroundColor: Palette.card,
-  },
-  nowBadge: {
-    position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    backgroundColor: Palette.gold,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  nowText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: Palette.background,
-    letterSpacing: 0.5,
-  },
-  geez: {
-    fontSize: 20,
-    color: Palette.gold,
-    marginBottom: 2,
-    opacity: 0.6,
-  },
-  geezActive: {
-    opacity: 1,
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Palette.text,
-    marginBottom: 2,
-  },
-  nameActive: {
-    color: Palette.gold,
-  },
-  time: {
-    fontSize: 13,
-    color: Palette.muted,
-    marginBottom: Spacing.xs,
-  },
-  timeActive: {
-    color: Palette.text,
-    opacity: 0.72,
-  },
-  intention: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: Palette.muted,
-  },
-  intentionActive: {
-    color: Palette.text,
-    opacity: 0.7,
-  },
-});

@@ -12,7 +12,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
 import { ThemedView } from '@/components/themed-view';
 import { ScrollIndicator, useScrollIndicator } from '@/components/ui/scroll-indicator';
-import { Layout, Palette, Spacing } from '@/constants/theme';
+import { Layout, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { FloatingBottom } from '@/constants/floating-bottom';
 import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
 
@@ -49,6 +50,7 @@ export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(
 ) {
   const insets = useSafeAreaInsets();
   const floatingInset = useFloatingBottomInset(includeFloatingChrome, contentExtraPadding);
+  const { palette } = useTheme();
   const bottomPadding = includeFloatingChrome
     ? floatingInset
     : insets.bottom + Spacing.xl;
@@ -82,15 +84,12 @@ export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(
         scrollEventThrottle={16}
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={Palette.gold} />
+            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={palette.gold} />
           ) : undefined
         }
         contentContainerStyle={[
           styles.content,
-          {
-            paddingBottom: bottomPadding,
-            paddingTop: topPadding,
-          },
+          { paddingTop: topPadding, paddingBottom: bottomPadding },
           contentContainerStyle,
         ]}
         {...props}>
@@ -109,7 +108,6 @@ export const ScreenScrollView = forwardRef<RNScrollView, ScreenScrollViewProps>(
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: Palette.background,
   },
   scroll: {
     flex: 1,

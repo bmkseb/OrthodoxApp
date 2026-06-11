@@ -156,7 +156,7 @@ function cleanText(raw) {
   return raw
     .replace(/\\w\*/g, '').replace(/\\w\s/g, '')
     .replace(/\|strong="[^"]*"\|?/g, '').replace(/strong="[^"]*"/g, '')
-    .replace(/\\[a-z0-9+\-*]+\*/g, '').replace(/\\[a-z0-9+\-]+\s/g, ' ')
+    .replace(/\\[a-z0-9+\-*]+\*/g, '').replace(/\\[a-z0-9+\-]+(\s|$)/g, ' ')
     .replace(/[|]/g, '').replace(/\s+/g, ' ').trim();
 }
 

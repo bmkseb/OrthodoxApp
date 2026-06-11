@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
@@ -9,7 +9,8 @@ import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ChannelAvatarImage } from '@/components/listen/channel-avatar-image';
 import { mezmurChannelImageSource } from '@/constants/mezmur-channel-art';
-import { BorderRadius, Palette, Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 const LEADING_SIZE = 42;
 
@@ -35,6 +36,7 @@ function LeadingVisual({
   albumArtist,
   albumName,
   albumThumbnailUrl,
+  palette,
 }: Pick<
   HymnsCatalogListRowProps,
   | 'title'
@@ -44,8 +46,42 @@ function LeadingVisual({
   | 'albumArtist'
   | 'albumName'
   | 'albumThumbnailUrl'
->) {
+> & { palette: { gold: string } }) {
   const shape = leadingShape ?? (albumArtist ? 'cover' : 'circle');
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        avatar: {
+          marginRight: Spacing.md,
+        },
+        cover: {
+          width: LEADING_SIZE,
+          height: LEADING_SIZE,
+          borderRadius: BorderRadius.md,
+          marginRight: Spacing.md,
+          overflow: 'hidden',
+          backgroundColor: `${palette.gold}14`,
+        },
+        coverIcon: {
+          width: LEADING_SIZE,
+          height: LEADING_SIZE,
+          borderRadius: BorderRadius.md,
+          marginRight: Spacing.md,
+        },
+        placeholder: {
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: `${palette.gold}1A`,
+        },
+        avatarInitial: {
+          color: palette.gold,
+          fontSize: 17,
+          fontWeight: '700',
+        },
+      }),
+    [palette.gold]
+  );
 
   if (shape === 'cover' && albumArtist && albumName) {
     return (
@@ -109,7 +145,7 @@ function LeadingVisual({
       {shape === 'circle' ? (
         <ThemedText style={styles.avatarInitial}>{title.charAt(0)}</ThemedText>
       ) : (
-        <Icon name="music" size={18} color={Palette.gold} />
+        <Icon name="music" size={18} color={palette.gold} />
       )}
     </View>
   );
@@ -127,6 +163,42 @@ export const HymnsCatalogListRow = memo(function HymnsCatalogListRow({
   albumName,
   albumThumbnailUrl,
 }: HymnsCatalogListRowProps) {
+  const { palette } = useThemeTokens();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        row: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: Spacing.md - 2,
+          paddingHorizontal: 2,
+          minHeight: 56,
+        },
+        rowText: {
+          flex: 1,
+          minWidth: 0,
+        },
+        rowTitle: {
+          fontSize: 16,
+          fontWeight: '600',
+          lineHeight: 21,
+          color: palette.text,
+        },
+        rowSubtitle: {
+          fontSize: 12.5,
+          lineHeight: 17,
+          marginTop: 2,
+        },
+        arrow: {
+          fontSize: 22,
+          color: palette.mutedGold,
+          marginLeft: Spacing.sm,
+        },
+      }),
+    [palette]
+  );
+
   return (
     <OrthodoxPressable
       style={styles.row}
@@ -141,6 +213,7 @@ export const HymnsCatalogListRow = memo(function HymnsCatalogListRow({
         albumArtist={albumArtist}
         albumName={albumName}
         albumThumbnailUrl={albumThumbnailUrl}
+        palette={palette}
       />
       <View style={styles.rowText}>
         <ThemedText style={styles.rowTitle} numberOfLines={1}>
@@ -157,60 +230,3 @@ export const HymnsCatalogListRow = memo(function HymnsCatalogListRow({
 
 /** @deprecated Use HymnsCatalogListRow */
 export const HymnsCatalogChannelRow = HymnsCatalogListRow;
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.md - 2,
-    paddingHorizontal: 2,
-    minHeight: 56,
-  },
-  avatar: {
-    marginRight: Spacing.md,
-  },
-  cover: {
-    width: LEADING_SIZE,
-    height: LEADING_SIZE,
-    borderRadius: BorderRadius.md,
-    marginRight: Spacing.md,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(201, 147, 58, 0.08)',
-  },
-  coverIcon: {
-    width: LEADING_SIZE,
-    height: LEADING_SIZE,
-    borderRadius: BorderRadius.md,
-    marginRight: Spacing.md,
-  },
-  placeholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(201, 147, 58, 0.1)',
-  },
-  avatarInitial: {
-    color: Palette.gold,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  rowText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  rowTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 21,
-    color: Palette.text,
-  },
-  rowSubtitle: {
-    fontSize: 12.5,
-    lineHeight: 17,
-    marginTop: 2,
-  },
-  arrow: {
-    fontSize: 22,
-    color: Palette.mutedGold,
-    marginLeft: Spacing.sm,
-  },
-});

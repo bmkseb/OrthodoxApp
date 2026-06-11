@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Layout, Palette, Space } from '@/constants/theme';
+import { BorderRadius, Layout, Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import type { PrayerLanguage } from '@/lib/prayer';
 
 type PrayerSectionNavBarProps = {
@@ -19,6 +21,50 @@ type PrayerSectionNavBarProps = {
 /** Previous / next prayer-section navigation, mirroring the scripture chapter bar. */
 export function PrayerSectionNavBar({ slug, section, total, lang }: PrayerSectionNavBarProps) {
   const insets = useSafeAreaInsets();
+  const { palette } = useThemeTokens();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        bar: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: Space.s8,
+          paddingTop: Space.s12,
+          paddingHorizontal: Layout.pagePadding,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: palette.cardBorder,
+          backgroundColor: palette.background,
+        },
+        navBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingVertical: Space.s8,
+          paddingHorizontal: Space.s8,
+          borderRadius: BorderRadius.md,
+          maxWidth: '40%',
+        },
+        navBtnNext: {
+          justifyContent: 'flex-end',
+        },
+        navBtnDisabled: {
+          opacity: 0.45,
+        },
+        navLabel: {
+          fontSize: 13,
+          fontWeight: '600',
+        },
+        center: {
+          fontSize: 12,
+          textAlign: 'center',
+          flexShrink: 0,
+        },
+      }),
+    [palette]
+  );
+
   if (total === 0) return null;
 
   const prev = section > 1 ? section - 1 : null;
@@ -35,8 +81,10 @@ export function PrayerSectionNavBar({ slug, section, total, lang }: PrayerSectio
         onPress={() => prev != null && goTo(prev)}
         disabled={prev == null}
         accessibilityLabel="Previous prayer">
-        <Icon name="chevron-left" size={18} color={prev ? Palette.gold : Palette.muted} />
-        <ThemedText style={[styles.navLabel, !prev && styles.navLabelDisabled]}>Previous</ThemedText>
+        <Icon name="chevron-left" size={18} color={prev ? palette.gold : palette.muted} />
+        <ThemedText type={prev ? 'default' : 'muted'} style={styles.navLabel}>
+          Previous
+        </ThemedText>
       </OrthodoxPressable>
 
       <ThemedText type="muted" style={styles.center}>
@@ -49,51 +97,11 @@ export function PrayerSectionNavBar({ slug, section, total, lang }: PrayerSectio
         onPress={() => next != null && goTo(next)}
         disabled={next == null}
         accessibilityLabel="Next prayer">
-        <ThemedText style={[styles.navLabel, !next && styles.navLabelDisabled]}>Next</ThemedText>
-        <Icon name="chevron-right" size={18} color={next ? Palette.gold : Palette.muted} />
+        <ThemedText type={next ? 'default' : 'muted'} style={styles.navLabel}>
+          Next
+        </ThemedText>
+        <Icon name="chevron-right" size={18} color={next ? palette.gold : palette.muted} />
       </OrthodoxPressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Space.s8,
-    paddingTop: Space.s12,
-    paddingHorizontal: Layout.pagePadding,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Layout.cardBorder,
-    backgroundColor: Palette.background,
-  },
-  navBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: Space.s8,
-    paddingHorizontal: Space.s8,
-    borderRadius: BorderRadius.md,
-    maxWidth: '40%',
-  },
-  navBtnNext: {
-    justifyContent: 'flex-end',
-  },
-  navBtnDisabled: {
-    opacity: 0.45,
-  },
-  navLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Palette.text,
-  },
-  navLabelDisabled: {
-    color: Palette.muted,
-  },
-  center: {
-    fontSize: 12,
-    textAlign: 'center',
-    flexShrink: 0,
-  },
-});

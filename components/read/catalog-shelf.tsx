@@ -9,6 +9,7 @@ import {
   HorizontalScrollIndicator,
   useHorizontalScrollIndicator,
 } from '@/components/ui/scroll-indicator';
+import { getReadCoverFocus, getReadCoverTone } from '@/constants/read-cover-art';
 import { Space } from '@/constants/theme';
 import type { CatalogBook } from '@/data/catalogBooks';
 
@@ -40,6 +41,8 @@ export function CatalogShelf({ title, books, onSeeAll }: CatalogShelfProps) {
             title={book.title}
             subtitle={book.subtitle}
             imageUri={book.image}
+            coverTone={getReadCoverTone(book.id)}
+            coverFocus={getReadCoverFocus(book.id)}
             onPress={() => router.push(book.route)}
           />
         ))}

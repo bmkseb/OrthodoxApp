@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Fragment } from 'react';
+import { Fragment, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { CatalogBookRow } from '@/components/read/catalog-book-row';
@@ -8,8 +8,9 @@ import { AppBackButton } from '@/components/ui/app-back-button';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
-import { Palette, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { CATALOG_SHELVES, shelfForGenre, type CatalogBook } from '@/data/catalogBooks';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useTranslation } from '@/hooks/use-translation';
 
 /** Ordered subsections within a shelf, preserving book order. */
@@ -29,9 +30,79 @@ function groupBooks(books: CatalogBook[]): { group: string | null; books: Catalo
 
 export default function CatalogScreen() {
   const { t, mode } = useTranslation();
+  const { palette } = useThemeTokens();
   const { genre } = useLocalSearchParams<{ genre?: string }>();
   const shelf = shelfForGenre(genre);
   const groups = groupBooks(shelf.books);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        topBar: {
+          marginBottom: Spacing.sm,
+        },
+        eyebrow: {
+          fontSize: 11,
+          fontWeight: '500',
+          letterSpacing: 1.4,
+          textTransform: 'uppercase',
+          color: palette.mutedGold,
+          marginBottom: 4,
+        },
+        pageTitle: {
+          fontSize: 30,
+          fontWeight: 'bold',
+          lineHeight: 36,
+          marginBottom: 4,
+          color: palette.text,
+        },
+        pageGeez: {
+          fontSize: 17,
+          color: palette.gold,
+          marginBottom: 4,
+        },
+        description: {
+          marginBottom: Spacing.md,
+          lineHeight: 21,
+        },
+        switcher: {
+          flexDirection: 'row',
+          gap: Spacing.sm,
+          marginBottom: Spacing.lg,
+        },
+        switchTab: {
+          paddingVertical: 6,
+          paddingHorizontal: 14,
+          borderRadius: 999,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: `${palette.gold}4D`,
+        },
+        switchTabActive: {
+          backgroundColor: `${palette.gold}29`,
+          borderColor: palette.gold,
+        },
+        switchLabel: {
+          fontSize: 13,
+          fontWeight: '500',
+          color: palette.muted,
+        },
+        switchLabelActive: {
+          color: palette.text,
+        },
+        groupLabel: {
+          fontSize: 12,
+          fontWeight: '600',
+          letterSpacing: 0.8,
+          textTransform: 'uppercase',
+          color: palette.mutedGold,
+          marginBottom: Spacing.sm,
+        },
+        groupLabelSpaced: {
+          marginTop: Spacing.md,
+        },
+      }),
+    [palette]
+  );
 
   return (
     <ScreenScrollView includeFloatingChrome={false}>
@@ -90,67 +161,3 @@ export default function CatalogScreen() {
     </ScreenScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  topBar: {
-    marginBottom: Spacing.sm,
-  },
-  eyebrow: {
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: Palette.mutedGold,
-    marginBottom: 4,
-  },
-  pageTitle: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    lineHeight: 36,
-    marginBottom: 4,
-  },
-  pageGeez: {
-    fontSize: 17,
-    color: Palette.gold,
-    marginBottom: 4,
-  },
-  description: {
-    marginBottom: Spacing.md,
-    lineHeight: 21,
-  },
-  switcher: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  switchTab: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(201, 147, 58, 0.3)',
-  },
-  switchTabActive: {
-    backgroundColor: 'rgba(201, 147, 58, 0.16)',
-    borderColor: Palette.gold,
-  },
-  switchLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: Palette.muted,
-  },
-  switchLabelActive: {
-    color: Palette.text,
-  },
-  groupLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: Palette.mutedGold,
-    marginBottom: Spacing.sm,
-  },
-  groupLabelSpaced: {
-    marginTop: Spacing.md,
-  },
-});

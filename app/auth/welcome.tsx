@@ -24,10 +24,12 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
+import { AppearanceOnboardingScreen } from '@/components/onboarding/appearance-onboarding-screen';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 import { BorderRadius, Layout, Palette, Space, Typography } from '@/constants/theme';
 
-type Stage = 'quote' | 'brand' | 'actions' | 'login';
+type Stage = 'quote' | 'brand' | 'preferences' | 'actions' | 'login';
 type Mode = 'signIn' | 'signUp';
 
 const GOLD_FOCUS = 'rgba(201, 147, 58, 0.55)';
@@ -45,9 +47,15 @@ export default function WelcomeAuthScreen() {
   const [stage, setStage] = useState<Stage>('quote');
   const [loginMode, setLoginMode] = useState<Mode>('signIn');
   const { continueAsGuest } = useAuth();
+  const { hasChosenAppearance, palette } = useTheme();
 
   const goToBrand = useCallback(() => setStage('brand'), []);
+  const goToPreferences = useCallback(() => setStage('preferences'), []);
   const goToActions = useCallback(() => setStage('actions'), []);
+  const goToAppearanceOrActions = useCallback(() => {
+    if (hasChosenAppearance) goToActions();
+    else goToPreferences();
+  }, [goToActions, goToPreferences, hasChosenAppearance]);
   const goToLogin = useCallback(
     (mode: Mode) => {
       setLoginMode(mode);
@@ -61,12 +69,14 @@ export default function WelcomeAuthScreen() {
   }, [continueAsGuest]);
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: palette.backgroundDeep }]}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       {stage === 'quote' ? (
         <QuoteScreen onDone={goToBrand} />
       ) : stage === 'brand' ? (
-        <BrandRevealScreen onDone={goToActions} />
+        <BrandRevealScreen onDone={goToAppearanceOrActions} />
+      ) : stage === 'preferences' ? (
+        <AppearanceOnboardingScreen onDone={goToActions} />
       ) : stage === 'actions' ? (
         <ActionsScreen
           onContinue={() => goToLogin('signUp')}
@@ -99,6 +109,8 @@ function BrandMark({
   gap,
   showWord = true,
 }: BrandMarkProps) {
+  const { palette } = useTheme();
+
   return (
     <View style={styles.brandMark}>
       <Text
@@ -109,7 +121,7 @@ function BrandMark({
           {
             fontSize: crossSize,
             lineHeight: crossSize * 1.05,
-            marginBottom: showWord ? gap : 0,
+            color: palette.gold,
           },
         ]}>
         ☩
@@ -119,7 +131,12 @@ function BrandMark({
           allowFontScaling={false}
           style={[
             styles.brandWord,
-            { fontSize: wordSize, letterSpacing: wordSpacing, paddingLeft: wordSpacing },
+            {
+              fontSize: wordSize,
+              letterSpacing: wordSpacing,
+              marginTop: gap,
+              color: palette.text,
+            },
           ]}>
           ORTHODOX
         </Text>
@@ -135,6 +152,7 @@ function BrandMark({
 function QuoteScreen({ onDone }: { onDone: () => void }) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
+  const { palette } = useTheme();
 
   const quoteOpacity = useSharedValue(reduceMotion ? 1 : 0);
   const quoteTranslate = useSharedValue(reduceMotion ? 0 : 16);
@@ -174,6 +192,28 @@ function QuoteScreen({ onDone }: { onDone: () => void }) {
   }));
   const refStyle = useAnimatedStyle(() => ({ opacity: refOpacity.value }));
 
+  const quoteStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        quoteText: {
+          color: palette.text,
+          fontSize: 44,
+          fontWeight: '700',
+          lineHeight: 54,
+          letterSpacing: -0.6,
+          textAlign: 'left',
+        },
+        quoteRef: {
+          color: palette.gold,
+          fontSize: 13,
+          fontWeight: '600',
+          letterSpacing: 4,
+          textTransform: 'uppercase',
+        },
+      }),
+    [palette]
+  );
+
   return (
     <Animated.View
       style={[
@@ -183,10 +223,10 @@ function QuoteScreen({ onDone }: { onDone: () => void }) {
       ]}>
       <View style={styles.quoteSpacerTop} />
       <View style={styles.quoteContent}>
-        <Animated.Text allowFontScaling={false} style={[styles.quoteText, quoteStyle]}>
+        <Animated.Text allowFontScaling={false} style={[quoteStyles.quoteText, quoteStyle]}>
           {'Narrow is the way\nwhich leads to life.'}
         </Animated.Text>
-        <Animated.Text allowFontScaling={false} style={[styles.quoteRef, refStyle]}>
+        <Animated.Text allowFontScaling={false} style={[quoteStyles.quoteRef, refStyle]}>
           MATTHEW 7:14
         </Animated.Text>
       </View>
@@ -202,6 +242,7 @@ function QuoteScreen({ onDone }: { onDone: () => void }) {
 function BrandRevealScreen({ onDone }: { onDone: () => void }) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
+  const { palette } = useTheme();
 
   const crossOpacity = useSharedValue(reduceMotion ? 1 : 0);
   const crossScale = useSharedValue(reduceMotion ? 1 : 0.92);
@@ -268,6 +309,40 @@ function BrandRevealScreen({ onDone }: { onDone: () => void }) {
   }));
   const subStyle = useAnimatedStyle(() => ({ opacity: subOpacity.value }));
 
+  const brandStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        brandCrossLargeGlyph: {
+          color: palette.gold,
+          fontSize: 160,
+          lineHeight: 168,
+          fontWeight: '300',
+          textAlign: 'center',
+          textShadowColor: `${palette.gold}8C`,
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 22,
+        },
+        brandWordLarge: {
+          color: palette.text,
+          fontSize: 28,
+          fontWeight: '700',
+          letterSpacing: 12,
+          textAlign: 'center',
+          paddingLeft: 12,
+          marginBottom: Space.s16,
+        },
+        brandSubtitle: {
+          color: palette.muted,
+          fontSize: 14,
+          lineHeight: 22,
+          textAlign: 'center',
+          maxWidth: 300,
+          letterSpacing: 0.3,
+        },
+      }),
+    [palette]
+  );
+
   return (
     <Animated.View
       style={[
@@ -284,16 +359,16 @@ function BrandRevealScreen({ onDone }: { onDone: () => void }) {
           <Text
             allowFontScaling={false}
             accessibilityLabel="Ethiopian Orthodox cross"
-            style={styles.brandCrossLargeGlyph}>
+            style={brandStyles.brandCrossLargeGlyph}>
             ☩
           </Text>
         </Animated.View>
 
-        <Animated.Text allowFontScaling={false} style={[styles.brandWordLarge, wordStyle]}>
+        <Animated.Text allowFontScaling={false} style={[brandStyles.brandWordLarge, wordStyle]}>
           ORTHODOX
         </Animated.Text>
 
-        <Animated.Text style={[styles.brandSubtitle, subStyle]}>
+        <Animated.Text style={[brandStyles.brandSubtitle, subStyle]}>
           Sacred readings, hymns, and daily devotion
         </Animated.Text>
       </View>
@@ -316,6 +391,7 @@ type ActionsScreenProps = {
 function ActionsScreen({ onContinue, onSignIn, onGuest }: ActionsScreenProps) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
+  const { palette, colorScheme } = useTheme();
 
   const enterOpacity = useSharedValue(reduceMotion ? 1 : 0);
   const enterLift = useSharedValue(reduceMotion ? 0 : 14);
@@ -339,6 +415,24 @@ function ActionsScreen({ onContinue, onSignIn, onGuest }: ActionsScreenProps) {
     transform: [{ translateY: enterLift.value }],
   }));
 
+  const themeStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        actionsTitle: { ...styles.actionsTitle, color: palette.text },
+        actionsSubtitle: { ...styles.actionsSubtitle, color: palette.muted },
+        continueBtn: {
+          ...styles.continueBtn,
+          backgroundColor: palette.gold,
+          shadowColor: palette.gold,
+          shadowOpacity: colorScheme === 'light' ? 0.2 : 0.28,
+        },
+        continueBtnText: { ...styles.continueBtnText, color: '#1A0F00' },
+        linkBtnText: { ...styles.linkBtnText, color: palette.text },
+        guestLinkText: { ...styles.guestLinkText, color: palette.mutedGold },
+      }),
+    [colorScheme, palette]
+  );
+
   return (
     <Animated.View
       style={[
@@ -355,8 +449,8 @@ function ActionsScreen({ onContinue, onSignIn, onGuest }: ActionsScreenProps) {
       </View>
 
       <View style={styles.actionsHeading}>
-        <Text style={styles.actionsTitle}>Welcome</Text>
-        <Text style={styles.actionsSubtitle}>
+        <Text style={themeStyles.actionsTitle}>Welcome</Text>
+        <Text style={themeStyles.actionsSubtitle}>
           Begin your daily rhythm of reading, prayer, and hymnody.
         </Text>
       </View>
@@ -369,8 +463,8 @@ function ActionsScreen({ onContinue, onSignIn, onGuest }: ActionsScreenProps) {
           accessibilityRole="button"
           accessibilityLabel="Continue"
           onPress={onContinue}
-          style={styles.continueBtn}>
-          <Text style={styles.continueBtnText}>Continue</Text>
+          style={themeStyles.continueBtn}>
+          <Text style={themeStyles.continueBtnText}>Continue</Text>
         </OrthodoxPressable>
 
         <OrthodoxPressable
@@ -378,7 +472,7 @@ function ActionsScreen({ onContinue, onSignIn, onGuest }: ActionsScreenProps) {
           accessibilityLabel="I already have an account"
           onPress={onSignIn}
           style={styles.linkBtn}>
-          <Text style={styles.linkBtnText}>I already have an account</Text>
+          <Text style={themeStyles.linkBtnText}>I already have an account</Text>
         </OrthodoxPressable>
 
         <OrthodoxPressable
@@ -386,7 +480,7 @@ function ActionsScreen({ onContinue, onSignIn, onGuest }: ActionsScreenProps) {
           accessibilityLabel="Continue as guest"
           onPress={onGuest}
           style={styles.linkBtn}>
-          <Text style={styles.guestLinkText}>Continue as guest</Text>
+          <Text style={themeStyles.guestLinkText}>Continue as guest</Text>
         </OrthodoxPressable>
       </View>
     </Animated.View>
@@ -401,6 +495,7 @@ function LoginScreen({ initialMode = 'signIn' as Mode }: { initialMode?: Mode })
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const { signIn, signUp, continueAsGuest } = useAuth();
+  const { palette, colorScheme } = useTheme();
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
@@ -477,6 +572,54 @@ function LoginScreen({ initialMode = 'signIn' as Mode }: { initialMode?: Mode })
     );
   }, []);
 
+  const themeStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        title: { ...styles.title, color: palette.text },
+        subtitle: { ...styles.subtitle, color: palette.muted },
+        card: {
+          ...styles.card,
+          backgroundColor: palette.surface,
+          borderColor: colorScheme === 'light' ? palette.cardBorder : GOLD_IDLE,
+          shadowColor: palette.shadowColor,
+          shadowOpacity: colorScheme === 'light' ? 0.08 : 0.35,
+        },
+        label: { ...styles.label, color: palette.muted },
+        input: {
+          ...styles.input,
+          borderColor: colorScheme === 'light' ? palette.cardBorder : GOLD_IDLE,
+          backgroundColor:
+            colorScheme === 'light' ? palette.backgroundDeep : 'rgba(255, 255, 255, 0.03)',
+          color: palette.text,
+        },
+        inputFocused: {
+          borderColor: GOLD_FOCUS,
+          backgroundColor:
+            colorScheme === 'light' ? palette.background : 'rgba(201, 147, 58, 0.05)',
+        },
+        forgotText: { ...styles.forgotText, color: palette.mutedGold },
+        primaryBtn: { ...styles.primaryBtn, backgroundColor: palette.gold, shadowColor: palette.gold },
+        primaryBtnText: {
+          ...styles.primaryBtnText,
+          color: colorScheme === 'light' ? '#1A0F00' : palette.background,
+        },
+        switchText: { ...styles.switchText, color: palette.mutedGold },
+        dividerLine: {
+          ...styles.dividerLine,
+          backgroundColor: colorScheme === 'light' ? palette.border : 'rgba(201, 147, 58, 0.18)',
+        },
+        dividerText: { ...styles.dividerText, color: palette.muted },
+        guestBtn: {
+          ...styles.guestBtn,
+          borderColor: colorScheme === 'light' ? palette.cardBorder : GOLD_FOCUS,
+          backgroundColor: colorScheme === 'light' ? palette.backgroundDeep : 'transparent',
+        },
+        guestBtnText: { ...styles.guestBtnText, color: palette.gold },
+        footnote: { ...styles.footnote, color: palette.muted },
+      }),
+    [colorScheme, palette]
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -497,49 +640,49 @@ function LoginScreen({ initialMode = 'signIn' as Mode }: { initialMode?: Mode })
         </View>
 
         <View style={styles.heading}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          <Text style={themeStyles.title}>{title}</Text>
+          <Text style={themeStyles.subtitle}>{subtitle}</Text>
         </View>
 
-        <View style={styles.card}>
+        <View style={themeStyles.card}>
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={themeStyles.label}>Email</Text>
             <TextInput
-              style={[styles.input, emailFocused && styles.inputFocused]}
+              style={[themeStyles.input, emailFocused && themeStyles.inputFocused]}
               value={email}
               onChangeText={setEmail}
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               placeholder="you@example.com"
-              placeholderTextColor={Palette.muted}
+              placeholderTextColor={palette.muted}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
               textContentType="emailAddress"
               returnKeyType="next"
-              selectionColor={Palette.gold}
-              cursorColor={Palette.gold}
+              selectionColor={palette.gold}
+              cursorColor={palette.gold}
             />
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={themeStyles.label}>Password</Text>
             <TextInput
-              style={[styles.input, passwordFocused && styles.inputFocused]}
+              style={[themeStyles.input, passwordFocused && themeStyles.inputFocused]}
               value={password}
               onChangeText={setPassword}
               onFocus={() => setPasswordFocused(true)}
               onBlur={() => setPasswordFocused(false)}
               placeholder="At least 6 characters"
-              placeholderTextColor={Palette.muted}
+              placeholderTextColor={palette.muted}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
               textContentType="password"
               returnKeyType="done"
               onSubmitEditing={handlePrimary}
-              selectionColor={Palette.gold}
-              cursorColor={Palette.gold}
+              selectionColor={palette.gold}
+              cursorColor={palette.gold}
             />
           </View>
 
@@ -549,7 +692,7 @@ function LoginScreen({ initialMode = 'signIn' as Mode }: { initialMode?: Mode })
               accessibilityLabel="Forgot password"
               onPress={handleForgot}
               style={styles.forgotWrap}>
-              <Text style={styles.forgotText}>Forgot password?</Text>
+              <Text style={themeStyles.forgotText}>Forgot password?</Text>
             </OrthodoxPressable>
           ) : null}
 
@@ -557,11 +700,11 @@ function LoginScreen({ initialMode = 'signIn' as Mode }: { initialMode?: Mode })
             accessibilityRole="button"
             accessibilityLabel={primaryLabel}
             onPress={handlePrimary}
-            style={[styles.primaryBtn, !canSubmit && styles.primaryBtnDisabled]}>
+            style={[themeStyles.primaryBtn, !canSubmit && styles.primaryBtnDisabled]}>
             {submitting ? (
-              <ActivityIndicator color={Palette.background} />
+              <ActivityIndicator color={colorScheme === 'light' ? '#1A0F00' : palette.background} />
             ) : (
-              <Text style={styles.primaryBtnText}>{primaryLabel}</Text>
+              <Text style={themeStyles.primaryBtnText}>{primaryLabel}</Text>
             )}
           </OrthodoxPressable>
 
@@ -570,25 +713,25 @@ function LoginScreen({ initialMode = 'signIn' as Mode }: { initialMode?: Mode })
             accessibilityLabel={switchLabel}
             onPress={() => setMode((m) => (m === 'signIn' ? 'signUp' : 'signIn'))}
             style={styles.switchBtn}>
-            <Text style={styles.switchText}>{switchLabel}</Text>
+            <Text style={themeStyles.switchText}>{switchLabel}</Text>
           </OrthodoxPressable>
         </View>
 
         <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
-          <View style={styles.dividerLine} />
+          <View style={themeStyles.dividerLine} />
+          <Text style={themeStyles.dividerText}>OR</Text>
+          <View style={themeStyles.dividerLine} />
         </View>
 
         <OrthodoxPressable
           accessibilityRole="button"
           accessibilityLabel="Continue as guest"
           onPress={handleGuest}
-          style={styles.guestBtn}>
-          <Text style={styles.guestBtnText}>Continue as guest</Text>
+          style={themeStyles.guestBtn}>
+          <Text style={themeStyles.guestBtnText}>Continue as guest</Text>
         </OrthodoxPressable>
 
-        <Text style={styles.footnote}>
+        <Text style={themeStyles.footnote}>
           Your account keeps prayer streaks, bookmarks, and reading progress across devices. Guests
           can still read, listen, and explore.
         </Text>
@@ -604,7 +747,6 @@ function LoginScreen({ initialMode = 'signIn' as Mode }: { initialMode?: Mode })
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   flex: { flex: 1 },
   stageRoot: {

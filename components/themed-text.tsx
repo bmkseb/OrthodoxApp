@@ -1,6 +1,6 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Palette, Typography } from '@/constants/theme';
+import { Typography } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 export type ThemedTextProps = TextProps & {
@@ -40,7 +40,6 @@ export function ThemedText({
   return (
     <Text
       style={[
-        { color: type === 'muted' ? Palette.muted : color },
         type === 'default' ? styles.default : undefined,
         type === 'pageTitle' ? styles.pageTitle : undefined,
         type === 'sectionHeader' ? styles.sectionHeader : undefined,
@@ -51,6 +50,7 @@ export function ThemedText({
         type === 'link' ? styles.link : undefined,
         type === 'muted' ? styles.muted : undefined,
         type === 'seeAll' ? styles.seeAll : undefined,
+        { color },
         style,
       ]}
       {...rest}

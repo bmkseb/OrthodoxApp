@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { AppBackButton } from '@/components/ui/app-back-button';
@@ -8,11 +8,13 @@ import { PrayerLanguageTabs } from '@/components/prayer/prayer-language-tabs';
 import { ScriptureBookHeader } from '@/components/scripture/scripture-book-header';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
-import { Layout, Palette, Spacing } from '@/constants/theme';
+import { Layout, Spacing } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useTranslation } from '@/hooks/use-translation';
 import {
   fetchPrayerBook,
   fetchPrayerSections,
+  getPrayerBookDisplay,
   pickPrayerText,
   PRAYER_LANGUAGES,
   type PrayerBook,
@@ -35,6 +37,44 @@ export default function PrayerBookScreen() {
   const [sections, setSections] = useState<PrayerSection[]>([]);
   const [loading, setLoading] = useState(true);
   const { language: lang, setLanguage } = usePrayerLanguagePreference();
+  const { palette } = useThemeTokens();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        topBar: { marginBottom: Layout.headerContentGap },
+        centered: {
+          paddingVertical: Spacing.xxl,
+          alignItems: 'center',
+        },
+        empty: {
+          lineHeight: 22,
+        },
+        bookList: {
+          marginTop: 2,
+        },
+        scriptureRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingVertical: 11,
+          paddingHorizontal: 2,
+          gap: 8,
+        },
+        scriptureText: {
+          fontSize: 15,
+          flex: 1,
+          flexShrink: 1,
+          lineHeight: 21,
+        },
+        rowChevron: { color: palette.muted, fontSize: 16 },
+        rowDivider: {
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: palette.cardBorder,
+        },
+      }),
+    [palette]
+  );
 
   useEffect(() => {
     let active = true;
@@ -59,16 +99,16 @@ export default function PrayerBookScreen() {
     };
   }, [bookSlug]);
 
-  const headerTitle = book
-    ? pickPrayerText({ en: book.titleEn, am: book.titleAm, geez: book.titleGeez }, lang)
-    : 'Prayer';
-  const headerSubtitle = book?.titleGeez ?? book?.titleAm ?? undefined;
+  const bookDisplay = book ? getPrayerBookDisplay(book, lang, bookSlug) : null;
 
   return (
     <ScreenScrollView includeFloatingChrome={false}>
       <AppBackButton style={styles.topBar} />
 
-      <ScriptureBookHeader title={headerTitle} subtitle={headerSubtitle} />
+      <ScriptureBookHeader
+        title={bookDisplay?.displayTitle ?? 'Prayer'}
+        subtitle={bookDisplay?.displaySubtitle}
+      />
 
       {book ? (
         <PrayerLanguageTabs available={PRAYER_LANGUAGES} value={lang} onChange={setLanguage} />
@@ -76,7 +116,7 @@ export default function PrayerBookScreen() {
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color={Palette.gold} />
+          <ActivityIndicator color={palette.gold} />
         </View>
       ) : !book ? (
         <ThemedText type="muted" style={styles.empty}>
@@ -113,37 +153,3 @@ export default function PrayerBookScreen() {
     </ScreenScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  topBar: { marginBottom: Layout.headerContentGap },
-  centered: {
-    paddingVertical: Spacing.xxl,
-    alignItems: 'center',
-  },
-  empty: {
-    lineHeight: 22,
-  },
-  bookList: {
-    marginTop: 2,
-  },
-  scriptureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 11,
-    paddingHorizontal: 2,
-    gap: 8,
-  },
-  scriptureText: {
-    fontSize: 15,
-    color: Palette.text,
-    flex: 1,
-    flexShrink: 1,
-    lineHeight: 21,
-  },
-  rowChevron: { color: Palette.muted, fontSize: 16 },
-  rowDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Layout.cardBorder,
-  },
-});

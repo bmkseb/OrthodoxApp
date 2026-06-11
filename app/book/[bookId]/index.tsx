@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -13,12 +13,14 @@ import { useScriptureLang, scriptureLangQuery } from '@/hooks/use-scripture-lang
 import { useTranslation } from '@/hooks/use-translation';
 import { fetchBookChapters, formatScriptureNumber, hasScriptureSample } from '@/lib/scripture';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { BorderRadius, Layout, Palette } from '@/constants/theme';
+import { BorderRadius, Layout } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 export default function BookChaptersScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const lang = useScriptureLang();
   const { t } = useTranslation();
+  const { palette } = useThemeTokens();
   const book = bookId ? getBibleBook(bookId) : undefined;
 
   const [chapters, setChapters] = useState<number[]>([]);
@@ -56,13 +58,46 @@ export default function BookChaptersScreen() {
   const title = getBookTitle(book, lang);
   const langQ = scriptureLangQuery(lang);
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        spinner: { marginTop: 32 },
+        grid: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 10,
+        },
+        chapterCell: {
+          width: '30%',
+          minWidth: 96,
+          flexGrow: 1,
+          alignItems: 'center',
+          paddingVertical: 16,
+          borderRadius: BorderRadius.lg,
+          borderWidth: 1,
+          borderColor: palette.cardBorder,
+          backgroundColor: palette.card,
+        },
+        chapterNum: {
+          fontSize: 22,
+          fontWeight: '700',
+          color: palette.gold,
+        },
+        chapterLabel: {
+          fontSize: 12,
+          marginTop: 4,
+        },
+      }),
+    [palette]
+  );
+
   return (
     <ScreenScrollView includeFloatingChrome={false}>
       <ScriptureBackBar />
       <ScriptureBookHeader title={title} subtitle={t('scripture.selectChapter')} />
 
       {loading ? (
-        <ActivityIndicator color={Palette.gold} style={styles.spinner} />
+        <ActivityIndicator color={palette.gold} style={styles.spinner} />
       ) : error ? (
         <EmptyState title={error} suggestion={t('scripture.tryAgain')} />
       ) : chapters.length === 0 ? (
@@ -96,32 +131,3 @@ export default function BookChaptersScreen() {
     </ScreenScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  spinner: { marginTop: 32 },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  chapterCell: {
-    width: '30%',
-    minWidth: 96,
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Layout.cardBorder,
-    backgroundColor: Palette.card,
-  },
-  chapterNum: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Palette.gold,
-  },
-  chapterLabel: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-});

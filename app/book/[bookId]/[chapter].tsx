@@ -22,7 +22,8 @@ import { useTranslation } from '@/hooks/use-translation';
 import { defaultPrayerLanguage, PRAYER_LANGUAGE_NAMES, type PrayerLanguage } from '@/lib/prayer';
 import { fetchBookChapters, fetchChapterVerses, formatScriptureNumber } from '@/lib/scripture';
 import { parseScrollTarget, useScrollToTarget } from '@/hooks/use-scroll-to-target';
-import { Layout, Palette, Spacing } from '@/constants/theme';
+import { Layout, Spacing } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import type { ScriptureLang, VerseRecord } from '@/types/scripture';
 
 const hasText = (value: string | null | undefined) => Boolean(value && value.trim());
@@ -38,6 +39,7 @@ export default function ChapterReaderScreen() {
     verse?: string;
   }>();
   const { t } = useTranslation();
+  const { palette } = useThemeTokens();
   const insets = useSafeAreaInsets();
   const chapter = Number(chapterParam);
   const scrollToVerse = parseScrollTarget(verseParam);
@@ -137,7 +139,7 @@ export default function ChapterReaderScreen() {
         trackInsetTop={insets.top + Spacing.md}
         trackInsetBottom={bottomInset}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={load} tintColor={Palette.gold} />
+          <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.gold} />
         }
         contentContainerStyle={[
           styles.scrollContent,
@@ -160,7 +162,7 @@ export default function ChapterReaderScreen() {
           />
 
           {loading ? (
-            <ActivityIndicator color={Palette.gold} style={styles.spinner} />
+            <ActivityIndicator color={palette.gold} style={styles.spinner} />
           ) : error ? (
             <EmptyState title={error} suggestion={t('scripture.tryAgain')} />
           ) : verses.length === 0 ? (
@@ -169,7 +171,7 @@ export default function ChapterReaderScreen() {
               suggestion={t('scripture.noChaptersIngest')}
             />
           ) : !langHasContent ? (
-            <ThemedText style={styles.fallback}>
+            <ThemedText type="muted" style={styles.fallback}>
               This chapter is not yet available in {PRAYER_LANGUAGE_NAMES[lang]}. Please select
               another language.
             </ThemedText>
@@ -199,7 +201,6 @@ export default function ChapterReaderScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.background,
   },
   scroll: {
     flex: 1,
@@ -209,7 +210,6 @@ const styles = StyleSheet.create({
   },
   spinner: { marginTop: 32 },
   fallback: {
-    color: Palette.muted,
     fontStyle: 'italic',
     textAlign: 'center',
     lineHeight: 24,

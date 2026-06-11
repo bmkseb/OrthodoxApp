@@ -1,15 +1,14 @@
 // app/learn/catalog.tsx
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { LearnCollectionCard } from '@/components/learn/learn-collection-card';
 import { CatalogListDivider } from '@/components/ui/catalog-list-divider';
 import { AppBackButton } from '@/components/ui/app-back-button';
-import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
-import { Layout, Palette, Spacing } from '@/constants/theme';
+import { Layout, Space } from '@/constants/theme';
 import {
   LEARN_COLLECTIONS,
   type LearnCollection,
@@ -20,6 +19,7 @@ import {
   fetchDoctrineOutline,
   type DoctrineSubtopic,
 } from '@/lib/doctrine';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useTranslation } from '@/hooks/use-translation';
 
 function mapDoctrineSubtopic(sub: DoctrineSubtopic): LearnTopic {
@@ -35,9 +35,9 @@ function mapDoctrineSubtopic(sub: DoctrineSubtopic): LearnTopic {
 
 export default function LearnCatalogScreen() {
   const { t, mode } = useTranslation();
+  const { palette } = useThemeTokens();
   const [doctrineCollections, setDoctrineCollections] = useState<LearnCollection[]>([]);
 
-  // Load the doctrine outline from Supabase; fall back to the bundled library.
   useEffect(() => {
     let active = true;
     fetchDoctrineOutline()
@@ -79,51 +79,57 @@ export default function LearnCatalogScreen() {
     router.push(`/learn/${slug}?${params.toString()}` as never);
   };
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        topBar: {
+          marginBottom: Space.s12,
+        },
+        pageTitle: {
+          fontSize: 32,
+          fontWeight: 'bold',
+          lineHeight: 40,
+          marginBottom: 4,
+          color: palette.text,
+        },
+        pageGeez: {
+          fontSize: 18,
+          color: palette.gold,
+          marginBottom: Space.s8,
+        },
+        description: {
+          marginBottom: Layout.sectionInner,
+          lineHeight: 22,
+          color: palette.muted,
+        },
+        list: {
+          gap: Space.s12,
+        },
+      }),
+    [palette]
+  );
+
   return (
     <ScreenScrollView includeFloatingChrome={false}>
-      <AppBackButton
-        style={styles.topBar}
-        onFallback={() => router.push('/(tabs)/learn')}
-      />
+      <AppBackButton style={styles.topBar} onFallback={() => router.push('/(tabs)/learn')} />
 
       <ThemedText style={styles.pageTitle}>Catechism Catalog</ThemedText>
       {mode !== 'en' ? <ThemedText style={styles.pageGeez}>ትምህርት</ThemedText> : null}
-      <ThemedText type="muted" style={styles.description}>
+      <ThemedText style={styles.description}>
         The doctrine and teachings of the Ethiopian Orthodox Tewahedo Church.
       </ThemedText>
 
-      {collectionsToRender.map((collection, index) => (
-        <View key={collection.id}>
-          <LearnCollectionCard
-            collection={collection}
-            onTopicPress={(topic) => openLesson(topic)}
-          />
-          {index < collectionsToRender.length - 1 ? (
-            <CatalogListDivider marginLeft={0} />
-          ) : null}
-        </View>
-      ))}
+      <View style={styles.list}>
+        {collectionsToRender.map((collection, index) => (
+          <View key={collection.id}>
+            <LearnCollectionCard
+              collection={collection}
+              onTopicPress={(topic) => openLesson(topic)}
+            />
+            {index < collectionsToRender.length - 1 ? <CatalogListDivider marginLeft={0} /> : null}
+          </View>
+        ))}
+      </View>
     </ScreenScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  topBar: {
-    marginBottom: Spacing.md,
-  },
-  pageTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    lineHeight: 40,
-    marginBottom: 4,
-  },
-  pageGeez: {
-    fontSize: 18,
-    color: Palette.gold,
-    marginBottom: Spacing.sm,
-  },
-  description: {
-    marginBottom: Layout.sectionGap,
-    lineHeight: 22,
-  },
-});

@@ -14,6 +14,7 @@ export type IconName =
   | 'search'
   | 'chevron-left'
   | 'chevron-right'
+  | 'arrow-right'
   | 'chevron-down'
   | 'rewind'
   | 'forward'
@@ -152,6 +153,13 @@ export function Icon({ name, size = 18, color = Palette.gold, strokeWidth = STRO
       return (
         <Svg {...props}>
           <Polyline points="9 18 15 12 9 6" />
+        </Svg>
+      );
+    case 'arrow-right':
+      return (
+        <Svg {...props}>
+          <Line x1="5" y1="12" x2="19" y2="12" />
+          <Polyline points="12 5 19 12 12 19" />
         </Svg>
       );
     case 'chevron-down':

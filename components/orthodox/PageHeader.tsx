@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { BilingualHeader } from '@/components/orthodox/BilingualHeader';
-import { LanguageSelectorSheet } from '@/components/orthodox/LanguageSelectorSheet';
 import { useAuth } from '@/contexts/auth-context';
-import { Layout, Palette } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
+import { Layout } from '@/constants/theme';
 import { useTranslation } from '@/hooks/use-translation';
 
 const ICON_SIZE = 22;
@@ -21,30 +21,16 @@ type PageHeaderProps = {
   geez?: string;
   /** Override the bell handler. Defaults to a no-op (notification screen TBD). */
   onPressBell?: () => void;
-  /** Override the globe handler. Defaults to opening the language sheet. */
-  onPressGlobe?: () => void;
 };
 
 /**
  * Unified header used by every tab screen.
- *
- * Layout:
- *   ┌─────────────────────────────────────────────────────────────┐
- *   │  Bilingual title                            🔔   🌐   ⬤ "B" │
- *   └─────────────────────────────────────────────────────────────┘
- *
- * The title is rendered through `BilingualHeader`, so it follows the global
- * language mode (en / bilingual / am) chosen via the globe → sheet.
- *
- * The header reaches the screen edge by negating the parent scroll's
- * horizontal padding, then applies its own 20px paddingHorizontal so the
- * title and right actions sit a consistent 20px from the device edge across
- * every tab — regardless of which ScrollView wraps it.
+ * Language selection lives in Settings — not duplicated here.
  */
-export function PageHeader({ title, geez, onPressBell, onPressGlobe }: PageHeaderProps) {
+export function PageHeader({ title, geez, onPressBell }: PageHeaderProps) {
   const { t } = useTranslation();
   const { user, isGuest } = useAuth();
-  const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
+  const { palette } = useTheme();
 
   const initial =
     (user?.displayName?.charAt(0) ??
@@ -55,10 +41,9 @@ export function PageHeader({ title, geez, onPressBell, onPressGlobe }: PageHeade
     onPressBell?.();
   }, [onPressBell]);
 
-  const handleGlobe = useCallback(() => {
-    if (onPressGlobe) onPressGlobe();
-    else setLanguageSheetOpen(true);
-  }, [onPressGlobe]);
+  const handleSettings = useCallback(() => {
+    router.push('/settings');
+  }, []);
 
   const handleAvatar = useCallback(() => {
     if (user || isGuest) router.push('/profile');
@@ -66,53 +51,46 @@ export function PageHeader({ title, geez, onPressBell, onPressGlobe }: PageHeade
   }, [user, isGuest]);
 
   return (
-    <>
-      <View style={styles.container}>
-        <View style={styles.titleBlock}>
-          <BilingualHeader
-            amharic={geez ?? title}
-            english={title}
-            size={28}
-            weight="700"
-            letterSpacing={-0.6}
-          />
-        </View>
-
-        <View style={styles.actions}>
-          <OrthodoxPressable
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.notifications')}
-            onPress={handleBell}
-            style={styles.actionBtn}>
-            <Icon name="bell" size={ICON_SIZE} color={Palette.gold} strokeWidth={ICON_STROKE} />
-          </OrthodoxPressable>
-
-          <OrthodoxPressable
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.title')}
-            onPress={handleGlobe}
-            style={styles.actionBtn}>
-            <Icon name="globe" size={ICON_SIZE} color={Palette.gold} strokeWidth={ICON_STROKE} />
-          </OrthodoxPressable>
-
-          <OrthodoxPressable
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.profile')}
-            onPress={handleAvatar}>
-            <View style={styles.avatarRing}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarLetter}>{initial}</Text>
-              </View>
-            </View>
-          </OrthodoxPressable>
-        </View>
+    <View style={styles.container}>
+      <View style={styles.titleBlock}>
+        <BilingualHeader
+          amharic={geez ?? title}
+          english={title}
+          size={28}
+          weight="700"
+          letterSpacing={-0.6}
+        />
       </View>
 
-      <LanguageSelectorSheet
-        visible={languageSheetOpen}
-        onClose={() => setLanguageSheetOpen(false)}
-      />
-    </>
+      <View style={styles.actions}>
+        <OrthodoxPressable
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.notifications')}
+          onPress={handleBell}
+          style={styles.actionBtn}>
+          <Icon name="bell" size={ICON_SIZE} color={palette.gold} strokeWidth={ICON_STROKE} />
+        </OrthodoxPressable>
+
+        <OrthodoxPressable
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.title')}
+          onPress={handleSettings}
+          style={styles.actionBtn}>
+          <Icon name="settings" size={ICON_SIZE} color={palette.gold} strokeWidth={ICON_STROKE} />
+        </OrthodoxPressable>
+
+        <OrthodoxPressable
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.profile')}
+          onPress={handleAvatar}>
+          <View style={styles.avatarRing}>
+            <View style={[styles.avatar, { backgroundColor: palette.card }]}>
+              <Text style={[styles.avatarLetter, { color: palette.gold }]}>{initial}</Text>
+            </View>
+          </View>
+        </OrthodoxPressable>
+      </View>
+    </View>
   );
 }
 
@@ -124,8 +102,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 20,
     paddingHorizontal: 20,
-    // Break out of the parent ScrollView's horizontal padding so the title
-    // sits exactly 20px from the screen edge, not 20 + pagePadding.
     marginHorizontal: -Layout.pagePadding,
     gap: 12,
   },
@@ -159,7 +135,6 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: Palette.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -167,6 +142,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: Palette.gold,
   },
 });

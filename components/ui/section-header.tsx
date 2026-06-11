@@ -1,41 +1,41 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import { Icon, type IconName } from '@/components/Icon';
 import { SacredSectionHeader } from '@/components/ui/bilingual-header';
 import { ThemedText } from '@/components/themed-text';
+import { getCeremonialSectionHeaderStyle, Layout, Space } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 import { useTranslation } from '@/hooks/use-translation';
 import type { HeaderKey } from '@/lib/translations';
-import { Layout, Space, Typography } from '@/constants/theme';
-
-const SECTION_ICON_SIZE = 17;
 
 type SectionHeaderProps = {
   headerKey?: HeaderKey;
   title?: string;
-  icon?: IconName;
+  /** @deprecated Icons removed — ceremonial serif headers read cleaner without rails. */
+  icon?: unknown;
   onSeeAllPress?: () => void;
+  /** @deprecated All section headers share the same ceremonial weight now. */
+  emphasis?: 'default' | 'strong';
 };
 
-export function SectionHeader({ headerKey, title, icon, onSeeAllPress }: SectionHeaderProps) {
+export function SectionHeader({
+  headerKey,
+  title,
+  onSeeAllPress,
+}: SectionHeaderProps) {
   const { t } = useTranslation();
+  const { palette } = useThemeTokens();
+  const ceremonialTitle = getCeremonialSectionHeaderStyle(palette.text);
 
   return (
     <View style={styles.container}>
       <View style={styles.titleRow}>
-        {icon ? (
-          <View style={styles.iconRail}>
-            <Icon name={icon} size={SECTION_ICON_SIZE} />
-          </View>
-        ) : null}
-        <View style={styles.labelRail}>
-          {headerKey ? (
-            <SacredSectionHeader headerKey={headerKey} style={styles.header} />
-          ) : (
-            <ThemedText style={styles.fallbackTitle} numberOfLines={1}>
-              {title}
-            </ThemedText>
-          )}
-        </View>
+        {headerKey ? (
+          <SacredSectionHeader headerKey={headerKey} style={styles.header} />
+        ) : (
+          <ThemedText style={[ceremonialTitle, styles.fallbackTitle]} numberOfLines={1}>
+            {title}
+          </ThemedText>
+        )}
       </View>
 
       {onSeeAllPress ? (
@@ -58,22 +58,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: Layout.sectionHeaderBottom,
+    marginBottom: Layout.sectionInner,
     gap: Space.s8,
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    minWidth: 0,
-  },
-  iconRail: {
-    width: Layout.iconRailWidth,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  labelRail: {
     flex: 1,
     minWidth: 0,
     justifyContent: 'center',
@@ -83,7 +71,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   fallbackTitle: {
-    ...Typography.sectionTitle,
     flexShrink: 1,
   },
   seeAllWrap: {

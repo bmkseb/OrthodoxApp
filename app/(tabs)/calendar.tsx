@@ -1,7 +1,6 @@
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet } from 'react-native';
 
 import { CalendarDayDetailSheet } from '@/components/calendar/calendar-day-detail-sheet';
 import { CalendarInfoModal } from '@/components/calendar/calendar-info-modal';
@@ -11,13 +10,12 @@ import { TodayHeader } from '@/components/calendar/today-header';
 import { UpcomingFasts } from '@/components/calendar/upcoming-fasts';
 import { UpcomingFeasts } from '@/components/calendar/upcoming-feasts';
 import { PageHeader } from '@/components/orthodox/PageHeader';
-import { SacredAtmosphere } from '@/components/sacred/sacred-atmosphere';
-import { ThemedView } from '@/components/themed-view';
-import { useFloatingBottomInset } from '@/hooks/use-floating-bottom-inset';
+import { SectionBlock } from '@/components/ui/section-block';
+import { ScreenScrollView } from '@/components/ui/screen-scroll-view';
 import { useTranslation } from '@/hooks/use-translation';
 import { getUpcomingMajorFeasts, type UpcomingFeast } from '@/data/orthodoxCalendar';
 import { getEthiopianMonthsInGregorianMonth, getUpcomingFasts } from '@/lib/eotc-liturgical-calendar';
-import { Layout, Space } from '@/constants/theme';
+import { Space } from '@/constants/theme';
 
 const GREGORIAN_MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -26,8 +24,6 @@ const GREGORIAN_MONTHS = [
 
 export default function CalendarScreen() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const scrollBottomPadding = useFloatingBottomInset();
   const now = useMemo(() => new Date(), []);
   const today = useMemo(
     () => ({ year: now.getFullYear(), month: now.getMonth(), day: now.getDate() }),
@@ -120,69 +116,55 @@ export default function CalendarScreen() {
   }, []);
 
   return (
-    <ThemedView style={styles.screen}>
-      <SacredAtmosphere />
-      <BottomSheetModalProvider>
-        <View
-          style={[
-            styles.screenBody,
-            {
-              paddingTop: insets.top + Space.s8,
-              paddingBottom: scrollBottomPadding,
-            },
-          ]}>
-          <PageHeader title={t('nav.calendar')} geez="ቀን ዘመን" />
+    <BottomSheetModalProvider>
+      <ScreenScrollView contentContainerStyle={styles.scrollContent}>
+        <PageHeader title={t('nav.calendar')} geez="ቀን ዘመን" />
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}>
-            <SeasonBanner date={bannerDate} onOpenLegend={() => setLegendVisible(true)} />
-            <TodayHeader
-              date={now}
-              todayLabel={t('calendar.today')}
-              onPressToday={goToToday}
-            />
-            <CalendarMonthGrid
-              year={viewYear}
-              month={viewMonth}
-              today={today}
-              gregorianMonthLabel={gregorianMonthLabel}
-              ethiopianMonthLabel={ethiopianMonthLabel}
-              onSelectDay={openSheetForDay}
-              onPrevMonth={goPrevMonth}
-              onNextMonth={goNextMonth}
-              onPrevYear={goPrevYear}
-              onNextYear={goNextYear}
-            />
-            <UpcomingFasts fasts={upcomingFasts} />
-            <UpcomingFeasts feasts={upcomingFeasts} onPressFeast={handleFeastPress} />
-          </ScrollView>
-        </View>
-
-        <CalendarDayDetailSheet
-          visible={sheetVisible}
+        <SeasonBanner date={bannerDate} onOpenLegend={() => setLegendVisible(true)} />
+        <TodayHeader
+          date={now}
+          todayLabel={t('calendar.today')}
+          onPressToday={goToToday}
+        />
+        <CalendarMonthGrid
           year={viewYear}
           month={viewMonth}
-          day={sheetDay}
-          onClose={handleCloseSheet}
-          onPrevDay={() => navigateDay(-1)}
-          onNextDay={() => navigateDay(1)}
+          today={today}
+          gregorianMonthLabel={gregorianMonthLabel}
+          ethiopianMonthLabel={ethiopianMonthLabel}
+          onSelectDay={openSheetForDay}
+          onPrevMonth={goPrevMonth}
+          onNextMonth={goNextMonth}
+          onPrevYear={goPrevYear}
+          onNextYear={goNextYear}
         />
+        {upcomingFasts.length > 0 ? (
+          <SectionBlock headerKey="upcomingFasts">
+            <UpcomingFasts fasts={upcomingFasts} contentOnly />
+          </SectionBlock>
+        ) : null}
+        <SectionBlock headerKey="upcomingFeasts">
+          <UpcomingFeasts feasts={upcomingFeasts} onPressFeast={handleFeastPress} contentOnly />
+        </SectionBlock>
+      </ScreenScrollView>
 
-        <CalendarInfoModal visible={legendVisible} onClose={() => setLegendVisible(false)} />
-      </BottomSheetModalProvider>
-    </ThemedView>
+      <CalendarDayDetailSheet
+        visible={sheetVisible}
+        year={viewYear}
+        month={viewMonth}
+        day={sheetDay}
+        onClose={handleCloseSheet}
+        onPrevDay={() => navigateDay(-1)}
+        onNextDay={() => navigateDay(1)}
+      />
+
+      <CalendarInfoModal visible={legendVisible} onClose={() => setLegendVisible(false)} />
+    </BottomSheetModalProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  screenBody: {
-    flex: 1,
-    minHeight: 0,
-    paddingHorizontal: Layout.pagePadding,
-  },
   scrollContent: {
-    paddingBottom: Space.s32,
+    paddingBottom: Space.s16,
   },
 });

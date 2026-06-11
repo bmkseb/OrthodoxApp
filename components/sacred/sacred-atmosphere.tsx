@@ -2,34 +2,55 @@ import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
-/** Imperceptible warm radial layers — replaces heavy global vignette crush. */
+import { useTheme } from '@/contexts/theme-context';
+import { getSacredTokens } from '@/constants/theme';
+
+const WASH_HEIGHT = 120;
+
+/** Page atmosphere — neutral base with a very subtle top lift (no heavy brown wash). */
 export function SacredAtmosphere() {
+  const { colorScheme, palette } = useTheme();
+  const sacred = getSacredTokens(colorScheme);
+
+  if (colorScheme === 'light') {
+    return (
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background }]} />
+        <LinearGradient
+          colors={[sacred.pageWashTop, palette.background]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.topWash}
+        />
+      </View>
+    );
+  }
+
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.backgroundDeep }]} />
       <LinearGradient
-        colors={['#12100E', '#0A0908', '#080706']}
+        colors={[palette.background, palette.backgroundDeep]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
-        colors={['rgba(201, 147, 58, 0.04)', 'transparent', 'transparent']}
+        colors={[sacred.pageWashTop, 'transparent']}
         start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.55 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={['transparent', 'rgba(42, 36, 28, 0.35)', 'transparent']}
-        start={{ x: 0, y: 0.4 }}
-        end={{ x: 1, y: 0.6 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={['rgba(30, 26, 20, 0.2)', 'transparent']}
-        start={{ x: 0.5, y: 1 }}
-        end={{ x: 0.5, y: 0.65 }}
-        style={StyleSheet.absoluteFill}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topWash}
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  topWash: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: WASH_HEIGHT,
+  },
+});

@@ -1,11 +1,12 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ChannelAvatarImage } from '@/components/listen/channel-avatar-image';
 import { OrthodoxPressable } from '@/components/orthodox-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { LISTEN_CHANNEL_RAIL } from '@/constants/listen-layout';
-import { Palette, Space, Typography } from '@/constants/theme';
+import { Space, Typography } from '@/constants/theme';
+import { useThemeTokens } from '@/hooks/use-theme-tokens';
 
 /** @deprecated Use LISTEN_CHANNEL_RAIL.avatarSize */
 export const CHANNEL_AVATAR_SIZE = LISTEN_CHANNEL_RAIL.avatarSize;
@@ -24,6 +25,36 @@ export const ChannelRailCard = memo(function ChannelRailCard({
   imageUri,
   onPress,
 }: ChannelRailCardProps) {
+  const { palette } = useThemeTokens();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          alignItems: 'center',
+        },
+        avatar: {
+          marginBottom: Space.s8,
+        },
+        title: {
+          ...Typography.cardTitle,
+          fontSize: 13,
+          fontWeight: '600',
+          lineHeight: 17,
+          textAlign: 'center',
+          color: palette.text,
+        },
+        subtitle: {
+          marginTop: 2,
+          fontSize: 11,
+          lineHeight: 15,
+          textAlign: 'center',
+          letterSpacing: 0.15,
+        },
+      }),
+    [palette.text]
+  );
+
   return (
     <OrthodoxPressable
       style={[styles.wrap, { width: LISTEN_CHANNEL_RAIL.cardWidth }]}
@@ -46,28 +77,4 @@ export const ChannelRailCard = memo(function ChannelRailCard({
       ) : null}
     </OrthodoxPressable>
   );
-});
-
-const styles = StyleSheet.create({
-  wrap: {
-    alignItems: 'center',
-  },
-  avatar: {
-    marginBottom: Space.s8,
-  },
-  title: {
-    ...Typography.cardTitle,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 17,
-    textAlign: 'center',
-    color: Palette.text,
-  },
-  subtitle: {
-    marginTop: 2,
-    fontSize: 11,
-    lineHeight: 15,
-    textAlign: 'center',
-    letterSpacing: 0.15,
-  },
 });
